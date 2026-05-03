@@ -8,6 +8,22 @@ Current status: **first v0 protocol loop**. The installable `lettuce` CLI scaffo
 
 The protocol does not own chat surfaces, inboxes, OAuth grants, or service integrations. The agent runtime owns those. Lettuce teaches the agent how to connect the right signal sources, preserve provenance, write stream events, run handlers, review proposed brain updates, and eventually subscribe to other Lettuces in an organization so company context can become distributed instead of centralized.
 
+## Give This To Your Agent
+
+If you use OpenClaw, Claude Code, Codex, Cursor, or another agentic coding/runtime tool, send your agent this repo URL:
+
+```text
+https://github.com/kenseals/lettuce
+```
+
+Then ask:
+
+```text
+Set up Lettuce for me from this repo. Follow the README and docs/agent-operated-onboarding.md. Create a local Lettuce repo for my organization, ingest one small sample signal I approve, run the handlers in review mode, show me the pending review, and wait for my approval before changing durable brain state.
+```
+
+For OpenClaw specifically, point it at `skills/openclaw-lettuce/SKILL.md` after install.
+
 ## Protocol CLI
 
 Start with `TRY_THIS_FIRST.md` for the shortest usable path. For the product frame, see `docs/company-context-for-agents.md`. For a public-safe install-to-approval walkthrough, see `docs/first-run-demo.md`. The v0 protocol source is `LETTUCE_V0_SPEC.md`; handler format is specified in `HANDLERS.md`. For the full local walkthrough, see `QUICKSTART.md`. For agent-operated setup, see `docs/agent-operated-onboarding.md`; for the OpenClaw source setup contract, see `docs/openclaw-runtime-source-setup.md`; for source setup decisions, see `docs/source-discovery-recipes.md`; for a repo-packaged OpenClaw skill, see `skills/openclaw-lettuce/SKILL.md`. For the launch note, see `docs/public-v0-launch-note.md`. For the public-v0 release gate, see `docs/public-v0-release-checklist.md`.
