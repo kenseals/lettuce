@@ -10,7 +10,7 @@ The protocol does not own chat surfaces, inboxes, OAuth grants, or service integ
 
 ## Protocol CLI
 
-Start with `TRY_THIS_FIRST.md` for the shortest usable path. For a public-safe install-to-approval walkthrough, see `docs/first-run-demo.md`. The v0 protocol source is `LETTUCE_V0_SPEC.md`; handler format is specified in `HANDLERS.md`. For the full local walkthrough, see `QUICKSTART.md`. For agent-operated setup, see `docs/agent-operated-onboarding.md`; for source setup decisions, see `docs/source-discovery-recipes.md`; for a repo-packaged OpenClaw skill, see `skills/openclaw-lettuce/SKILL.md`. For the launch note, see `docs/public-v0-launch-note.md`. For the public-v0 release gate, see `docs/public-v0-release-checklist.md`.
+Start with `TRY_THIS_FIRST.md` for the shortest usable path. For the product frame, see `docs/company-context-for-agents.md`. For a public-safe install-to-approval walkthrough, see `docs/first-run-demo.md`. The v0 protocol source is `LETTUCE_V0_SPEC.md`; handler format is specified in `HANDLERS.md`. For the full local walkthrough, see `QUICKSTART.md`. For agent-operated setup, see `docs/agent-operated-onboarding.md`; for the OpenClaw source setup contract, see `docs/openclaw-runtime-source-setup.md`; for source setup decisions, see `docs/source-discovery-recipes.md`; for a repo-packaged OpenClaw skill, see `skills/openclaw-lettuce/SKILL.md`. For the launch note, see `docs/public-v0-launch-note.md`. For the public-v0 release gate, see `docs/public-v0-release-checklist.md`.
 
 Install from GitHub:
 
