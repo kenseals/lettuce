@@ -587,6 +587,39 @@ print(json.dumps({
             self.assertEqual(json.loads(list_completed.stdout)["reviews"][0]["id"], review_id)
             self.assertEqual(json.loads(approve_completed.stdout)["review_id"], review_id)
 
+    def test_review_cli_can_approve_first_pending_review(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "lettuce-acme-ken"
+            init_repo(repo, org="acme", operator="ken", initialize_git=False)
+            add_stream_event(repo, title="First review signal", body="Operator wants the easiest approval path.", source="manual")
+            run_once(repo, stream="streams/inbox/direct", review=True, commit=False)
+            first_review = list_reviews(repo)[0]
+
+            completed = subprocess.run(
+                ["python3", "-m", "lettuce.cli", "review-approve", str(repo), "--first", "--operator", "ken"],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(json.loads(completed.stdout)["review_id"], first_review.id)
+            self.assertTrue(list_reviews(repo, status="approved"))
+
+    def test_review_cli_requires_id_or_first(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "lettuce-acme-ken"
+            init_repo(repo, org="acme", operator="ken", initialize_git=False)
+
+            completed = subprocess.run(
+                ["python3", "-m", "lettuce.cli", "review-approve", str(repo), "--operator", "ken"],
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(completed.returncode, 2)
+            self.assertIn("provide a review id or use --first", completed.stderr)
+            self.assertNotIn("Traceback", completed.stderr)
+
     def test_import_source_file_writes_event_with_provenance(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)

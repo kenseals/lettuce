@@ -27,7 +27,7 @@ If your shell cannot find the installed `lettuce` script because the user Python
 printf 'Customer says agent context is stale.\n' > /tmp/lettuce-first-signal.md
 lettuce onboard ./lettuce-demo --org demo --operator you --title "Demo signal" --body-file /tmp/lettuce-first-signal.md --source openclaw.telegram --surface telegram --consent operator-direct-request --openclaw-provider --review --commit
 lettuce reviews ./lettuce-demo
-lettuce review-approve ./lettuce-demo <review-id> --operator you --commit
+lettuce review-approve ./lettuce-demo --first --operator you --commit
 lettuce status ./lettuce-demo
 lettuce logs ./lettuce-demo --limit 5
 ```

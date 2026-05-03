@@ -22,26 +22,14 @@ lettuce onboard "$DEST" \
   --review \
   --commit
 
-REVIEWS_JSON=$(mktemp /tmp/lettuce-reviews-XXXXXX.json)
-lettuce reviews "$DEST" | tee "$REVIEWS_JSON"
-
-REVIEW_ID=$(python3 - "$REVIEWS_JSON" <<'PY'
-import json
-import sys
-reviews = json.load(open(sys.argv[1], encoding="utf-8"))["reviews"]
-if not reviews:
-    raise SystemExit("no pending reviews created")
-print(reviews[0]["id"])
-PY
-)
-
-lettuce review-approve "$DEST" "$REVIEW_ID" --operator you --commit
+lettuce reviews "$DEST"
+lettuce review-approve "$DEST" --first --operator you --commit
 lettuce status "$DEST"
 lettuce logs "$DEST" --limit 5
 
 echo
 printf 'Demo repo: %s\n' "$DEST"
-printf 'Approved review: %s\n' "$REVIEW_ID"
+printf 'Approved first pending review.\n'
 printf 'Git status should be clean after committed actions:\n'
 STATUS=$(git -C "$DEST" status --short)
 if [[ -n "$STATUS" ]]; then

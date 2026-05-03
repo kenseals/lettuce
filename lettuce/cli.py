@@ -46,6 +46,19 @@ def _read_body(body: str | None, body_file: str | None) -> str:
     return sys.stdin.read()
 
 
+def _resolve_review_id(path: str, review_id: str | None, *, first: bool) -> str:
+    if review_id and first:
+        raise ValueError("use either a review id or --first, not both")
+    if review_id:
+        return review_id
+    if not first:
+        raise ValueError("provide a review id or use --first")
+    reviews = list_reviews(path, status="pending")
+    if not reviews:
+        raise ValueError("no pending reviews found")
+    return reviews[0].id
+
+
 def _run(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="lettuce", description="Lettuce v0 protocol CLI")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -195,13 +208,15 @@ def _run(argv: list[str] | None = None) -> int:
 
     approve_parser = subparsers.add_parser("review-approve", help="Approve a pending review and publish it to its target stream")
     approve_parser.add_argument("path", help="Lettuce repo path")
-    approve_parser.add_argument("review_id", help="Pending review id")
+    approve_parser.add_argument("review_id", nargs="?", help="Pending review id")
+    approve_parser.add_argument("--first", action="store_true", help="Approve the first pending review")
     approve_parser.add_argument("--operator", default="operator", help="Operator or agent approving the review")
     approve_parser.add_argument("--commit", action="store_true", help="Commit the approval and publish to git")
 
     decline_parser = subparsers.add_parser("review-decline", help="Decline a pending review without publishing it")
     decline_parser.add_argument("path", help="Lettuce repo path")
-    decline_parser.add_argument("review_id", help="Pending review id")
+    decline_parser.add_argument("review_id", nargs="?", help="Pending review id")
+    decline_parser.add_argument("--first", action="store_true", help="Decline the first pending review")
     decline_parser.add_argument("--reason", default="", help="Optional decline reason")
     decline_parser.add_argument("--operator", default="operator", help="Operator or agent declining the review")
     decline_parser.add_argument("--commit", action="store_true", help="Commit the declined review to git")
@@ -485,12 +500,14 @@ def _run(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "review-approve":
-        result = approve_review(args.path, args.review_id, operator=args.operator, commit=args.commit)
+        review_id = _resolve_review_id(args.path, args.review_id, first=args.first)
+        result = approve_review(args.path, review_id, operator=args.operator, commit=args.commit)
         _print_json({"review_id": result.review_id, "status": result.status, "target_stream": result.stream, "publish_path": result.path, "title": result.title})
         return 0
 
     if args.command == "review-decline":
-        result = decline_review(args.path, args.review_id, reason=args.reason, operator=args.operator, commit=args.commit)
+        review_id = _resolve_review_id(args.path, args.review_id, first=args.first)
+        result = decline_review(args.path, review_id, reason=args.reason, operator=args.operator, commit=args.commit)
         _print_json({"review_id": result.id, "status": result.status, "path": result.path, "target_stream": result.target_stream, "title": result.title})
         return 0
 

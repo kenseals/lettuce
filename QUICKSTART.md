@@ -132,7 +132,7 @@ lettuce subscribe ./lettuce-demo \
 ```bash
 lettuce run ./lettuce-demo --review --commit
 lettuce reviews ./lettuce-demo
-lettuce review-approve ./lettuce-demo <review-id> --operator you --commit
+lettuce review-approve ./lettuce-demo --first --operator you --commit
 lettuce review-decline ./lettuce-demo <review-id> --reason "not useful" --operator you --commit
 lettuce status ./lettuce-demo
 lettuce logs ./lettuce-demo --limit 5

@@ -43,7 +43,7 @@ Add `--openclaw-provider` when running inside OpenClaw and you want model-backed
 
 ```bash
 lettuce reviews ./lettuce-demo
-lettuce review-approve ./lettuce-demo <review-id> --operator you --commit
+lettuce review-approve ./lettuce-demo --first --operator you --commit
 # or:
 lettuce review-decline ./lettuce-demo <review-id> --reason "not useful" --operator you --commit
 ```

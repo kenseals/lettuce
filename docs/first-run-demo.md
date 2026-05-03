@@ -74,11 +74,13 @@ Expected shape:
 
 ## 4. Approve one update
 
-Copy one review `id`, then approve it:
+Approve the first pending review:
 
 ```bash
-lettuce review-approve ./lettuce-demo <review-id> --operator you --commit
+lettuce review-approve ./lettuce-demo --first --operator you --commit
 ```
+
+For a specific proposal, copy one review `id` from `lettuce reviews` and pass it instead of `--first`.
 
 Expected shape:
 
