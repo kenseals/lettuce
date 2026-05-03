@@ -85,7 +85,44 @@ class ProtocolRuntimeTests(unittest.TestCase):
             self.assertIn("provenance: agent-observed", text)
             self.assertIn("ingestion_boundary: operator-provided", text)
             self.assertIn("external_action: false", text)
+            self.assertIn("org: acme", text)
+            self.assertIn("operator: ken", text)
             self.assertIn("Focus Lettuce", text)
+
+    def test_stream_events_include_org_and_operator_scope(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "lettuce-acme-ken"
+            init_repo(repo, org="acme", operator="ken", initialize_git=False)
+
+            event_path = add_stream_event(
+                repo,
+                title="Scoped work signal",
+                body="This belongs to Acme work context, not personal memory.",
+                source="manual",
+            )
+
+            event_text = Path(event_path).read_text(encoding="utf-8")
+            self.assertIn("org: acme", event_text)
+            self.assertIn("operator: ken", event_text)
+
+    def test_stream_event_scope_cannot_be_overwritten_by_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "lettuce-acme-ken"
+            init_repo(repo, org="acme", operator="ken", initialize_git=False)
+
+            event_path = add_stream_event(
+                repo,
+                title="Scoped work signal",
+                body="Metadata should not silently move this signal to another org.",
+                source="manual",
+                metadata={"org": "personal", "operator": "other"},
+            )
+
+            event_text = Path(event_path).read_text(encoding="utf-8")
+            self.assertIn("org: acme", event_text)
+            self.assertIn("operator: ken", event_text)
+            self.assertNotIn("org: personal", event_text)
+            self.assertNotIn("operator: other", event_text)
 
     def test_ingest_email_cli_writes_email_provenance(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

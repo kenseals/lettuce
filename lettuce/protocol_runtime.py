@@ -447,15 +447,19 @@ def add_stream_event(
     _require_lettuce_repo(repo)
     created_at = (timestamp or now_utc()).replace(microsecond=0)
     event_id = f"{_timestamp_for_filename(created_at)}-{_slugify(title)}"
+    repo_config = _read_simple_yaml(repo / "lettuce.yml")
     frontmatter = {
         "id": event_id,
         "timestamp": created_at.isoformat().replace("+00:00", "Z"),
         "source": source,
         "title": title,
     }
+    for key in ("org", "operator"):
+        if repo_config.get(key):
+            frontmatter[key] = repo_config[key]
     for key, value in (metadata or {}).items():
         clean_key = str(key).strip()
-        if clean_key and clean_key not in {"id", "timestamp", "source", "title"}:
+        if clean_key and clean_key not in {"id", "timestamp", "source", "title", "org", "operator"}:
             frontmatter[clean_key] = value
     path = repo / stream / f"{event_id}.md"
     path.parent.mkdir(parents=True, exist_ok=True)
