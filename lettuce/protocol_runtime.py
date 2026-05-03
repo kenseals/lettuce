@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import hashlib
+import fnmatch
 import json
 import os
 from pathlib import Path
@@ -1027,6 +1028,23 @@ def _subscription_checkpoint_key(subscription: SubscriptionRecord) -> str:
     return f"subscription:{subscription.id}"
 
 
+def _policy_allows_local_stream(policy: str | None, local_stream: str) -> bool:
+    if not policy:
+        return True
+    allowed: list[str] = []
+    for raw_part in re.split(r"[;\n]", policy):
+        part = raw_part.strip()
+        if not part:
+            continue
+        if part.startswith("allow_local_stream="):
+            allowed.extend(item.strip() for item in part.split("=", 1)[1].split(",") if item.strip())
+        elif part.startswith("allow_streams="):
+            allowed.extend(item.strip() for item in part.split("=", 1)[1].split(",") if item.strip())
+    if not allowed:
+        return True
+    return any(fnmatch.fnmatch(local_stream, pattern) for pattern in allowed)
+
+
 def _append_log(repo: Path, entry: dict[str, Any]) -> None:
     path = repo / ".lettuce" / "runtime.log"
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -1125,6 +1143,22 @@ def pull_subscriptions(
     notes: list[str] = []
     imported_paths: list[Path] = []
     for subscription in subscriptions:
+        if not _policy_allows_local_stream(subscription.policy, subscription.local_stream):
+            notes.append(f"skip {subscription.id}: policy blocks local stream {subscription.local_stream}")
+            _append_log(
+                repo,
+                {
+                    "action": "pull-subscriptions",
+                    "subscription_id": subscription.id,
+                    "subscription_name": subscription.name,
+                    "local_stream": subscription.local_stream,
+                    "policy": subscription.policy,
+                    "blocked": True,
+                    "reason": "policy blocks local stream",
+                    "timestamp": now_utc().replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+                },
+            )
+            continue
         remote_repo = Path(subscription.remote).expanduser()
         if not remote_repo.is_absolute():
             remote_repo = (repo / remote_repo).resolve()

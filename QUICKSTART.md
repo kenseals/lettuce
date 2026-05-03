@@ -130,6 +130,7 @@ lettuce subscribe ./lettuce-demo \
   --remote /tmp/lettuce-upstream \
   --stream brain/decisions \
   --local-stream streams/shared/decisions \
+  --policy 'allow_streams=streams/shared/*' \
   --commit
 lettuce pull-subscriptions ./lettuce-demo --commit
 ```

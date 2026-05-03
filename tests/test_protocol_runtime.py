@@ -965,6 +965,54 @@ print(json.dumps({
             self.assertIn("Decision: agents should use the current annual pricing sheet by default.", imported_text)
             self.assertEqual(checkpoints["subscription:publisher-decisions"], [source_event.stem])
 
+    def test_pull_subscriptions_policy_allows_matching_local_stream(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            publisher = tmp_path / "lettuce-publisher"
+            subscriber = tmp_path / "lettuce-subscriber"
+            init_repo(publisher, org="acme", operator="ken", initialize_git=False)
+            init_repo(subscriber, org="acme", operator="soren", initialize_git=False)
+            add_stream_event(publisher, stream="brain/decisions", title="Allowed", body="Allowed shared decision.", source="publisher.brain")
+            configure_subscription(
+                subscriber,
+                str(publisher),
+                stream="brain/decisions",
+                name="publisher-decisions",
+                local_stream="streams/shared/decisions",
+                policy="allow_streams=streams/shared/*",
+            )
+
+            result = pull_subscriptions(subscriber)
+
+            self.assertEqual(result.imported, 1)
+            self.assertEqual(result.notes, [])
+
+    def test_pull_subscriptions_policy_blocks_non_matching_local_stream(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            publisher = tmp_path / "lettuce-publisher"
+            subscriber = tmp_path / "lettuce-subscriber"
+            init_repo(publisher, org="acme", operator="ken", initialize_git=False)
+            init_repo(subscriber, org="acme", operator="soren", initialize_git=False)
+            add_stream_event(publisher, stream="brain/decisions", title="Blocked", body="Blocked shared decision.", source="publisher.brain")
+            configure_subscription(
+                subscriber,
+                str(publisher),
+                stream="brain/decisions",
+                name="publisher-decisions",
+                local_stream="brain/decisions",
+                policy="allow_streams=streams/shared/*",
+            )
+
+            result = pull_subscriptions(subscriber)
+            imported = read_stream_events(subscriber, "brain/decisions")
+            logs = read_logs(subscriber)
+
+            self.assertEqual(result.imported, 0)
+            self.assertIn("policy blocks local stream brain/decisions", result.notes[0])
+            self.assertEqual(imported, [])
+            self.assertTrue(logs[-1]["blocked"])
+
     def test_pull_subscriptions_cli_can_commit_imports(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
