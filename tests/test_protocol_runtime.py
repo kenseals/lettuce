@@ -676,6 +676,83 @@ print(json.dumps({
             self.assertEqual(events[0].frontmatter["source_path"], str(source_file.resolve()))
             self.assertIn("Anna asked", events[0].body)
 
+    def test_add_source_directory_cli_ingests_sample_once_with_provenance(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            repo = tmp_path / "lettuce-acme-ken"
+            source_dir = tmp_path / "exports"
+            source_dir.mkdir()
+            (source_dir / "one.md").write_text("# First note\n\nAgent context should stay org-scoped.", encoding="utf-8")
+            (source_dir / "two.txt").write_text("Second note\n\nForwarded source exports should be sample-first.", encoding="utf-8")
+            init_repo(repo, org="acme", operator="ken", initialize_git=False)
+
+            first = subprocess.run(
+                [
+                    "python3",
+                    "-m",
+                    "lettuce.cli",
+                    "add-source",
+                    "directory",
+                    str(repo),
+                    "--input",
+                    str(source_dir),
+                    "--sample-limit",
+                    "1",
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            second = subprocess.run(
+                [
+                    "python3",
+                    "-m",
+                    "lettuce.cli",
+                    "add-source",
+                    "directory",
+                    str(repo),
+                    "--input",
+                    str(source_dir),
+                    "--sample-limit",
+                    "3",
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            third = subprocess.run(
+                [
+                    "python3",
+                    "-m",
+                    "lettuce.cli",
+                    "add-source",
+                    "directory",
+                    str(repo),
+                    "--input",
+                    str(source_dir),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            first_output = json.loads(first.stdout)
+            second_output = json.loads(second.stdout)
+            third_output = json.loads(third.stdout)
+            events = read_stream_events(repo, "streams/inbox/direct")
+            first_event_text = Path(first_output["event_paths"][0]).read_text(encoding="utf-8")
+
+            self.assertEqual(first_output["imported"], 1)
+            self.assertEqual(first_output["sample_limit"], 1)
+            self.assertEqual(second_output["imported"], 1)
+            self.assertEqual(third_output["imported"], 0)
+            self.assertEqual(len(events), 2)
+            self.assertIn("source_type: directory", first_event_text)
+            self.assertIn("provenance: operator-selected-directory", first_event_text)
+            self.assertIn("consent_basis: operator-selected-directory", first_event_text)
+            self.assertIn("ingestion_boundary: local-directory-sample", first_event_text)
+            self.assertIn("external_action: false", first_event_text)
+
     def test_configure_source_writes_markdown_source_record_and_stream(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp) / "lettuce-acme-ken"

@@ -113,6 +113,18 @@ class SourceImportResult:
 
 
 @dataclass(frozen=True)
+class DirectorySourceImportResult:
+    source_type: str
+    source_dir: str
+    stream: str
+    imported: int
+    skipped: int
+    event_paths: list[str]
+    checkpoint_key: str
+    sample_limit: int
+
+
+@dataclass(frozen=True)
 class DirectIngestResult:
     event_path: str
     title: str
@@ -566,6 +578,84 @@ def import_source_event(
         event_path=str(event_path),
         title=resolved_title,
         source=resolved_source,
+    )
+
+
+def _directory_source_checkpoint_key(source_dir: Path, stream: str) -> str:
+    return f"source:directory:{source_dir}:{stream}"
+
+
+def _source_file_id(path: Path) -> str:
+    stat = path.stat()
+    return f"{path.resolve()}:{stat.st_mtime_ns}:{stat.st_size}"
+
+
+def import_directory_source(
+    repo_path: str | Path,
+    input_path: str | Path,
+    *,
+    stream: str = "streams/inbox/direct",
+    source: str | None = None,
+    sample_limit: int = 3,
+    commit: bool = False,
+) -> DirectorySourceImportResult:
+    repo = Path(repo_path).expanduser().resolve()
+    _require_lettuce_repo(repo)
+    source_dir = Path(input_path).expanduser().resolve()
+    if not source_dir.exists() or not source_dir.is_dir():
+        raise ValueError(f"directory source requires an existing directory: {source_dir}")
+    if sample_limit < 1:
+        raise ValueError("sample_limit must be at least 1")
+    candidates = [path for path in sorted(source_dir.iterdir()) if path.is_file() and path.suffix.lower() in {".md", ".markdown", ".txt"}]
+    checkpoint_key = _directory_source_checkpoint_key(source_dir, stream)
+    checkpoints = _load_checkpoints(repo)
+    processed = set(checkpoints.get(checkpoint_key, []))
+    imported_paths: list[Path] = []
+    imported_ids: list[str] = []
+    for path in candidates:
+        file_id = _source_file_id(path)
+        if file_id in processed:
+            continue
+        body = path.read_text(encoding="utf-8")
+        if not body.strip():
+            processed.add(file_id)
+            checkpoints.setdefault(checkpoint_key, []).append(file_id)
+            continue
+        event_path = add_stream_event(
+            repo,
+            stream=stream,
+            title=_infer_title_from_text(body, path.stem),
+            body=body,
+            source=source or f"directory:{source_dir.name}",
+            metadata={
+                "source_type": "directory",
+                "source_path": str(path),
+                "source_file_id": file_id,
+                "provenance": "operator-selected-directory",
+                "consent_basis": "operator-selected-directory",
+                "ingestion_boundary": "local-directory-sample",
+                "external_action": False,
+            },
+            commit=False,
+        )
+        imported_paths.append(event_path)
+        imported_ids.append(file_id)
+        processed.add(file_id)
+        checkpoints.setdefault(checkpoint_key, []).append(file_id)
+        if len(imported_paths) >= sample_limit:
+            break
+    _save_checkpoints(repo, checkpoints)
+    if commit and imported_paths:
+        _git_commit(repo, imported_paths, "source: import directory sample")
+    return DirectorySourceImportResult(
+        source_type="directory",
+        source_dir=str(source_dir),
+        stream=stream,
+        imported=len(imported_paths),
+        skipped=len([item for item in candidates if _source_file_id(item) in processed]) - len(imported_ids),
+        event_paths=[str(path) for path in imported_paths],
+        checkpoint_key=checkpoint_key,
+        sample_limit=sample_limit,
     )
 
 

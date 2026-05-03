@@ -7,7 +7,7 @@ import sys
 from typing import Any
 
 from .handlers import discover_handlers
-from .protocol_runtime import add_handler, add_stream_event, approve_review, configure_source, configure_subscription, decline_review, import_source_event, ingest_direct_signal, ingest_email_signal, init_repo, list_reviews, pull_subscriptions, read_logs, run_once, status
+from .protocol_runtime import add_handler, add_stream_event, approve_review, configure_source, configure_subscription, decline_review, import_directory_source, import_source_event, ingest_direct_signal, ingest_email_signal, init_repo, list_reviews, pull_subscriptions, read_logs, run_once, status
 
 
 def _print_json(value: object) -> None:
@@ -152,9 +152,9 @@ def _run(argv: list[str] | None = None) -> int:
     add_handler_parser.add_argument("--commit", action="store_true", help="Commit the handler to git")
 
     add_source_parser = subparsers.add_parser("add-source", help="Import or configure a signal source")
-    add_source_parser.add_argument("source_type", choices=["file", "stdin", "telegram", "email", "fathom", "granola", "transcript", "zoom"], help="Source type to import or configure")
+    add_source_parser.add_argument("source_type", choices=["file", "stdin", "directory", "telegram", "email", "fathom", "granola", "transcript", "zoom"], help="Source type to import or configure")
     add_source_parser.add_argument("path", nargs="?", default=".", help="Lettuce repo path")
-    add_source_parser.add_argument("--input", dest="input_path", help="Input file path for file sources")
+    add_source_parser.add_argument("--input", dest="input_path", help="Input file or directory path for file/directory sources")
     add_source_parser.add_argument("--stream", help="Destination stream. Defaults by source type")
     add_source_parser.add_argument("--title", help="Event title. Defaults to first heading/line or file name")
     add_source_parser.add_argument("--source", help="Source label. Defaults to file:<name> or stdin")
@@ -175,6 +175,7 @@ def _run(argv: list[str] | None = None) -> int:
     add_source_parser.add_argument("--label", help="Email label/folder or source grouping to record")
     add_source_parser.add_argument("--source-url", help="Source URL or app URL to record")
     add_source_parser.add_argument("--redaction-notes", help="Redaction notes to preserve during ingest")
+    add_source_parser.add_argument("--sample-limit", type=int, default=3, help="Maximum new files to ingest from a directory source per run")
     add_source_parser.add_argument("--commit", action="store_true", help="Commit the imported event or source configuration to git")
 
     subscribe_parser = subparsers.add_parser("subscribe", help="Record a remote/shared stream subscription")
@@ -401,6 +402,30 @@ def _run(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "add-source":
+        if args.source_type == "directory":
+            if not args.input_path:
+                raise ValueError("directory source requires --input")
+            result = import_directory_source(
+                args.path,
+                args.input_path,
+                stream=args.stream or "streams/inbox/direct",
+                source=args.source,
+                sample_limit=args.sample_limit,
+                commit=args.commit,
+            )
+            _print_json(
+                {
+                    "source_type": result.source_type,
+                    "source_dir": result.source_dir,
+                    "stream": result.stream,
+                    "imported": result.imported,
+                    "skipped": result.skipped,
+                    "event_paths": result.event_paths,
+                    "checkpoint_key": result.checkpoint_key,
+                    "sample_limit": result.sample_limit,
+                }
+            )
+            return 0
         if args.source_type in {"file", "stdin"}:
             if args.source_type == "file" and (args.body is not None or args.body_file):
                 raise ValueError("--body and --body-file are only valid for stdin sources")

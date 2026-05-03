@@ -52,12 +52,18 @@ This creates a markdown+git repo with `lettuce.yml`, default handlers, inbox str
 
 ## Add signal
 
-Import a local file:
+Import a local file, or repeatedly sample a local export directory:
 
 ```bash
 printf '# Customer signal\n\nCustomer says agent context is stale.' > /tmp/customer-signal.md
 lettuce add-source file ./lettuce-demo --input /tmp/customer-signal.md --commit
+
+mkdir -p /tmp/lettuce-export
+printf '# Sales call\n\nCustomer needs fresher agent context.' > /tmp/lettuce-export/sales-call.md
+lettuce add-source directory ./lettuce-demo --input /tmp/lettuce-export --sample-limit 3 --commit
 ```
+
+Directory imports are checkpointed, so the next run only imports new or changed `.md`/`.txt` files.
 
 Or ingest direct operator input that the agent already received:
 

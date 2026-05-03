@@ -67,7 +67,7 @@ lettuce ingest-email ./lettuce-demo \
   --commit
 ```
 
-The first source connector is deliberately local and boring: `add-source file` imports a local text/markdown file into a stream event with source provenance, and `add-source stdin` does the same for piped or supplied text.
+The first repeatable source connector is deliberately local and boring: `add-source directory --input <dir>` imports a sample of new `.md`/`.txt` files into stream events, preserves file provenance and consent, and checkpoints imported file versions so later runs only pick up new or changed files. `add-source file` imports one local text/markdown file, and `add-source stdin` does the same for piped or supplied text.
 
 `add-source email|fathom|granola|transcript|zoom` records repo-owned source configuration intent under `sources/` and creates the target stream directory. These records can include `access_status`, `sample_policy`, `privacy_notes`, and `setup_next_action`, so the operator's agent can see whether it can sample now or needs to guide setup first. It does not pretend to provision forwarding addresses, OAuth, or webhooks by itself; agent-owned setup can attach to the same source record later.
 
