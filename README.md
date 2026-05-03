@@ -10,19 +10,13 @@ The protocol does not own chat surfaces, inboxes, OAuth grants, or service integ
 
 ## Give This To Your Agent
 
-If you use OpenClaw, Claude Code, Codex, Cursor, or another agentic coding/runtime tool, send your agent this repo URL:
+Give your agent this one link:
 
 ```text
-https://github.com/kenseals/lettuce
+https://raw.githubusercontent.com/kenseals/lettuce/main/llms.txt
 ```
 
-Then ask:
-
-```text
-Set up Lettuce for me from this repo. Follow the README and docs/agent-operated-onboarding.md. Create a local Lettuce repo for my organization, ingest one small sample signal I approve, run the handlers in review mode, show me the pending review, and wait for my approval before changing durable brain state.
-```
-
-For OpenClaw specifically, point it at `skills/openclaw-lettuce/SKILL.md` after install.
+That file tells the agent what Lettuce is, what to install, which docs matter, and how to set up the first review-gated company-context repo without making you copy a separate prompt.
 
 ## Protocol CLI
 

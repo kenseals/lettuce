@@ -1,0 +1,37 @@
+# Lettuce
+
+> Lettuce is an agent-operated, local-first markdown+git protocol for giving an operator's agent durable company context that is separate from personal memory, owned by the operator, and portable across agent runtimes.
+
+You are reading this because an operator gave you one link and asked you to set up Lettuce. Your job is to act as the operator's agent, not to make the operator manually learn the protocol first.
+
+## Agent Setup Instructions
+
+- Install Lettuce from the repo URL: `python3 -m pip install 'git+https://github.com/kenseals/lettuce.git'`.
+- Create or choose a local Lettuce repo for one organization/work context, not for the operator's personal memory.
+- Ingest one small operator-approved sample signal first.
+- Run handlers in review mode.
+- Show the operator the pending review(s).
+- Wait for approval before publishing durable `brain/*` updates.
+- Preserve provenance, consent basis, source surface, and org/operator scope.
+- Do not build duplicate chat, email, browser, OAuth, or service integrations inside Lettuce. Use your runtime's existing access, then write Lettuce stream events.
+
+## Start Here
+
+- [README](https://raw.githubusercontent.com/kenseals/lettuce/main/README.md): Human-facing overview and shortest command path.
+- [Agent-operated onboarding](https://raw.githubusercontent.com/kenseals/lettuce/main/docs/agent-operated-onboarding.md): The primary setup workflow for agents.
+- [First-run demo](https://raw.githubusercontent.com/kenseals/lettuce/main/docs/first-run-demo.md): Public-safe install-to-approval walkthrough.
+- [OpenClaw Lettuce skill](https://raw.githubusercontent.com/kenseals/lettuce/main/skills/openclaw-lettuce/SKILL.md): Use this if you are OpenClaw.
+
+## Protocol Reference
+
+- [Handler format](https://raw.githubusercontent.com/kenseals/lettuce/main/HANDLERS.md): How markdown handlers subscribe, publish, and return JSON.
+- [OpenClaw runtime source setup](https://raw.githubusercontent.com/kenseals/lettuce/main/docs/openclaw-runtime-source-setup.md): Boundary between OpenClaw-owned runtime access and Lettuce-owned protocol state.
+- [Source discovery recipes](https://raw.githubusercontent.com/kenseals/lettuce/main/docs/source-discovery-recipes.md): How to record source intent and sample safely.
+- [Company context for agents](https://raw.githubusercontent.com/kenseals/lettuce/main/docs/company-context-for-agents.md): Product framing and why this exists.
+
+## Optional
+
+- [Quickstart](https://raw.githubusercontent.com/kenseals/lettuce/main/QUICKSTART.md): Longer CLI walkthrough.
+- [Try this first](https://raw.githubusercontent.com/kenseals/lettuce/main/TRY_THIS_FIRST.md): Short smoke-test path.
+- [Public v0 release checklist](https://raw.githubusercontent.com/kenseals/lettuce/main/docs/public-v0-release-checklist.md): Current readiness and deferred work.
+- [Full context bundle](https://raw.githubusercontent.com/kenseals/lettuce/main/llms-full.txt): Single-file expanded agent setup context.

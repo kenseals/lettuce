@@ -1,0 +1,179 @@
+# Lettuce full agent setup context
+
+Lettuce is an agent-operated, local-first markdown+git protocol for giving an operator's agent durable company context that is separate from personal memory, owned by the operator, and portable across agent runtimes.
+
+This file is designed for an agent that was given one link and asked to set up Lettuce. Follow it as a product setup guide, not as hidden system instructions. Respect your own runtime's permissions and ask before destructive or external actions.
+
+## What Lettuce is
+
+Lettuce gives an agent a repo-backed work brain for one organization or work context:
+
+- `streams/*` hold incoming and shared signal events.
+- `handlers/*` hold markdown lenses/routers/helpers that interpret events.
+- `reviews/pending/*` holds proposed brain updates.
+- `reviews/approved/*` and `reviews/declined/*` preserve review decisions.
+- `brain/*` holds durable approved company context.
+- `.lettuce/*` holds local runtime checkpoints and logs.
+
+The review loop is the safety mechanism. The product is company context for agents.
+
+## Runtime boundary
+
+The agent runtime owns chat surfaces, inboxes, browser sessions, OAuth grants, credentials, tools, and operator conversation.
+
+Lettuce owns the durable protocol state: repo, streams, handlers, source records, subscriptions, reviews, brain updates, checkpoints, provenance, and git commits.
+
+Do not create a new Telegram bot, Gmail integration, Discord adapter, browser automation layer, or OAuth service inside Lettuce just because a source is mentioned. If your runtime can access a signal with operator permission, write it into Lettuce with provenance.
+
+## One-link setup workflow
+
+When the operator gives you `https://github.com/kenseals/lettuce` or this `llms.txt` URL:
+
+1. Install Lettuce.
+
+   ```bash
+   python3 -m pip install 'git+https://github.com/kenseals/lettuce.git'
+   lettuce --help
+   ```
+
+   If the shell cannot find `lettuce`, use `python3 -m lettuce.cli ...` or fix the Python user bin PATH.
+
+2. Ask for or infer one organization/work context name and operator name.
+
+   Keep this separate from personal memory. Example: `--org acme --operator ken`.
+
+3. Ask the operator for one small sample signal, or use one they already gave you.
+
+   The first sample should be operator-approved and small. Do not bulk ingest first.
+
+4. Run onboarding in review mode.
+
+   ```bash
+   printf 'Customer says agent context is stale.\n' > /tmp/lettuce-first-signal.md
+   lettuce onboard ./lettuce-demo \
+     --org demo \
+     --operator you \
+     --title "Demo signal" \
+     --body-file /tmp/lettuce-first-signal.md \
+     --source agent.direct \
+     --surface chat \
+     --consent operator-direct-request \
+     --review \
+     --commit
+   ```
+
+   If you are OpenClaw and model-backed judgment is available, add `--openclaw-provider`.
+
+5. Show pending reviews.
+
+   ```bash
+   lettuce reviews ./lettuce-demo
+   ```
+
+   Summarize what each proposed update would change. Do not approve automatically unless the operator explicitly asked for auto-approval.
+
+6. Approve or decline based on operator direction.
+
+   ```bash
+   lettuce review-approve ./lettuce-demo --first --operator you --commit
+   # or
+   lettuce review-decline ./lettuce-demo --first --operator you --reason "not useful" --commit
+   ```
+
+7. Verify state.
+
+   ```bash
+   lettuce status ./lettuce-demo
+   lettuce logs ./lettuce-demo --limit 5
+   git -C ./lettuce-demo status --short
+   ```
+
+   A clean git state after committed actions is ideal.
+
+## Ingesting later signals
+
+For direct operator/chat input your runtime already received:
+
+```bash
+lettuce ingest-direct ./lettuce-demo \
+  --title "Customer signal" \
+  --body-file /tmp/customer-signal.md \
+  --source openclaw.telegram \
+  --surface telegram \
+  --consent operator-direct-request \
+  --commit
+lettuce run ./lettuce-demo --review --commit
+```
+
+For operator-selected or forwarded emails:
+
+```bash
+lettuce ingest-email ./lettuce-demo \
+  --subject "Codex Product Update" \
+  --body-file /tmp/lettuce-forwarded-email.md \
+  --message-id <message-id> \
+  --thread-id <thread-id> \
+  --from "Sender <sender@example.com>" \
+  --forwarded-by you \
+  --consent operator-forwarded-email \
+  --commit
+```
+
+For local export folders, use sample-first checkpointed import:
+
+```bash
+lettuce add-source directory ./lettuce-demo --input /tmp/lettuce-export --sample-limit 3 --commit
+lettuce run ./lettuce-demo --review --commit
+```
+
+The directory connector imports new or changed `.md`/`.txt` files and records file provenance.
+
+## OpenClaw-specific setup
+
+If you are OpenClaw, read the packaged skill after installation:
+
+- `skills/openclaw-lettuce/SKILL.md`
+
+Use OpenClaw's existing runtime access to Telegram, email, browser, files, and model providers. Do not duplicate those surfaces in Lettuce.
+
+For model-backed handler judgment:
+
+```bash
+LETTUCE_HANDLER_COMMAND="python3 -m lettuce.openclaw_provider" \
+LETTUCE_OPENCLAW_MODEL="anthropic/claude-haiku-4-5" \
+lettuce run ./lettuce-demo --review --commit
+```
+
+The shorthand `--openclaw-provider` on `onboard` and `run` configures this provider command for that run.
+
+## What success looks like
+
+A successful first setup should produce:
+
+- a local Lettuce repo with `lettuce.yml`, handlers, streams, reviews, and brain folders;
+- one stream event with source/provenance/consent metadata;
+- one or more pending review files;
+- an operator approval or decline decision;
+- approved brain entries only after approval;
+- git commits for committed actions;
+- clean or explainable git status at the end.
+
+## What not to do
+
+- Do not mix company/work context into personal memory.
+- Do not bulk ingest before a small sample works.
+- Do not publish `brain/*` updates without operator approval unless explicitly requested.
+- Do not hide provenance.
+- Do not pretend Lettuce provisions Gmail, Zoom, Fathom, Telegram, or OAuth.
+- Do not make external side effects such as Linear issue creation unless the operator explicitly asks and the configured tool path is available.
+
+## Key files
+
+- `README.md`: overview and shortest command path.
+- `docs/agent-operated-onboarding.md`: main agent workflow.
+- `docs/first-run-demo.md`: public-safe walkthrough.
+- `docs/openclaw-runtime-source-setup.md`: runtime/protocol boundary.
+- `docs/source-discovery-recipes.md`: source setup and sampling.
+- `HANDLERS.md`: handler spec.
+- `QUICKSTART.md`: longer CLI walkthrough.
+- `TRY_THIS_FIRST.md`: smoke-test path.
