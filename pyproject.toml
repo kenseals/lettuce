@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lettuce"
+version = "0.1.0"
+description = "An agent-operated markdown+git protocol for reviewable operating context."
+requires-python = ">=3.9"
+readme = "README.md"
+license = { text = "MIT" }
+
+[tool.setuptools]
+packages = ["lettuce"]
+
+[project.scripts]
+lettuce = "lettuce.cli:main"
+
+[tool.setuptools.package-data]
+lettuce = ["prompts/*.md", "schemas/*.json", "runtime_seed.json"]

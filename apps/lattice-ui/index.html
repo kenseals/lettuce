@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lettuce Lattice</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Primary">
+      <a class="brand" href="#dashboard" aria-label="Lettuce Lattice home">
+        <span class="brand-mark">◌</span>
+        <span class="brand-copy">
+          <strong>Lettuce</strong>
+          <em>Lattice</em>
+        </span>
+      </a>
+
+      <section class="workspace-summary card subtle" aria-label="Workspace summary">
+        <p class="section-label">Workspace</p>
+        <strong id="sidebarOrgName">Loading…</strong>
+        <p id="sidebarOrgSummary" class="muted">Connecting to local runtime…</p>
+        <div class="mini-stats" id="sidebarCounts"></div>
+      </section>
+
+      <nav class="primary-nav" id="primaryNav">
+        <a href="#dashboard" data-view-link="dashboard">Dashboard</a>
+        <a href="#setup" data-view-link="setup">Setup</a>
+        <a href="#sources" data-view-link="sources">Sources</a>
+        <a href="#brain" data-view-link="brain">Company Brain</a>
+        <a href="#lenses" data-view-link="lenses">Lenses</a>
+        <a href="#destinations" data-view-link="destinations">Destinations</a>
+        <a href="#signals" data-view-link="signals">Signals / Audit</a>
+        <a href="#settings" data-view-link="settings">Settings</a>
+      </nav>
+
+      <section class="sidebar-footer card subtle">
+        <p class="section-label">Write access</p>
+        <div id="sidebarTokenState" class="token-state">Checking token…</div>
+        <a class="ghost-link" href="#settings">Manage preview token</a>
+      </section>
+    </aside>
+
+    <main class="app-main" id="appTop">
+      <header class="topbar">
+        <div>
+          <p class="section-label" id="viewKicker">Workspace</p>
+          <h1 id="viewTitle">Loading…</h1>
+          <p class="topbar-subtitle" id="viewSubtitle">Preparing the local app shell.</p>
+        </div>
+        <div class="topbar-actions">
+          <button class="secondary" id="refreshButton" type="button">Refresh</button>
+          <a class="secondary button-link" href="#settings">Settings</a>
+          <div class="token-pill" id="tokenPill">Writes locked</div>
+        </div>
+      </header>
+
+      <div class="notice" id="globalNotice" hidden></div>
+
+      <section class="view active" id="dashboardView" data-view="dashboard" aria-labelledby="viewTitle">
+        <div class="view-grid dashboard-grid">
+          <article class="card span-5" id="dashboardActionCard"></article>
+          <article class="card span-7">
+            <div class="card-head">
+              <h2>Checklist</h2>
+              <a class="ghost-link" href="#setup">Open setup</a>
+            </div>
+            <div id="dashboardChecklist"></div>
+          </article>
+
+          <article class="card span-12">
+            <div class="card-head">
+              <h2>Runtime overview</h2>
+              <span class="muted">Local state and recent progress</span>
+            </div>
+            <div class="metric-grid" id="dashboardMetrics"></div>
+          </article>
+
+          <article class="card span-6">
+            <div class="card-head">
+              <h2>Recent signals</h2>
+              <a class="ghost-link" href="#signals">Open audit</a>
+            </div>
+            <div id="dashboardSignals"></div>
+          </article>
+
+          <article class="card span-6">
+            <div class="card-head">
+              <h2>Connected sources</h2>
+              <a class="ghost-link" href="#sources">Manage sources</a>
+            </div>
+            <div id="dashboardSources"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="view" id="setupView" data-view="setup">
+        <div class="view-grid">
+          <article class="card span-4">
+            <div class="card-head">
+              <h2>Checklist</h2>
+              <span class="muted">Start with workspace and company context</span>
+            </div>
+            <div id="setupChecklist"></div>
+          </article>
+
+          <article class="card span-4">
+            <div class="card-head">
+              <h2>Account / org</h2>
+              <span class="status-badge" id="currentOrgStatus">Loading…</span>
+            </div>
+            <form id="userForm" class="stack-form setup-form-block">
+              <label for="userName">Your name</label>
+              <input id="userName" name="name" placeholder="e.g. Ken Seals" />
+
+              <label for="userEmail">Email</label>
+              <input id="userEmail" name="email" type="email" placeholder="you@company.com" />
+
+              <label for="userRole">Role</label>
+              <input id="userRole" name="role" placeholder="Founder, operator, PM…" />
+
+              <button class="primary" type="submit">Save user profile</button>
+              <p class="form-status" id="userStatusMessage" aria-live="polite"></p>
+            </form>
+
+            <form id="orgForm" class="stack-form">
+              <label for="orgSelect">Use an existing local workspace</label>
+              <select id="orgSelect" name="org_id"></select>
+
+              <label for="orgName">Or create a new workspace</label>
+              <input id="orgName" name="name" placeholder="e.g. KenCo Labs" />
+
+              <button class="primary" type="submit">Save workspace</button>
+              <p class="form-status" id="orgStatusMessage" aria-live="polite"></p>
+            </form>
+          </article>
+
+          <article class="card span-4">
+            <div class="card-head">
+              <h2>Workspace summary</h2>
+              <span class="muted">Current workspace</span>
+            </div>
+            <div id="setupWorkspaceSummary"></div>
+          </article>
+
+          <article class="card span-7">
+            <div class="card-head">
+              <h2>Company Brain starter</h2>
+              <span class="muted">Summary, positioning, stage</span>
+            </div>
+            <form id="brainSetupForm" class="stack-form">
+              <label for="brainSummary">Company summary</label>
+              <textarea id="brainSummary" name="summary" rows="5" placeholder="What should agents and operators know about this company?"></textarea>
+
+              <label for="brainPositioning">Positioning</label>
+              <input id="brainPositioning" name="positioning" placeholder="How should Lettuce describe the company internally?" />
+
+              <label for="brainStage">Current stage</label>
+              <input id="brainStage" name="stage" placeholder="e.g. starter workspace" />
+
+              <button class="primary" type="submit">Save company brain</button>
+              <p class="form-status" id="brainSetupStatus" aria-live="polite"></p>
+            </form>
+          </article>
+
+          <article class="card span-5" id="setupNextCard"></article>
+        </div>
+      </section>
+
+      <section class="view" id="sourcesView" data-view="sources">
+        <div class="view-grid">
+          <article class="card span-7">
+            <div class="card-head">
+              <h2>Source catalog</h2>
+              <span class="muted">Connected and requestable inputs</span>
+            </div>
+            <div class="catalog-grid" id="sourceCatalog"></div>
+          </article>
+
+          <article class="card span-5" id="manualPasteCard">
+            <div class="card-head">
+              <h2>Manual paste</h2>
+              <span class="muted">Fastest way to submit real signal</span>
+            </div>
+            <form id="manualSignalForm" class="stack-form">
+              <label for="manualTitle">Title</label>
+              <input id="manualTitle" name="title" placeholder="Optional title for the packet" />
+
+              <label for="manualBody">Signal body</label>
+              <textarea id="manualBody" name="body" rows="12" required placeholder="Paste notes, transcript excerpts, customer messages, or session summaries here."></textarea>
+
+              <button class="primary" type="submit">Process signal</button>
+              <p class="form-status" id="manualStatus" aria-live="polite"></p>
+            </form>
+          </article>
+
+          <article class="card span-5">
+            <div class="card-head">
+              <h2>Add source</h2>
+              <span class="muted">Create a local connector record</span>
+            </div>
+            <form id="sourceForm" class="stack-form">
+              <label for="sourceName">Source name</label>
+              <input id="sourceName" placeholder="e.g. Founder inbox" />
+
+              <label for="sourceKind">Kind</label>
+              <select id="sourceKind">
+                <option value="manual">Manual / paste</option>
+                <option value="openclaw">OpenClaw client</option>
+                <option value="github">GitHub / markdown</option>
+                <option value="linear">Linear</option>
+                <option value="slack">Slack</option>
+                <option value="email">Email / transcript</option>
+              </select>
+
+              <label for="sourceDetail">What signal should it capture?</label>
+              <textarea id="sourceDetail" rows="4" placeholder="Customer emails, session summaries, Linear comments…"></textarea>
+
+              <button class="primary" type="submit">Add source</button>
+              <p class="form-status" id="sourceStatus" aria-live="polite"></p>
+            </form>
+          </article>
+
+          <article class="card span-7">
+            <div class="card-head">
+              <h2>Request queue</h2>
+              <span class="muted">Stored locally for prioritization</span>
+            </div>
+            <div id="requestedConnectors"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="view" id="brainView" data-view="brain">
+        <div class="view-grid">
+          <article class="card span-4" id="brainProfileCard"></article>
+          <article class="card span-8">
+            <div class="card-head">
+              <h2>Company Brain objects</h2>
+              <span class="muted">Durable state by object area</span>
+            </div>
+            <div class="brain-sections" id="brainObjects"></div>
+          </article>
+
+          <article class="card span-12">
+            <div class="card-head">
+              <h2>Update log</h2>
+              <span class="muted">Recent provenance-backed changes</span>
+            </div>
+            <div id="brainUpdateLog"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="view" id="lensesView" data-view="lenses">
+        <div class="view-grid">
+          <article class="card span-7">
+            <div class="card-head">
+              <h2>Lens pack</h2>
+              <span class="muted">Default lenses plus local custom lenses</span>
+            </div>
+            <div class="catalog-grid" id="lensCatalog"></div>
+          </article>
+
+          <article class="card span-5">
+            <div class="card-head">
+              <h2>Custom lens</h2>
+              <button class="secondary small" id="resetLensForm" type="button">New lens</button>
+            </div>
+            <form id="customLensForm" class="stack-form">
+              <input type="hidden" id="customLensId" />
+
+              <label for="customLensName">Lens name</label>
+              <input id="customLensName" placeholder="e.g. Founder revenue signal" />
+
+              <label for="customLensBody">Instructions</label>
+              <textarea id="customLensBody" rows="8" placeholder="What should this lens look for? What should it extract or highlight?"></textarea>
+
+              <label for="customLensTags">Tags</label>
+              <input id="customLensTags" placeholder="revenue, founder, custom" />
+
+              <button class="primary" type="submit">Save custom lens</button>
+              <p class="form-status" id="customLensStatus" aria-live="polite"></p>
+            </form>
+          </article>
+        </div>
+      </section>
+
+      <section class="view" id="destinationsView" data-view="destinations">
+        <div class="view-grid">
+          <article class="card span-4" id="destinationHeroCard"></article>
+
+          <article class="card span-8">
+            <div class="card-head">
+              <h2>Destination catalog</h2>
+              <span class="muted">Company Brain is active; others are request-only</span>
+            </div>
+            <div class="catalog-grid" id="destinationCatalog"></div>
+          </article>
+
+          <article class="card span-12">
+            <div class="card-head">
+              <h2>Router previews</h2>
+              <span class="muted">Preview-only route definitions</span>
+            </div>
+            <div id="routerPreview"></div>
+          </article>
+
+          <article class="card span-12">
+            <div class="card-head">
+              <h2>Requested destinations</h2>
+              <span class="muted">Local request history</span>
+            </div>
+            <div id="requestedDestinations"></div>
+          </article>
+
+          <article class="card span-12">
+            <div class="card-head">
+              <h2>Add destination</h2>
+              <span class="muted">Create a local output record</span>
+            </div>
+            <form id="destinationForm" class="inline-form">
+              <input id="destinationName" placeholder="e.g. Founder brief" />
+              <select id="destinationKind">
+                <option value="company-brain">Company Brain</option>
+                <option value="linear">Linear</option>
+                <option value="github">GitHub</option>
+                <option value="slack">Slack</option>
+                <option value="email">Email</option>
+                <option value="webhook">Webhook</option>
+              </select>
+              <input id="destinationDetail" placeholder="What should reviewed updates go to?" />
+              <button class="primary" type="submit">Add destination</button>
+            </form>
+            <p class="form-status" id="destinationStatus" aria-live="polite"></p>
+          </article>
+        </div>
+      </section>
+
+      <section class="view" id="signalsView" data-view="signals">
+        <div class="view-grid">
+          <article class="card span-4">
+            <div class="card-head">
+              <h2>Recent signals</h2>
+              <span class="muted">Select a signal to inspect</span>
+            </div>
+            <div id="signalList"></div>
+          </article>
+
+          <article class="card span-8">
+            <div id="signalSummary"></div>
+            <div id="signalDetail"></div>
+            <div class="feedback-box">
+              <label for="feedbackNote">Feedback note</label>
+              <textarea id="feedbackNote" rows="3" placeholder="Optional note for approve, edit, or decline."></textarea>
+              <div class="feedback-actions" id="feedbackActions"></div>
+            </div>
+          </article>
+
+          <article class="card span-12">
+            <div class="card-head">
+              <h2>Recent runtime events</h2>
+              <span class="muted">Audit trail</span>
+            </div>
+            <div id="auditFeed"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="view" id="settingsView" data-view="settings">
+        <div class="view-grid">
+          <article class="card span-5">
+            <div class="card-head">
+              <h2>Preview token</h2>
+              <span class="muted">Required only for writes</span>
+            </div>
+            <form id="previewTokenForm" class="stack-form">
+              <label for="previewToken">Token</label>
+              <input id="previewToken" name="preview_token" autocomplete="off" placeholder="Paste token printed by the runtime" />
+              <div class="row-actions">
+                <button class="primary" type="submit">Save token</button>
+                <button class="secondary" id="clearPreviewToken" type="button">Clear token</button>
+              </div>
+              <p class="form-status" id="previewTokenStatus" aria-live="polite"></p>
+            </form>
+          </article>
+
+          <article class="card span-7">
+            <div class="card-head">
+              <h2>Runtime status</h2>
+              <span class="muted">Connection and local state</span>
+            </div>
+            <div id="runtimeStatus"></div>
+          </article>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="./script.js"></script>
+</body>
+</html>

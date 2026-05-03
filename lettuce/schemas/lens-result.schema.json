@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Lettuce AI lens result batch",
+  "type": "object",
+  "required": ["lenses"],
+  "additionalProperties": false,
+  "properties": {
+    "lenses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["lens_id", "fired", "confidence", "finding", "evidence", "operator_implication", "route_hints"],
+        "additionalProperties": false,
+        "properties": {
+          "lens_id": {"type": "string"},
+          "fired": {"type": "boolean"},
+          "confidence": {"type": "string", "enum": ["low", "medium", "high"]},
+          "finding": {"type": "string"},
+          "evidence": {"type": "array", "items": {"type": "string"}},
+          "operator_implication": {"type": "string"},
+          "route_hints": {"type": "array", "items": {"type": "string"}},
+          "proposed_updates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["surface", "action", "reason"],
+              "additionalProperties": false,
+              "properties": {
+                "surface": {"type": "string"},
+                "action": {"type": "string"},
+                "reason": {"type": "string"}
+              }
+            }
+          },
+          "anti_actions": {"type": "array", "items": {"type": "string"}},
+          "open_questions": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    }
+  }
+}

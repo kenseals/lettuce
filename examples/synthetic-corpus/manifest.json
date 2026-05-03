@@ -1,0 +1,79 @@
+{
+  "id": "synthetic-company-signal-corpus-v0",
+  "org": "northstar-tools",
+  "operator": "maya",
+  "purpose": "Repeatable public-safe Lettuce dogfood corpus covering varied signal types before real customer data exists.",
+  "ingest_policy": "Synthetic only. No real people, companies, emails, or private data.",
+  "signals": [
+    {
+      "id": "customer-complaint-context-drift",
+      "file": "signals/01-customer-complaint-context-drift.md",
+      "source_type": "email",
+      "title": "Customer complaint: agent context drift",
+      "expected_handlers": ["accounts-lens", "discovery-lens", "default-lens"]
+    },
+    {
+      "id": "sales-lead-security-review",
+      "file": "signals/02-sales-lead-security-review.md",
+      "source_type": "email",
+      "title": "Sales lead: security review blocker",
+      "expected_handlers": ["accounts-lens", "default-lens"]
+    },
+    {
+      "id": "churn-risk-workflow-breakage",
+      "file": "signals/03-churn-risk-workflow-breakage.md",
+      "source_type": "email",
+      "title": "Churn risk: workflow breakage",
+      "expected_handlers": ["accounts-lens", "default-lens"]
+    },
+    {
+      "id": "product-feedback-source-setup",
+      "file": "signals/04-product-feedback-source-setup.md",
+      "source_type": "direct",
+      "title": "Product feedback: source setup needs clarity",
+      "expected_handlers": ["discovery-lens", "default-lens"]
+    },
+    {
+      "id": "investor-note-category-risk",
+      "file": "signals/05-investor-note-category-risk.md",
+      "source_type": "email",
+      "title": "Investor note: category risk",
+      "expected_handlers": ["discovery-lens", "default-lens"]
+    },
+    {
+      "id": "internal-strategy-wedge-choice",
+      "file": "signals/06-internal-strategy-wedge-choice.md",
+      "source_type": "direct",
+      "title": "Internal strategy: wedge choice",
+      "expected_handlers": ["discovery-lens", "default-lens"]
+    },
+    {
+      "id": "noisy-newsletter-agent-automation",
+      "file": "signals/07-noisy-newsletter-agent-automation.md",
+      "source_type": "email",
+      "title": "Noisy newsletter: agent automation news",
+      "expected_handlers": ["discovery-lens"]
+    },
+    {
+      "id": "irrelevant-personal-travel",
+      "file": "signals/08-irrelevant-personal-travel.md",
+      "source_type": "email",
+      "title": "Irrelevant personal travel email",
+      "expected_handlers": []
+    },
+    {
+      "id": "call-transcript-onboarding-confusion",
+      "file": "signals/09-call-transcript-onboarding-confusion.md",
+      "source_type": "transcript",
+      "title": "Call transcript: onboarding confusion",
+      "expected_handlers": ["discovery-lens", "accounts-lens", "default-lens"]
+    },
+    {
+      "id": "github-issue-authorization-boundary",
+      "file": "signals/10-github-issue-authorization-boundary.md",
+      "source_type": "work-system",
+      "title": "GitHub issue: authorization boundary",
+      "expected_handlers": ["discovery-lens", "default-lens"]
+    }
+  ]
+}

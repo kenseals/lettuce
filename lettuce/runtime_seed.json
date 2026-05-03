@@ -1,0 +1,356 @@
+{
+  "metrics": [
+    {
+      "label": "Signals processed",
+      "value": "1",
+      "detail": "Seed signal included"
+    },
+    {
+      "label": "Connected sources",
+      "value": "2",
+      "detail": "Manual paste + local API client"
+    },
+    {
+      "label": "Default lenses",
+      "value": "6",
+      "detail": "Editable lens pack"
+    },
+    {
+      "label": "Active destinations",
+      "value": "1",
+      "detail": "Company Brain local JSON"
+    }
+  ],
+  "sources": [
+    {
+      "id": "api-client",
+      "icon": "◌",
+      "name": "Local API client",
+      "detail": "Submit signals from an agent workspace or local script while Lettuce runs independently.",
+      "status": "Active",
+      "active": true,
+      "action": "active",
+      "button": "Active",
+      "setup": "Use the Lettuce client/API to submit real session summaries, decisions, and workflow signals."
+    },
+    {
+      "id": "manual-paste",
+      "icon": "✎",
+      "name": "Manual paste",
+      "detail": "Paste any note, transcript excerpt, article, or session summary",
+      "status": "Active",
+      "active": true,
+      "action": "manual",
+      "button": "Paste signal",
+      "setup": "Paste any raw signal below. This is the clearest first-user path."
+    },
+    {
+      "id": "markdown-github",
+      "icon": "◧",
+      "name": "Markdown / GitHub",
+      "detail": "Repo docs, issues exported as markdown, runbooks",
+      "status": "Request connector",
+      "active": false,
+      "action": "request",
+      "button": "Request"
+    },
+    {
+      "id": "linear",
+      "icon": "▣",
+      "name": "Linear",
+      "detail": "Issues, comments, project updates, customer tags",
+      "status": "Coming soon",
+      "active": false,
+      "action": "request",
+      "button": "Request"
+    },
+    {
+      "id": "slack",
+      "icon": "#",
+      "name": "Slack",
+      "detail": "Customer/product channels and decision threads",
+      "status": "Coming soon",
+      "active": false,
+      "action": "request",
+      "button": "Request"
+    },
+    {
+      "id": "email-transcript",
+      "icon": "✉",
+      "name": "Email / Transcript",
+      "detail": "Founder inbox, support threads, call transcripts",
+      "status": "Coming soon",
+      "active": false,
+      "action": "request",
+      "button": "Request"
+    }
+  ],
+  "lenses": [
+    {
+      "id": "opportunity-signal",
+      "name": "Opportunity Signal",
+      "body": "Find market pull, painful workflows, budget clues, and wedge shifts.",
+      "tags": [
+        "product",
+        "market",
+        "revenue"
+      ]
+    },
+    {
+      "id": "relationship-signal",
+      "name": "Relationship Signal",
+      "body": "Notice named people, accounts, commitments, trust changes, and follow-up loops.",
+      "tags": [
+        "crm",
+        "account"
+      ]
+    },
+    {
+      "id": "project-focus-shift",
+      "name": "Project / Focus Shift",
+      "body": "Detect when strategy, priority, or scope changed enough to update operating docs.",
+      "tags": [
+        "strategy",
+        "queue"
+      ]
+    },
+    {
+      "id": "durable-memory-decision",
+      "name": "Durable Memory / Decision",
+      "body": "Separate restart-critical truths from transient chatter.",
+      "tags": [
+        "memory",
+        "decision"
+      ]
+    },
+    {
+      "id": "risk-open-loop",
+      "name": "Risk / Open Loop",
+      "body": "Catch unresolved asks, contradictions, stale assumptions, and risky routes.",
+      "tags": [
+        "risk",
+        "review"
+      ]
+    },
+    {
+      "id": "next-action",
+      "name": "Next Action",
+      "body": "Turn signal into one useful owner, destination, and next step.",
+      "tags": [
+        "execution",
+        "owner"
+      ]
+    }
+  ],
+  "routers": [
+    {
+      "id": "customer-pain-linear",
+      "name": "Customer pain → Linear + account note",
+      "detail": "Create/update issue, attach source quote, route to product owner.",
+      "status": "approval required"
+    },
+    {
+      "id": "strategy-shift-docs",
+      "name": "Strategy shift → product context",
+      "detail": "Patch reviewed product context and daily signal logs after human approval.",
+      "status": "learning enabled"
+    },
+    {
+      "id": "market-signal-brief",
+      "name": "External market signal → idea brief",
+      "detail": "Append evidence to product thesis and update opportunity score.",
+      "status": "preview only"
+    },
+    {
+      "id": "session-runbook",
+      "name": "Agent session summary → runbook",
+      "detail": "Propose changes to instructions, tests, or guardrails.",
+      "status": "approval required"
+    }
+  ],
+  "signals": [
+    {
+      "id": "company-brain-control-problem",
+      "title": "Company brain control problem",
+      "quote": "Better organized Notion is not enough if agents are not forced/reminded/equipped to use the context.",
+      "lenses": [
+        "Opportunity",
+        "Project Shift",
+        "Next Action"
+      ],
+      "routes": [
+        "Company Brain context note",
+        "Product positioning doc",
+        "daily signal log"
+      ],
+      "feedback": "Imported signal awaiting review"
+    }
+  ],
+  "audit": [
+    {
+      "time": "seed",
+      "title": "Workspace initialized",
+      "body": "Local runtime state is ready for first-user setup and real signal processing."
+    }
+  ],
+  "feedback_actions": [
+    {
+      "id": "approve",
+      "label": "Approve",
+      "description": "Mark the proposed routes as useful enough to apply."
+    },
+    {
+      "id": "edit",
+      "label": "Edit",
+      "description": "Capture the correction that should train the lens or router."
+    },
+    {
+      "id": "decline",
+      "label": "Decline",
+      "description": "Reject noisy or unsafe recommendations and record why."
+    }
+  ],
+  "feedback": [],
+  "organization": {
+    "name": "Lettuce Labs",
+    "slug": "lettuce-labs",
+    "status": "workspace ready",
+    "setup_stage": "Starter workspace",
+    "updated_at": "seed",
+    "summary": "Workspace for managing company signals, lenses, routing, and reviewed company-brain updates.",
+    "id": "lettuce-labs"
+  },
+  "company_brain": {
+    "company_profile": {
+      "summary": "Lettuce turns company signal into reviewed context updates for AI agents and human operators.",
+      "positioning": "Open-core context infrastructure for AI-first teams.",
+      "current_stage": "First-user dogfood",
+      "updated_at": "seed"
+    },
+    "people_accounts": [
+      {
+        "id": "founder-operator",
+        "name": "Founder/operator",
+        "type": "founder/operator",
+        "status": "active",
+        "notes": "Primary operator setting up and dogfooding Lettuce."
+      },
+      {
+        "id": "ai-first-teams",
+        "name": "AI-first technical teams",
+        "type": "target account segment",
+        "status": "researching",
+        "notes": "Teams feeling context drift across agents, docs, support, sales, and product."
+      }
+    ],
+    "projects_products": [
+      {
+        "id": "lettuce-runtime",
+        "name": "Standalone Lettuce runtime",
+        "status": "active sprint",
+        "notes": "Standalone app/runtime for source, lens, destination, signal review, and company-brain updates."
+      }
+    ],
+    "decisions_defaults": [
+      {
+        "id": "approval-gates",
+        "decision": "Default to reviewed context updates before external writes.",
+        "source": "seed",
+        "updated_at": "seed"
+      }
+    ],
+    "open_loops_risks": [
+      {
+        "id": "prove-real-state-change",
+        "risk": "Make the first-user app mature enough for daily dogfooding, not just local proof.",
+        "owner": "Operator",
+        "status": "watching"
+      }
+    ],
+    "agent_context_changelog": [
+      {
+        "id": "seed-context",
+        "time": "seed",
+        "title": "Seed company brain loaded",
+        "body": "Runtime starts with inspectable org and company-brain objects."
+      }
+    ]
+  },
+  "requested_connectors": [],
+  "current_org_id": "lettuce-labs",
+  "organizations": [
+    {
+      "id": "lettuce-labs",
+      "name": "Lettuce Labs",
+      "slug": "lettuce-labs",
+      "created_at": "seed"
+    }
+  ],
+  "onboarding": {
+    "org_ready": true,
+    "brain_ready": true,
+    "sources_ready": true,
+    "lenses_ready": true,
+    "destinations_ready": true,
+    "first_signal_ready": false,
+    "user_ready": false
+  },
+  "destinations": [
+    {
+      "id": "company-brain",
+      "icon": "☘",
+      "name": "Company Brain",
+      "detail": "Active local JSON destination for reviewed context updates and packet-backed changelog entries.",
+      "status": "Active",
+      "active": true,
+      "action": "active",
+      "button": "Active"
+    },
+    {
+      "id": "linear",
+      "icon": "▣",
+      "name": "Linear",
+      "detail": "Request issue/project route proposals once the local loop is trusted.",
+      "status": "Coming soon",
+      "active": false,
+      "action": "request",
+      "button": "Request"
+    },
+    {
+      "id": "github",
+      "icon": "⌘",
+      "name": "GitHub",
+      "detail": "Request PR/issue/readme/runbook context update routes.",
+      "status": "Coming soon",
+      "active": false,
+      "action": "request",
+      "button": "Request"
+    },
+    {
+      "id": "slack",
+      "icon": "#",
+      "name": "Slack",
+      "detail": "Request channel/thread signal ingestion and destination routing.",
+      "status": "Coming soon",
+      "active": false,
+      "action": "request",
+      "button": "Request"
+    },
+    {
+      "id": "email",
+      "icon": "✉",
+      "name": "Email",
+      "detail": "Request inbox/transcript handoff routes for founder and customer signal.",
+      "status": "Coming soon",
+      "active": false,
+      "action": "request",
+      "button": "Request"
+    }
+  ],
+  "user_profile": {
+    "name": "",
+    "email": "",
+    "role": "",
+    "updated_at": "seed"
+  }
+}

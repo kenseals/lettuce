@@ -1,0 +1,174 @@
+{
+  "schema_version": "0.1.0",
+  "product": "Lettuce",
+  "description": "Local-first signal-to-lens-to-router API surface for reviewed company-brain updates.",
+  "base_url_default": "http://127.0.0.1:8787",
+  "transport": {
+    "type": "http_json",
+    "auth": "none_local_development_only",
+    "state": "local_file",
+    "state_path": ".lettuce/runtime/state.json"
+  },
+  "public_safety": {
+    "contains_secrets": false,
+    "external_writes": false,
+    "notes": "Manifest is descriptive. Current runtime is intended for trusted local development and does not configure external connectors."
+  },
+  "primitives": [
+    {
+      "name": "submit_signal",
+      "status": "implemented",
+      "purpose": "Submit text or markdown signal for lens, router, packet, and local company-brain processing.",
+      "http": {
+        "method": "POST",
+        "path": "/api/manual-signal",
+        "request_schema": {
+          "type": "object",
+          "required": [
+            "body"
+          ],
+          "properties": {
+            "title": {
+              "type": "string",
+              "description": "Optional short title. Runtime derives one from body when omitted."
+            },
+            "body": {
+              "type": "string",
+              "description": "Signal text or markdown."
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "cli": {
+        "module": "lettuce.client",
+        "command": "submit",
+        "examples": [
+          "python3 -m lettuce.client submit --title 'Signal title' --body-file signal.md",
+          "printf '%s\\n' 'signal text' | python3 -m lettuce.client submit"
+        ]
+      }
+    },
+    {
+      "name": "query_company_brain",
+      "status": "implemented",
+      "purpose": "Read current local organization summary and company-brain sections.",
+      "http": {
+        "method": "GET",
+        "path": "/api/brain"
+      },
+      "cli": {
+        "module": "lettuce.client",
+        "command": "brain",
+        "examples": [
+          "python3 -m lettuce.client brain"
+        ]
+      }
+    },
+    {
+      "name": "list_recent_updates",
+      "status": "implemented_via_collections",
+      "purpose": "List recent runtime audit entries and processed signal summaries.",
+      "http": [
+        {
+          "method": "GET",
+          "path": "/api/audit"
+        },
+        {
+          "method": "GET",
+          "path": "/api/signals"
+        }
+      ]
+    },
+    {
+      "name": "get_signal_packet",
+      "status": "implemented",
+      "purpose": "Fetch one signal's input, lens findings, route proposals, feedback history, packet paths, and context-update result.",
+      "http": {
+        "method": "GET",
+        "path": "/api/signals/{signal_id}",
+        "path_parameters": {
+          "signal_id": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "name": "request_connector",
+      "status": "implemented",
+      "purpose": "Record connector demand for prioritization without configuring an external integration.",
+      "http": {
+        "method": "POST",
+        "path": "/api/request-connector",
+        "request_schema": {
+          "type": "object",
+          "required": [
+            "name"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Human-readable connector name, such as Slack or Gmail."
+            },
+            "connector": {
+              "type": "string",
+              "description": "Alias accepted by the current runtime."
+            }
+          },
+          "additionalProperties": true
+        }
+      }
+    }
+  ],
+  "supporting_endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/health"
+    },
+    {
+      "method": "GET",
+      "path": "/api/state"
+    },
+    {
+      "method": "POST",
+      "path": "/api/feedback"
+    },
+    {
+      "method": "POST",
+      "path": "/api/org"
+    },
+    {
+      "method": "POST",
+      "path": "/api/brain-setup"
+    },
+    {
+      "method": "POST",
+      "path": "/api/lenses/custom"
+    },
+    {
+      "method": "POST",
+      "path": "/api/request-destination"
+    },
+    {
+      "method": "POST",
+      "path": "/api/user"
+    },
+    {
+      "method": "POST",
+      "path": "/api/sources"
+    },
+    {
+      "method": "POST",
+      "path": "/api/destinations"
+    },
+    {
+      "method": "POST",
+      "path": "/api/request-connector"
+    }
+  ],
+  "future_mcp": {
+    "posture": "adapter_over_http_api",
+    "notes": "Future MCP should expose the same primitives by calling the local HTTP JSON API rather than creating a separate product surface."
+  }
+}
