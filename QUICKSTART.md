@@ -117,14 +117,15 @@ lettuce add-handler lens ./lettuce-demo \
 
 ## Record a shared stream subscription
 
-This records subscription intent only. Remote git polling and policy enforcement are follow-up runtime work.
+This records subscription intent first. For the local proof, `pull-subscriptions` can then import events from another local Lettuce repo into a shared mirror stream with provenance and checkpoints.
 
 ```bash
 lettuce subscribe ./lettuce-demo \
-  --remote github.com/demo/lettuce-demo \
+  --remote /tmp/lettuce-upstream \
   --stream brain/decisions \
   --local-stream streams/shared/decisions \
   --commit
+lettuce pull-subscriptions ./lettuce-demo --commit
 ```
 
 ## Run handlers and review proposals

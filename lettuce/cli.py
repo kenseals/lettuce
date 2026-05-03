@@ -7,7 +7,7 @@ import sys
 from typing import Any
 
 from .handlers import discover_handlers
-from .protocol_runtime import add_handler, add_stream_event, approve_review, configure_source, configure_subscription, decline_review, import_source_event, ingest_direct_signal, ingest_email_signal, init_repo, list_reviews, read_logs, run_once, status
+from .protocol_runtime import add_handler, add_stream_event, approve_review, configure_source, configure_subscription, decline_review, import_source_event, ingest_direct_signal, ingest_email_signal, init_repo, list_reviews, pull_subscriptions, read_logs, run_once, status
 
 
 def _print_json(value: object) -> None:
@@ -185,6 +185,11 @@ def _run(argv: list[str] | None = None) -> int:
     subscribe_parser.add_argument("--local-stream", help="Optional local mirror stream path")
     subscribe_parser.add_argument("--policy", help="Optional policy note or policy id")
     subscribe_parser.add_argument("--commit", action="store_true", help="Commit the subscription record to git")
+
+    pull_subscriptions_parser = subparsers.add_parser("pull-subscriptions", help="Import new events from local shared stream subscriptions")
+    pull_subscriptions_parser.add_argument("path", nargs="?", default=".", help="Lettuce repo path")
+    pull_subscriptions_parser.add_argument("--name", help="Optional subscription id or name to pull")
+    pull_subscriptions_parser.add_argument("--commit", action="store_true", help="Commit imported shared-stream events to git")
 
     run_parser = subparsers.add_parser("run-once", help="Process local stream events once")
     run_parser.add_argument("path", nargs="?", default=".", help="Lettuce repo path")
@@ -472,9 +477,38 @@ def _run(argv: list[str] | None = None) -> int:
         _print_json(
             {
                 "subscription_path": result.subscription_path,
+                "subscription_id": result.subscription_id,
+                "name": result.name,
                 "remote": result.remote,
                 "stream": result.stream,
+                "local_stream": result.local_stream,
                 "status": result.status,
+            }
+        )
+        return 0
+
+    if args.command == "pull-subscriptions":
+        result = pull_subscriptions(args.path, name=args.name, commit=args.commit)
+        _print_json(
+            {
+                "repo": result.repo,
+                "subscriptions": result.subscriptions,
+                "imported": result.imported,
+                "committed": result.committed,
+                "pulled": [
+                    {
+                        "subscription_id": item.subscription_id,
+                        "subscription_name": item.subscription_name,
+                        "source_repo": item.source_repo,
+                        "source_stream": item.source_stream,
+                        "source_event_id": item.source_event_id,
+                        "imported_event_path": item.imported_event_path,
+                        "title": item.title,
+                        "committed": item.committed,
+                    }
+                    for item in result.pulled
+                ],
+                "notes": result.notes,
             }
         )
         return 0

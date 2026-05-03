@@ -71,7 +71,7 @@ The first source connector is deliberately local and boring: `add-source file` i
 
 `add-source email|fathom|granola|transcript|zoom` records repo-owned source configuration intent under `sources/` and creates the target stream directory. These records can include `access_status`, `sample_policy`, `privacy_notes`, and `setup_next_action`, so the operator's agent can see whether it can sample now or needs to guide setup first. It does not pretend to provision forwarding addresses, OAuth, or webhooks by itself; agent-owned setup can attach to the same source record later.
 
-`subscribe` records remote/shared stream subscription intent under `subscriptions/`. It keeps the markdown protocol shape visible without pretending remote git polling or policy enforcement is implemented yet.
+`subscribe` records remote/shared stream subscription intent under `subscriptions/`. For local simulation, `pull-subscriptions` can now import new events from another local Lettuce repo into a scoped `streams/shared/*` mirror with subscription checkpoints and preserved provenance. This proves the future org-distributed context path without requiring GitHub federation yet.
 
 ## Handler Execution
 

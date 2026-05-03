@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import patch
 
 from lettuce.openclaw_provider import build_prompt, extract_json_object, run_openclaw
-from lettuce.protocol_runtime import add_handler, add_stream_event, approve_review, configure_source, configure_subscription, decline_review, import_source_event, ingest_email_signal, init_repo, list_reviews, read_logs, read_stream_events, run_once, status
+from lettuce.protocol_runtime import add_handler, add_stream_event, approve_review, configure_source, configure_subscription, decline_review, import_source_event, ingest_email_signal, init_repo, list_reviews, pull_subscriptions, read_logs, read_stream_events, run_once, status
 
 
 class ProtocolRuntimeTests(unittest.TestCase):
@@ -839,8 +839,101 @@ print(json.dumps({
 
             self.assertEqual(output["remote"], "github.com/acme/lettuce-acme")
             self.assertEqual(output["stream"], "brain/customers")
+            self.assertEqual(output["local_stream"], "streams/shared/customers")
             self.assertEqual(output["status"], "configured")
+            self.assertEqual(output["name"], "github-com-acme-lettuce-acme-brain-customers")
             self.assertIn("local_stream: streams/shared/customers", text)
+            self.assertIn("name: github-com-acme-lettuce-acme-brain-customers", text)
+
+    def test_pull_subscriptions_imports_local_shared_stream_once_with_provenance(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            publisher = tmp_path / "lettuce-publisher"
+            subscriber = tmp_path / "lettuce-subscriber"
+            init_repo(publisher, org="acme", operator="ken", initialize_git=False)
+            init_repo(subscriber, org="acme", operator="soren", initialize_git=False)
+            source_event = add_stream_event(
+                publisher,
+                stream="brain/decisions",
+                title="Pricing default updated",
+                body="Decision: agents should use the current annual pricing sheet by default.",
+                source="publisher.brain",
+            )
+            configure_subscription(
+                subscriber,
+                str(publisher),
+                stream="brain/decisions",
+                name="publisher-decisions",
+                local_stream="streams/shared/decisions",
+                commit=True,
+            )
+
+            first = pull_subscriptions(subscriber)
+            second = pull_subscriptions(subscriber)
+            imported = read_stream_events(subscriber, "streams/shared/decisions")
+            imported_text = Path(first.pulled[0].imported_event_path).read_text(encoding="utf-8")
+            checkpoints = json.loads((subscriber / ".lettuce/checkpoints.json").read_text(encoding="utf-8"))
+
+            self.assertEqual(first.imported, 1)
+            self.assertEqual(second.imported, 0)
+            self.assertEqual(len(imported), 1)
+            self.assertEqual(imported[0].frontmatter["subscription_id"], "publisher-decisions")
+            self.assertEqual(imported[0].frontmatter["subscription_name"], "publisher-decisions")
+            self.assertEqual(imported[0].frontmatter["source_repo"], str(publisher))
+            self.assertEqual(imported[0].frontmatter["source_stream"], "brain/decisions")
+            self.assertEqual(imported[0].frontmatter["source_event"], source_event.stem)
+            self.assertEqual(imported[0].frontmatter["provenance"], "shared-stream-local-simulation")
+            self.assertIn("source_event_id: " + source_event.stem, imported_text)
+            self.assertIn("source_repo: " + str(publisher), imported_text)
+            self.assertIn("Decision: agents should use the current annual pricing sheet by default.", imported_text)
+            self.assertEqual(checkpoints["subscription:publisher-decisions"], [source_event.stem])
+
+    def test_pull_subscriptions_cli_can_commit_imports(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            publisher = tmp_path / "lettuce-publisher"
+            subscriber = tmp_path / "lettuce-subscriber"
+            init_repo(publisher, org="acme", operator="ken", initialize_git=False)
+            init_repo(subscriber, org="acme", operator="soren", initialize_git=True)
+            add_stream_event(
+                publisher,
+                stream="brain/decisions",
+                title="Shared context update",
+                body="Decision: preserve source repo and source event provenance on shared imports.",
+                source="publisher.brain",
+            )
+            configure_subscription(
+                subscriber,
+                str(publisher),
+                stream="brain/decisions",
+                name="publisher-decisions",
+                local_stream="streams/shared/decisions",
+                commit=True,
+            )
+
+            completed = subprocess.run(
+                [
+                    "python3",
+                    "-m",
+                    "lettuce.cli",
+                    "pull-subscriptions",
+                    str(subscriber),
+                    "--commit",
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            output = json.loads(completed.stdout)
+            log = subprocess.run(["git", "log", "--oneline"], cwd=subscriber, check=True, capture_output=True, text=True).stdout
+            status_output = subprocess.run(["git", "status", "--short"], cwd=subscriber, check=True, capture_output=True, text=True).stdout
+
+            self.assertEqual(output["imported"], 1)
+            self.assertTrue(output["committed"])
+            self.assertTrue(output["pulled"][0]["committed"])
+            self.assertIn("pull subscriptions", log)
+            self.assertEqual(status_output.strip(), "")
 
     def test_add_source_cli_imports_stdin_and_can_run_handlers(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
