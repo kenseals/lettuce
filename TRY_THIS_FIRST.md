@@ -94,11 +94,12 @@ This runs onboarding, lists reviews, approves the first review, prints status/lo
 
 ## Current baseline
 
-Merged into `main` at `3d836d3 feat: add Lettuce markdown protocol CLI loop (#3)`.
+Current public-v0 candidate is merged into `main`.
 
-Verified after merge:
+Latest local verification:
 
-- `python3 -m unittest discover -s tests` -> 65 tests passing
+- `python3 -m unittest discover -s tests` -> 74 tests passing
 - `python3 -m py_compile lettuce/*.py`
 - `python3 -m lettuce.runtime --smoke`
-- fresh venv install/use smoke with installed `lettuce` CLI, `onboard --review`, `reviews`, `review-approve`, `status`, and clean demo git state
+- fresh venv install/use smoke with installed `lettuce` CLI, `onboard --review`, `reviews`, `review-approve --commit`, `status`, and clean demo git state
+- OpenClaw-backed onboarding dogfood produced pending reviews, then approved review records and brain entries cleanly

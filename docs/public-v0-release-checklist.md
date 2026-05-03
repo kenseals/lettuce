@@ -13,6 +13,8 @@ An operator can ask their agent to set up a Lettuce repo, ingest one approved si
 - Agent direct input ingest with provenance and consent fields.
 - Operator-forwarded email ingest with email-shaped provenance.
 - Source setup/status records for email, transcripts, direct surfaces, and future services.
+- Checkpointed local directory source import for repeatable sample-first source ingestion.
+- Local shared-stream subscription simulation with provenance, checkpoints, and local stream policy gates.
 - Optional OpenClaw model-backed handler provider.
 - Native review gate: `--review`, `reviews`, `review-approve`, `review-decline`.
 - Synthetic public-safe signal corpus for repeatable QA.
@@ -41,19 +43,19 @@ An operator can ask their agent to set up a Lettuce repo, ingest one approved si
 - Hosted SaaS runtime.
 - First-party Telegram/iMessage/Discord adapters.
 - Real Gmail/Zoom/Fathom/Granola OAuth or polling.
-- Remote shared brain polling and policy enforcement.
+- Remote GitHub shared brain polling and GitHub-team policy mapping.
 - Linear side-effect execution.
 - Auto-approval policies.
 
 ## Current status: public-v0 candidate, final ship gates remain
 
-The core protocol loop is merged to `main` and usable for internal dogfood. Fresh install review-mode smoke has passed, the repo-packaged OpenClaw skill uses the native review gate, and OpenClaw-provider review-mode dogfood produced pending reviews before approval. Older app-first/runtime-preview docs are not included in the public v0 repo. Packaging has been fixed for legacy pip installs, and the first-use handoff docs exist.
+The core protocol loop is merged to `main` and usable for internal dogfood. Fresh install review-mode smoke has passed, the repo-packaged OpenClaw skill uses the native review gate, and OpenClaw-provider review-mode dogfood produced pending reviews before approval. A clean `git+https://github.com/kenseals/lettuce.git` install also succeeded while the private repo is accessible to this operator environment. Older app-first/runtime-preview docs are not included in the public v0 repo. Packaging has been fixed for legacy pip installs, and the first-use handoff docs exist.
 
 As of the latest local check, the repo is private, has no GitHub release, and has no open PRs. The main remaining public-v0 risk is not core functionality; it is first-user experience and public packaging.
 
 ### Must do to ship public today
 
-- Run the final clean install/onboarding/usage path from outside the repo exactly as a new user would.
+- Re-run the final clean install/onboarding/usage path only if more launch-path code changes land.
 - Verify the repo contains no private operator/workspace context in public-facing files.
 - Decide whether public v0 ships as a public GitHub repo only or also with a tagged GitHub release.
 - Make the GitHub repo public after final operator approval.
