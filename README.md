@@ -1,12 +1,12 @@
 # Lettuce
 
-Lettuce is an agent-operated, local-first protocol for turning messy work signals into reviewed updates to the operating context humans and agents rely on.
+Lettuce is an agent-operated, local-first protocol for giving an operator's agent durable company context that is separate from personal memory, owned by the operator, and portable across agent runtimes.
 
-It takes a messy signal, runs it through explicit markdown handlers, writes proposed updates to review, and gives the operator one approve/edit/decline moment before durable brain state changes. The feedback from that moment becomes the learning signal for future routing and lens tuning.
+It gives the agent a markdown+git work brain for one organization, a stream model for connecting signal sources, explicit handlers for interpreting what matters, and a review gate before durable context changes. The review loop is the safety mechanism; the product is company context for agents.
 
 Current status: **first v0 protocol loop**. The installable `lettuce` CLI scaffolds and runs a markdown+git Lettuce repo. The operator's agent is the runtime: OpenClaw in v0, and later any agent that can read files, call tools, and follow the protocol.
 
-The protocol does not own chat surfaces, inboxes, OAuth grants, or service integrations. The agent owns those. Lettuce owns the durable shape: repo, streams, handlers, brain, subscriptions, reviews, checkpoints, logs, and the rules for turning agent-observed signal into reviewable context updates.
+The protocol does not own chat surfaces, inboxes, OAuth grants, or service integrations. The agent runtime owns those. Lettuce teaches the agent how to connect the right signal sources, preserve provenance, write stream events, run handlers, review proposed brain updates, and eventually subscribe to other Lettuces in an organization so company context can become distributed instead of centralized.
 
 ## Protocol CLI
 
