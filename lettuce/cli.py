@@ -100,6 +100,16 @@ def _parse_source_plan(value: str) -> dict[str, Any]:
     return payload
 
 
+def _parse_export(value: str) -> dict[str, Any]:
+    try:
+        payload = json.loads(value)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"export must be valid JSON: {exc.msg}") from exc
+    if not isinstance(payload, dict):
+        raise ValueError("export must decode to a JSON object")
+    return payload
+
+
 def _source_plan_record(repo_path: str, payload: dict[str, Any], *, commit: bool) -> dict[str, Any]:
     source_type = str(payload.get("source_type") or payload.get("type") or "").strip()
     if not source_type:
@@ -173,6 +183,12 @@ def _run(argv: list[str] | None = None) -> int:
     init_parser.add_argument("--org", required=True, help="Organization slug/name for this Lettuce")
     init_parser.add_argument("--operator", required=True, help="Operator handle/name")
     init_parser.add_argument("--default-model", default="claude-sonnet-4", help="Default handler model")
+    init_parser.add_argument("--repo-type", choices=["personal", "company_hub"], default="personal", help="Repo identity type")
+    init_parser.add_argument("--owner-kind", choices=["human_operator", "role_agent"], default="human_operator", help="Identity owner kind")
+    init_parser.add_argument("--role-agent-id", help="Required when --owner-kind=role_agent")
+    init_parser.add_argument("--permission-basis", choices=["github-user", "github-app", "machine-user"], default="github-user", help="Bounded GitHub identity behind this repo")
+    init_parser.add_argument("--visibility", default="private", help="Repo visibility label written to lettuce.yml")
+    init_parser.add_argument("--export", action="append", default=[], help="Exported shared stream JSON object")
     init_parser.add_argument("--no-git", action="store_true", help="Do not initialize git or commit scaffold")
 
     discover_parser = subparsers.add_parser("discover", help="Discover markdown handlers")
@@ -227,6 +243,12 @@ def _run(argv: list[str] | None = None) -> int:
     onboard_parser.add_argument("--org", required=True, help="Organization slug/name for this Lettuce")
     onboard_parser.add_argument("--operator", required=True, help="Operator handle/name")
     onboard_parser.add_argument("--default-model", default="claude-sonnet-4", help="Default handler model for new repos")
+    onboard_parser.add_argument("--repo-type", choices=["personal", "company_hub"], default="personal", help="Repo identity type for newly initialized repos")
+    onboard_parser.add_argument("--owner-kind", choices=["human_operator", "role_agent"], default="human_operator", help="Identity owner kind for newly initialized repos")
+    onboard_parser.add_argument("--role-agent-id", help="Required when --owner-kind=role_agent")
+    onboard_parser.add_argument("--permission-basis", choices=["github-user", "github-app", "machine-user"], default="github-user", help="Bounded GitHub identity behind this repo")
+    onboard_parser.add_argument("--visibility", default="private", help="Repo visibility label written to lettuce.yml")
+    onboard_parser.add_argument("--export", action="append", default=[], help="Exported shared stream JSON object for newly initialized repos")
     onboard_parser.add_argument("--title", required=True, help="First direct signal title")
     onboard_parser.add_argument("--body", help="First direct signal body. If omitted, stdin is used")
     onboard_parser.add_argument("--body-file", help="Read first direct signal body from a UTF-8 file")
@@ -353,6 +375,12 @@ def _run(argv: list[str] | None = None) -> int:
             org=args.org,
             operator=args.operator,
             default_model=args.default_model,
+            repo_type=args.repo_type,
+            owner_kind=args.owner_kind,
+            role_agent_id=args.role_agent_id,
+            permission_basis=args.permission_basis,
+            visibility=args.visibility,
+            exports=[_parse_export(value) for value in args.export],
             initialize_git=not args.no_git,
         )
         _print_json({"repo": str(Path(args.path).expanduser().resolve()), "files_written": [str(path) for path in written]})
@@ -436,6 +464,12 @@ def _run(argv: list[str] | None = None) -> int:
             org=args.org,
             operator=args.operator,
             default_model=args.default_model,
+            repo_type=args.repo_type,
+            owner_kind=args.owner_kind,
+            role_agent_id=args.role_agent_id,
+            permission_basis=args.permission_basis,
+            visibility=args.visibility,
+            exports=[_parse_export(value) for value in args.export],
             initialize_git=args.commit,
         )
         source_plan_records = [read_source_record(repo_path, source_ref) for source_ref in args.source_record]
@@ -624,6 +658,7 @@ def _run(argv: list[str] | None = None) -> int:
 
         print("\nDone.")
         print(f"I set up Lettuce for {org} at {repo_path}.")
+        print("Repo identity defaults: type `personal`, owner_kind `human_operator`, permission_basis `github-user`, visibility `private`.")
         print("Manual/direct ingestion is ready: say “run Lettuce on this” and the agent should capture the signal with provenance, run lenses, and show review proposals before durable brain updates.")
         print(f"Repo-local agent instructions: {current.agent_instructions_path}")
         print("Configured sources:")

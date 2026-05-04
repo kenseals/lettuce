@@ -174,7 +174,9 @@ Rules:
 
 - import into configured local mirror paths only;
 - local mirror path must remain under `streams/shared/*`;
+- remote repos may only declare shareable streams through explicit `lettuce.yml` exports, and those exports must also stay under `streams/shared/*`;
 - policy strings such as `allow_streams=...` may only widen inside `streams/shared/*`, not into `brain/*`, `sources/*`, `reviews/*`, or `subscriptions/*`;
+- export metadata narrows or documents intent inside the GitHub boundary; it never grants access GitHub itself denies;
 - after mirroring, local handlers may read the shared stream and decide whether anything should update `brain/*`.
 - external cron/runtime wrappers should keep calling local Lettuce commands; Lettuce still does not own connector credentials or a background scheduler.
 
