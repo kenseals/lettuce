@@ -16,7 +16,7 @@ Optional review mode exists for calibration, sensitive updates, or explicit appr
 - Operator-forwarded email ingest with email-shaped provenance.
 - Source setup/status records for email, transcripts, direct surfaces, and future services.
 - Checkpointed local directory source import for repeatable sample-first source ingestion.
-- Local shared-stream subscription simulation with provenance, checkpoints, and local stream policy gates.
+- Subscription records plus local export-policy and local-stream policy validation for shared streams.
 - Optional OpenClaw model-backed handler provider.
 - Optional review mode: `--review`, `reviews`, `review-approve`, `review-decline`.
 - Synthetic public-safe signal corpus for repeatable QA.
@@ -45,7 +45,8 @@ Optional review mode exists for calibration, sensitive updates, or explicit appr
 - Hosted SaaS runtime.
 - First-party Telegram/iMessage/Discord adapters.
 - Real Gmail/Zoom/Fathom/Granola OAuth or polling.
-- Remote GitHub shared brain polling and GitHub-team policy mapping.
+- Remote GitHub shared-stream polling or pull/mirror execution.
+- GitHub-team policy mapping and broader shared-stream policy verification.
 - Linear side-effect execution.
 - Auto-approval policies.
 

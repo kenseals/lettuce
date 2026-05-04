@@ -158,7 +158,7 @@ If no recurring trigger is configured, say so plainly: manual/agent-triggered fo
 Lettuce v0 does not own a daemon, cron scheduler, mailbox connector, transcript poller, or OAuth/session machinery. The minimal maintenance loop is:
 
 1. The external runtime, chat wrapper, or cron decides it is time to check.
-2. It calls existing Lettuce commands such as `lettuce status`, `lettuce ingest-direct`, `lettuce ingest-email`, `lettuce run --review`, `lettuce reviews`, or later local subscription-pull helpers.
+2. It calls existing Lettuce commands such as `lettuce status`, `lettuce ingest-direct`, `lettuce ingest-email`, `lettuce run --review`, and `lettuce reviews`. Shared-stream pull helpers are still planned, not shipped.
 3. Lettuce records durable source intent, stream events, review artifacts, checkpoints, logs, and git history.
 4. The runtime hands the operator a short summary of what changed and what still needs approval or setup.
 
@@ -175,7 +175,7 @@ The reported `freshness.modes` should stay small and operator-readable:
 - `after-meeting`: the runtime should check after a call or transcript lands.
 - `daily`: the runtime or cron should run a daily check.
 - `source-check`: an already-available source should be checked again, but no stronger cadence was recorded.
-- `subscription-pull`: the runtime should mirror a configured shared stream into `streams/shared/*`.
+- `subscription-pull`: the runtime should eventually mirror a configured shared stream into `streams/shared/*`; today this mode is intent/status only.
 
 Semantics:
 
@@ -211,7 +211,7 @@ lettuce subscribe <repo-path> \
   --commit
 ```
 
-If shared-stream pulls are part of the runtime flow, summarize what was mirrored and what policy boundary applies.
+If shared-stream pulls become part of the runtime flow later, summarize what was mirrored and what policy boundary applies. For current v0, summarize the subscription intent and any export-policy checks instead.
 
 ## When Not To Use Lettuce
 

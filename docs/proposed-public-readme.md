@@ -34,9 +34,9 @@ Your OpenClaw will:
 
 1. Ask which organization you're setting up Lettuce for
 2. Create a private GitHub repo for your personal Lettuce (handlers, brain, streams)
-3. Check whether anyone at your company already has a shared Lettuce stream — and offer to subscribe or create one
+3. Record whether anyone at your company already has a shared Lettuce stream, and offer to set up subscription intent or create a hub repo later
 4. Wire up the signal sources you authorize (email, transcripts, direct input)
-5. Run the pipeline on a schedule and on demand
+5. Run the pipeline on demand now, with scheduled maintenance as follow-up runtime work
 
 Setup takes 5–15 minutes, mostly OAuth. [Loom: end-to-end install + first signal ingest →](#)
 
@@ -58,19 +58,19 @@ A solo Lettuce is useful from day one. The interesting thing happens when a team
 
 ### Stage 01 — Just you
 
-Your agent has structured work-context for one org. It reads your email, knows your customers, tracks decisions, files tickets. **Useful from day one** without anyone else involved.
+Your agent has structured work-context for one org. It can ingest approved email/direct/transcript signal, track customers and decisions, and tee up follow-up work. **Useful from day one** without anyone else involved.
 
 > *Unlocked: a personal company brain.*
 
 ### Stage 02 — A teammate joins
 
-They install Lettuce too. Now your agents can subscribe to each other's shared streams — **the customer your teammate's been talking to becomes visible to your agent**. Without anyone forwarding emails or copying notes.
+They install Lettuce too. The protocol is heading toward agents subscribing to each other's shared streams, so **the customer your teammate's been talking to can become visible to your agent** without anyone forwarding emails or copying notes.
 
 > *Unlocked: cross-role context for free.*
 
 ### Stage 03 — Your whole company
 
-A dozen agents, each mirroring their operator's actual access, federating through shared streams governed by GitHub permissions and editorial policies. **No one has to centralize.** No one's agent ingests everything. The company gets the benefit of shared context without the cost of a vault.
+A dozen agents, each mirroring their operator's actual access, eventually coordinating through shared streams governed by GitHub permissions and editorial policies. **No one has to centralize.** No one's agent ingests everything. The company gets the benefit of shared context without the cost of a vault.
 
 > *Unlocked: federated context for the whole org.*
 
@@ -108,7 +108,7 @@ Git directories of structured markdown events. Three kinds:
 - **Brain streams** — interpreted, durable context. Long retention.
 - **Outbox streams** — events queued for routers.
 
-Streams live in your personal repo (private) or in shared company repos (cross-team). Subscribing is `git pull`; publishing is `git commit + push`. That's the whole transport layer.
+Streams live in your personal repo (private) today, with shared company repos as the planned next distributed layer. Publishing is `git commit + push`. Shared-stream subscription/mirroring is not yet a shipped `git pull` workflow in public v0.
 
 *Your repos. Your permissions. Your runtime.*
 
@@ -155,7 +155,7 @@ Lettuce doesn't manage permissions. It inherits them.
 
 - **Service permissions** come from the OAuth scopes you grant your agent. Your agent can only see what you can see.
 - **Repo permissions** come from GitHub. Private brain → private repo. Shared company brain → org repo with org-level access controls.
-- **Editorial policies** in `lettuce.yml` declare ownership rules within shared streams (who writes to `decisions/` vs `customers/` vs `incidents/`). These augment GitHub permissions but never override them.
+- **Editorial policies** in `lettuce.yml` declare ownership rules within shared streams (who writes to `decisions/` vs `customers/` vs `incidents/`). These augment GitHub permissions but never override them. Public v0 only partially ships this shared-stream path today: exports, subscription records, and local policy/path checks exist; real mirroring and broader policy enforcement are roadmap work.
 
 We're not building IAM. We're using yours.
 
@@ -192,7 +192,7 @@ The architecture under the hood — handlers reading from streams and publishing
 
 ## Roadmap
 
-**Now (v0).** OpenClaw-operated install. Default lenses + routers. Brain template. Agent-operated ingestion for direct input, email, and call transcripts. One outbound (Linear). Single-operator polished; multi-operator works but isn't the spotlight feature.
+**Now (v0).** OpenClaw-operated install. Default lenses + routers. Brain template. Agent-operated ingestion for direct input, email, and call transcripts. One outbound (Linear). Single-operator polished; multi-operator shared-stream coordination is planned next rather than a spotlight feature today.
 
 **Next.** Adapters for Claude Code, Codex, and other agent runtimes. More signal sources (Slack, GitHub, Notion). More routers. Polished multi-operator coordination with conflict surfacing. A community-contributed handler marketplace.
 
