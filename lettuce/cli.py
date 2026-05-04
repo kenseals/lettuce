@@ -710,6 +710,7 @@ def _run(argv: list[str] | None = None) -> int:
                 "log_entries": result.log_entries,
                 "agent_instructions_path": result.agent_instructions_path,
                 "last_log": result.last_log,
+                "freshness": result.freshness,
             }
         )
         return 0

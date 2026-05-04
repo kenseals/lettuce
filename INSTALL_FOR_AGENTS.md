@@ -129,6 +129,7 @@ git -C <repo-path> status --short
 Expected:
 
 - the repo exists and is a git repo;
+- `lettuce status` exposes a `freshness` summary that matches reality: `fresh`, `pending_review`, `blocked_on_setup`, or `idle_manual_only`;
 - the first event exists under `streams/inbox/direct/` with provenance;
 - source intent exists for manual/direct and any selected sources;
 - review mode created pending review proposals or a clear skip reason;

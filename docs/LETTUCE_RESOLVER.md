@@ -153,6 +153,44 @@ Rules:
 
 If no recurring trigger is configured, say so plainly: manual/agent-triggered for now.
 
+## Minimal Maintenance Loop Before Autopilot
+
+Lettuce v0 does not own a daemon, cron scheduler, mailbox connector, transcript poller, or OAuth/session machinery. The minimal maintenance loop is:
+
+1. The external runtime, chat wrapper, or cron decides it is time to check.
+2. It calls existing Lettuce commands such as `lettuce status`, `lettuce ingest-direct`, `lettuce ingest-email`, `lettuce run --review`, `lettuce reviews`, or later local subscription-pull helpers.
+3. Lettuce records durable source intent, stream events, review artifacts, checkpoints, logs, and git history.
+4. The runtime hands the operator a short summary of what changed and what still needs approval or setup.
+
+`lettuce status` is the repo-local freshness summary for this loop. It should be enough to answer whether the repo is currently:
+
+- `fresh`: at least one runnable maintenance path exists and the repo has inspectable runtime state.
+- `pending_review`: handler output is waiting in `reviews/pending/*` before durable `brain/*` writes should land.
+- `blocked_on_setup`: the configured source contract exists, but the runtime still needs mailbox/export/connector/browser setup before a real check can run.
+- `idle_manual_only`: manual/direct capture is ready, but there is no recurring cadence or subscription pull yet.
+
+The reported `freshness.modes` should stay small and operator-readable:
+
+- `manual`: operator-triggered capture only, for example “run Lettuce on this.”
+- `after-meeting`: the runtime should check after a call or transcript lands.
+- `daily`: the runtime or cron should run a daily check.
+- `source-check`: an already-available source should be checked again, but no stronger cadence was recorded.
+- `subscription-pull`: the runtime should mirror a configured shared stream into `streams/shared/*`.
+
+Semantics:
+
+- The cadence/trigger contract belongs in `sources/*` or `subscriptions/*`, not in hidden runtime state.
+- The review gate remains the safety boundary before sensitive or calibration-relevant `brain/*` updates.
+- `.lettuce/checkpoints.json` and `.lettuce/runtime.log` are the inspectable proof that the last small loop really ran.
+- The operator handoff should say which freshness mode is active, whether review is pending, what is blocked on setup, and what the next trigger is.
+
+Non-goals for v0:
+
+- no built-in polling connectors;
+- no background daemon;
+- no first-party cron manager;
+- no chat/email/browser/OAuth duplication inside Lettuce.
+
 ## Trigger: Subscriptions And Shared Streams
 
 Use subscriptions when the operator wants scoped context from another Lettuce, such as a teammate or shared org stream.

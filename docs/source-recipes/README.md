@@ -33,3 +33,15 @@ Every recipe should answer the same questions in the same order:
 
 - `direct-manual.md`: baseline recipe every first setup should support.
 - `email-recurring.md`: recurring-ish email recipe that still starts sample-first and runtime-owned.
+
+## Freshness Mode Hints
+
+When a source recipe records trigger/cadence intent, keep it legible enough that `lettuce status` can summarize the repo's maintenance posture:
+
+- `manual`: operator-triggered only.
+- `after-meeting`: check when a transcript or meeting artifact lands.
+- `daily`: runtime or cron should run a daily check.
+- `source-check`: source is available now, but no stronger cadence was recorded yet.
+- `subscription-pull`: runtime should mirror a configured shared stream.
+
+The runtime still owns the actual scheduler or connector. Lettuce owns the durable source/subscription contract and the resulting checkpoints, reviews, logs, and git history.

@@ -35,6 +35,7 @@ This is agent-operated onboarding. If you are interacting with the operator in T
 - Run handlers behind a review gate during onboarding unless the operator explicitly asks to bypass review. The first run should create pending review proposals or a clear skip reason before durable `brain/*` writes.
 - Preserve provenance, consent basis, source surface, and org/operator scope.
 - Do not build duplicate chat, email, browser, OAuth, or service integrations inside Lettuce. Use your runtime's existing access, then write Lettuce stream events.
+- Use `lettuce status` to summarize the maintenance loop after setup. Its `freshness` summary should tell the operator whether the repo is fresh, pending review, blocked on setup, or idle/manual-only.
 - End onboarding with a concise handoff: repo path, configured sources and their status, cadence/trigger model, what the first run proposed, how to use Lettuce next, and the next useful setup step.
 - For ongoing use after setup, follow `docs/LETTUCE_RESOLVER.md`.
 

@@ -50,6 +50,7 @@ The runtime wrapper is the trusted execution layer around Lettuce. It may:
 
 - read external systems the operator has already authorized;
 - stage direct/email/file signal for ingestion;
+- own the real cadence for manual, after-meeting, daily, source-check, or subscription-pull maintenance loops;
 - invoke `lettuce` commands;
 - decide whether to run in direct-apply mode or review mode;
 - execute future subscription pulls.
@@ -175,6 +176,7 @@ Rules:
 - local mirror path must remain under `streams/shared/*`;
 - policy strings such as `allow_streams=...` may only widen inside `streams/shared/*`, not into `brain/*`, `sources/*`, `reviews/*`, or `subscriptions/*`;
 - after mirroring, local handlers may read the shared stream and decide whether anything should update `brain/*`.
+- external cron/runtime wrappers should keep calling local Lettuce commands; Lettuce still does not own connector credentials or a background scheduler.
 
 ### Admin / Destructive
 
