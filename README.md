@@ -114,7 +114,9 @@ When a repo declares `exports` in `lettuce.yml`, it is intentionally marking spe
 
 Lettuce v0 does not run its own daemon or own chat/email/OAuth/cron surfaces. The external runtime or cron decides when to check, then calls existing commands such as `lettuce status`, `lettuce ingest-*`, `lettuce run --review`, `lettuce reviews`, and later subscription-pull helpers.
 
-`lettuce status` now includes a small `freshness` summary so the agent can tell whether the repo is `fresh`, `pending_review`, `blocked_on_setup`, or `idle_manual_only`, plus which maintenance modes are configured: `manual`, `after-meeting`, `daily`, `source-check`, and `subscription-pull`.
+`lettuce status` now includes repo identity metadata alongside a small `freshness` summary so the agent can tell whether a repo is owned by a `human_operator` or a `role_agent`, whether it is `fresh`, `pending_review`, `blocked_on_setup`, or `idle_manual_only`, and which maintenance modes are configured: `manual`, `after-meeting`, `daily`, `source-check`, and `subscription-pull`.
+
+Role-agent repos are first-class Lettuce repos, not hidden company-hub special cases. Use names such as `lettuce-acme-support-agent`, keep them `private` by default, and set `permission_basis` to the bounded GitHub identity that owns the repo access: `github-app`, `machine-user`, or `github-user`. A role agent should inherit only that identity's permitted scope, not become an all-seeing org brain.
 
 ## Handler Execution
 

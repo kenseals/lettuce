@@ -56,6 +56,8 @@ Examples:
 - `lettuce-acme-support-agent`
 - `lettuce-acme-sales-assistant`
 
+Naming convention: `lettuce-{org}-{owner-id}` where `owner-id` is the operator handle for human-owned repos and the `role_agent_id` for role-agent repos.
+
 Each repo contains:
 
 - `lettuce.yml`
@@ -103,6 +105,7 @@ A role agent repo should declare:
 - `role_agent_id`
 - `permission_basis: github-app | machine-user | github-user`
 - bounded source credentials and GitHub permissions
+- private-by-default repo visibility unless an explicit org policy says otherwise
 
 The rule: a role agent should inherit a bounded identity's access, not magically accumulate all org context.
 

@@ -98,6 +98,7 @@ class RunOnceResult:
 @dataclass(frozen=True)
 class RuntimeStatus:
     repo: str
+    identity: RepoIdentity
     handlers: int
     streams: dict[str, int]
     checkpoints: dict[str, int]
@@ -2118,6 +2119,7 @@ def read_logs(repo_path: str | Path, *, limit: int = 20) -> list[dict[str, Any]]
 
 def status(repo_path: str | Path) -> RuntimeStatus:
     repo = Path(repo_path).expanduser().resolve()
+    identity = read_repo_identity(repo)
     handlers = discover_handlers(repo)
     streams: dict[str, int] = {}
     streams_root = repo / "streams"
@@ -2140,6 +2142,7 @@ def status(repo_path: str | Path) -> RuntimeStatus:
     onboarding_handoff.setdefault("handoff_recorded", "recorded_at" in onboarding_handoff)
     return RuntimeStatus(
         repo=str(repo),
+        identity=identity,
         handlers=len(handlers),
         streams=streams,
         checkpoints=checkpoints,

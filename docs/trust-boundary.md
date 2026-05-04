@@ -32,6 +32,8 @@ Lettuce owns:
 
 Lettuce should not create duplicate chat, inbox, browser, OAuth, or connector surfaces. The runtime fetches or receives external signal first, then writes selected signal into Lettuce with provenance.
 
+Role-agent repos follow the same boundary. They are first-class Lettuce repos with a bounded GitHub identity behind them, typically recorded as `permission_basis: github-app`, `machine-user`, or `github-user`. They should stay private by default and scoped to that identity's permitted sources and repos; they must not become all-seeing org brains simply because they are automated.
+
 ## Trust Modes
 
 ### 1. Local CLI
