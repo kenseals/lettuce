@@ -33,6 +33,8 @@ The Lettuce repo should contain:
 
 Read only the specific file needed for the task.
 
+For ongoing-use routing after setup, also read `docs/LETTUCE_RESOLVER.md`.
+
 ## Onboarding Flow
 
 When setting up a new Lettuce, start with a short concept intro, then confirm the operator wants to continue:

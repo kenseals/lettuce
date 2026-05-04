@@ -36,6 +36,7 @@ This is agent-operated onboarding. If you are interacting with the operator in T
 - Preserve provenance, consent basis, source surface, and org/operator scope.
 - Do not build duplicate chat, email, browser, OAuth, or service integrations inside Lettuce. Use your runtime's existing access, then write Lettuce stream events.
 - End onboarding with a concise handoff: repo path, configured sources and their status, cadence/trigger model, what the first run proposed, how to use Lettuce next, and the next useful setup step.
+- For ongoing use after setup, follow `docs/LETTUCE_RESOLVER.md`.
 
 Review is a safety/control loop for onboarding, calibration, sensitive sources, uncertain/high-impact updates, or explicit operator preference. The product is durable company context for agents, not making the human review every signal forever.
 
@@ -46,6 +47,7 @@ Review is a safety/control loop for onboarding, calibration, sensitive sources, 
 - [README](https://raw.githubusercontent.com/kenseals/lettuce/main/README.md): Human-facing overview and shortest command path.
 - [Agent-operated onboarding](https://raw.githubusercontent.com/kenseals/lettuce/main/docs/agent-operated-onboarding.md): The primary setup workflow for agents.
 - [Lettuce verification](https://raw.githubusercontent.com/kenseals/lettuce/main/docs/LETTUCE_VERIFY.md): Post-setup checks for repo, provenance, source intent, review gate, and ongoing trigger behavior.
+- [Lettuce ongoing-use resolver](https://raw.githubusercontent.com/kenseals/lettuce/main/docs/LETTUCE_RESOLVER.md): How to decide when to look up context, ingest signal, update sources, handle reviews, manage shared streams, or skip Lettuce.
 - [First-run demo](https://raw.githubusercontent.com/kenseals/lettuce/main/docs/first-run-demo.md): Public-safe install-to-first-context walkthrough.
 - [OpenClaw Lettuce skill](https://raw.githubusercontent.com/kenseals/lettuce/main/skills/openclaw-lettuce/SKILL.md): Use this if you are OpenClaw.
 
