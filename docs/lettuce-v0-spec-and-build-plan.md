@@ -10,7 +10,7 @@
 
 ### 1.1 What Lettuce is
 
-Lettuce is an open protocol for company context in the agentic era. It gives any operator's agent — whatever runtime it lives in — a structured, durable, portable layer of work-context that is owned by the operator, lives in their git repos, and federates with their teammates' Lettuces to form a coherent company-level intelligence layer without centralizing data.
+Lettuce is an open protocol for company context in the agentic era. It gives any operator's agent — whatever runtime it lives in — a structured, durable, portable layer of work-context that is owned by the operator, lives in their git repos, and is designed to later coordinate with teammates' Lettuces to form a coherent company-level intelligence layer without centralizing data.
 
 The thesis: as everyone increasingly works through a personal agent, that agent needs a place to keep work-context that is (a) separable from personal life, (b) portable across agent vendors, (c) owned by the operator, not the platform, and (d) able to coordinate with the agents of teammates. Lettuce is that place.
 
@@ -61,8 +61,8 @@ The product story has two parts: an immediate one (solo) and a compounding one (
 **Multi-operator — better with every teammate who installs it.** A solo Lettuce is useful from day one. The interesting thing happens when a teammate runs one too — and then a few more — and the company quietly accumulates a coordination layer no one had to centralize. The compounding story unfolds in three stages:
 
 - **Stage 01 — Just you.** Your agent has structured work-context for one org. Useful immediately. *Unlocked: a personal company brain.*
-- **Stage 02 — A teammate joins.** They install Lettuce too. Your agents subscribe to each other's shared streams. The customer your teammate's been talking to becomes visible to your agent — without anyone forwarding emails or copying notes. *Unlocked: cross-role context for free.*
-- **Stage 03 — Your whole company.** A dozen agents, each mirroring their operator's actual access, federating through shared streams governed by GitHub permissions and editorial policies. No one has to centralize. No one's agent ingests everything. *Unlocked: federated context for the whole org.*
+- **Stage 02 — A teammate joins.** They install Lettuce too. The protocol is heading toward your agents subscribing to each other's shared streams. The customer your teammate's been talking to becomes visible to your agent — without anyone forwarding emails or copying notes. *Unlocked: cross-role context for free.*
+- **Stage 03 — Your whole company.** A dozen agents, each mirroring their operator's actual access, eventually coordinating through shared streams governed by GitHub permissions and editorial policies. No one has to centralize. No one's agent ingests everything. *Unlocked: federated context for the whole org.*
 
 Implementation note: v0 ships single-operator polished. Multi-operator coordination is supported by the protocol but not feature-spotlighted in v0 UX. The build sequence in part 4 reflects this: ship the single-operator wedge first, then layer in remote stream subscription and policy enforcement once the core loop is solid.
 
@@ -79,7 +79,7 @@ Implementation note: v0 ships single-operator polished. Multi-operator coordinat
 - **Brain streams** — interpreted, durable context. Long retention (forever, in v0).
 - **Outbox streams** — outbound events queued for service routers.
 
-Streams may live in the operator's personal repo (local) or in shared company repos (remote). The runtime handles both transparently.
+Streams may live in the operator's personal repo (local) or in shared company repos (remote). Public v0 fully ships the local path; remote/shared mirroring remains a planned next step.
 
 **Policies** are markdown declarations within a stream's `lettuce.yml` that govern who can read and write to which stream paths. Policies augment GitHub's access control with editorial ownership rules. They never override GitHub permissions — they only further restrict.
 
@@ -168,18 +168,18 @@ streams:
     retention: 90d
 ```
 
-The runtime reads `lettuce.yml` on subscribe and publish operations to enforce policy. Roles are mapped to GitHub teams in the org (e.g., role `sales` corresponds to GitHub team `acme/sales`). This means the company doesn't need to define a separate Lettuce role system — they reuse their existing GitHub team structure.
+The target shape is that the runtime reads `lettuce.yml` on subscribe and publish operations to enforce policy. Public v0 only partially ships this today: export declarations are parsed, subscription setup validates local-path remotes against explicit exports, and local mirror paths/policy strings are constrained under `streams/shared/*`. Full remote mirroring and broader policy enforcement remain roadmap work.
 
 ### 2.4 The runtime
 
 The runtime is the agent (OpenClaw in v0) operating in a loop. Concretely:
 
-1. **Initialization.** Read `lettuce.yml` from the operator's personal repo. Discover handlers in `handlers/`. Discover any subscribed remote streams in shared company repos.
+1. **Initialization.** Read `lettuce.yml` from the operator's personal repo. Discover handlers in `handlers/`. In current v0, read any configured subscription intent records; later versions may also discover subscribed remote streams in shared company repos.
 2. **Loop:**
-   - Poll subscribed streams for new events (every N minutes, default 5).
+   - Poll subscribed local sources for new events. Shared-stream polling is planned next, not part of the shipped v0 loop.
    - For each new event, find handlers subscribed to that stream.
    - For each matched handler, construct invocation, call LLM, parse output.
-   - For each publish in the output, write the markdown file to the destination stream and commit to git. (For local streams: commit to the personal repo. For remote streams: commit to the appropriate remote repo, subject to policy.)
+   - For each publish in the output, write the markdown file to the destination local stream and commit to git. Remote/shared mirroring is a later phase.
    - Update checkpoints.
 3. **Trigger handling.** Schedule-triggered handlers run on cron. Manual-triggered handlers run when invoked by the operator or another handler.
 4. **Logging.** All invocations, successes, failures, and publishes go to `.lettuce/runtime.log` in the operator's personal repo. Also surfaced in conversation with the operator on request.
@@ -268,7 +268,7 @@ Default repo name: `lettuce-{org}-{operator-handle}`. Operator can override.
 
 Agent asks if a shared company brain already exists. Three branches:
 
-- **Operator says yes, here's the URL.** Agent verifies access, reads the shared repo's `lettuce.yml` to understand policies, and configures the operator's handlers to subscribe to relevant shared streams.
+- **Operator says yes, here's the URL.** Agent verifies access, reads the shared repo's `lettuce.yml` to understand exports/policies, and records subscription intent for relevant shared streams.
 - **Operator says no / let's create one.** Agent checks if the operator has org-repo-creation permission. If yes, walks through creating the shared repo, with default `lettuce.yml` declaring the operator as initial admin contact. If no, explains the situation and offers to ping someone with permission.
 - **Operator says I don't know.** Agent scans the company GitHub org for repos with `lettuce.yml` at root. If found, surfaces candidates. If not, offers to create one.
 
@@ -286,7 +286,7 @@ Each connection is a separate consent flow. Operator can skip any. The rule is: 
 
 Once at least one signal source is connected, agent kicks off the first ingestion: pulls any historical signal it can (e.g., Fathom transcripts from the last 90 days), runs lenses against them, commits initial brain entries. Operator can watch this happen in conversation — agent narrates what it found.
 
-End state: operator has a working Lettuce with at least one signal source flowing in, default lenses producing brain entries, and (optionally) a connection to the company-shared brain. Total elapsed time: 5–15 minutes depending on OAuth flows and how many signal sources they wire up.
+End state: operator has a working Lettuce with at least one signal source flowing in, default lenses producing brain entries, and optionally recorded shared-stream subscription intent for later coordination. Total elapsed time: 5–15 minutes depending on source setup and how many signal sources they wire up.
 
 ### 3.2 Day-to-day UX
 
@@ -318,12 +318,12 @@ The principle: no silent failures. Every failure is visible to the operator with
 
 v0 ships:
 
-- A `lettuce` CLI tool installable in OpenClaw (or invokable by OpenClaw via shell). Provides `init`, `run`, `discover`, `subscribe`, `status`, `logs` subcommands.
+- A `lettuce` CLI tool installable in OpenClaw (or invokable by OpenClaw via shell). The shipped surface centers on `init`, `onboard`, `run`, `subscribe`, `status`, `logs`, review commands, and source-ingest/source-config helpers.
 - A reference set of default handlers (3 lenses, 2 routers, 1 helper).
 - A bootstrapper that scaffolds personal Lettuce repos with sensible defaults.
 - Agent-operated ingestion from three source classes: direct input received through the agent's existing communication surfaces, email the agent can access, and call transcripts available through APIs/MCP/OAuth.
 - Integration with one outbound service: Linear (via API).
-- Single-operator setup as the spotlight UX. Multi-operator subscription works but is documented as "future direction" in user-facing copy.
+- Single-operator setup as the spotlight UX. Multi-operator subscription intent works; actual shared-stream mirroring stays documented as "future direction" in user-facing copy.
 - Documentation: README, HANDLERS.md (handler spec), QUICKSTART.md, CONTRIBUTING.md.
 - A simple landing page (already drafted) at `lettuce.{tld}` linking to the GitHub repo and a 90-second demo Loom.
 
@@ -337,16 +337,24 @@ v0 does *not* ship:
 
 ### 4.2 CLI commands
 
-```
-lettuce init            # bootstrap a new personal Lettuce repo (interactive)
-lettuce run             # run the runtime loop (foreground)
-lettuce run --daemon    # run as background process
-lettuce status          # show what's running, last run times, recent activity
-lettuce logs            # tail .lettuce/runtime.log
-lettuce discover <org>  # scan a GitHub org for Lettuce repos
-lettuce subscribe <repo>:<stream>  # subscribe local handlers to a remote stream
-lettuce add-source <type>  # record source intent for agent-accessible systems (email, fathom, etc.)
-lettuce add-handler <template>  # scaffold a new handler from a template
+```text
+Shipped today:
+- lettuce init
+- lettuce onboard
+- lettuce run
+- lettuce status
+- lettuce logs
+- lettuce subscribe
+- lettuce add-source <type>
+- lettuce add-handler <template>
+- lettuce reviews
+- lettuce review-approve
+- lettuce review-decline
+
+Planned or historical in this build-plan document:
+- lettuce run --daemon
+- lettuce discover <org>
+- pull-subscriptions style shared-stream mirroring
 ```
 
 ### 4.3 Default handlers shipped
@@ -369,16 +377,14 @@ Each ships with a thoughtful default prompt. Operators are expected to fork and 
 
 **Email:**
 - Operator runs `lettuce add-source email`.
-- Agent provisions a forwarding address (lettuce-{operator}-{org}@somedomain.com).
-- Operator forwards or CCs anything they want ingested.
-- Inbound emails are written to `streams/inbox/email/`.
-- v0 implementation: use a third-party email-to-webhook service (Postmark, SendGrid Inbound, etc.) with a small relay endpoint.
+- The agent records source intent and can ingest operator-selected or forwarded email it already has access to.
+- Email-shaped events are written to `streams/inbox/email/`.
+- Automatic mailbox polling/provisioning is follow-up runtime work, not a shipped public-v0 command path.
 
 **Fathom (call transcripts):**
-- Operator runs `lettuce add-source fathom`, completes OAuth.
-- Runtime polls Fathom every N hours for new transcripts.
-- New transcripts are written to `streams/inbox/transcripts/`.
-- Historical backfill: on first connect, agent asks how far back to ingest (default 30 days).
+- Operator runs `lettuce add-source fathom` to record intent.
+- The agent can ingest transcript exports or runtime-accessible samples it already has.
+- Automatic transcript polling/backfill is follow-up runtime work, not a shipped public-v0 command path.
 
 ### 4.5 Outbound integration: Linear
 
@@ -423,7 +429,7 @@ The implementer should make explicit decisions on these and document them as ADR
 
 v0 is shipped when:
 
-- A new operator can run `openclaw install lettuce` (or equivalent), have their agent walk them through onboarding, and end up with a working Lettuce in under 15 minutes.
+- A new operator can install Lettuce, have their agent walk them through onboarding, and end up with a working Lettuce in under 15 minutes.
 - At least one signal source flows into their brain end-to-end.
 - The default lenses produce useful brain entries on real signal (judgment call by the implementer; should be visibly better than dumping raw transcripts).
 - The Linear router successfully creates a triage ticket from a brain entry on a test invocation.

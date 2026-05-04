@@ -42,6 +42,6 @@ When a source recipe records trigger/cadence intent, keep it legible enough that
 - `after-meeting`: check when a transcript or meeting artifact lands.
 - `daily`: runtime or cron should run a daily check.
 - `source-check`: source is available now, but no stronger cadence was recorded yet.
-- `subscription-pull`: runtime should mirror a configured shared stream.
+- `subscription-pull`: runtime should eventually mirror a configured shared stream; today this mode records intended maintenance only.
 
 The runtime still owns the actual scheduler or connector. Lettuce owns the durable source/subscription contract and the resulting checkpoints, reviews, logs, and git history.

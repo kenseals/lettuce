@@ -2,6 +2,8 @@
 
 This document formalizes the trust boundary between the local Lettuce CLI, the agent runtime wrapper that operates it, and future shared-stream or MCP-style multi-repo modes.
 
+Status note: the shared-stream boundary is only partially implemented in public v0. Export declarations, subscription records, local-path export checks, and local mirror-path validation ship now; real pull/mirror execution remains roadmap work tracked alongside issues `#20`, `#35`, `#36`, `#37`, and `#38`.
+
 The short version:
 
 - the runtime owns access to the outside world;

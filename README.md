@@ -6,7 +6,7 @@ It gives the agent a markdown+git work brain for one organization, a stream mode
 
 Current status: **first v0 protocol loop**. The installable `lettuce` CLI scaffolds and runs a markdown+git Lettuce repo. The operator's agent is the runtime: OpenClaw in v0, and later any agent that can read files, call tools, and follow the protocol.
 
-The protocol does not own chat surfaces, inboxes, OAuth grants, or service integrations. The agent runtime owns those. Lettuce teaches the agent how to connect the right signal sources, preserve provenance, write stream events, run handlers, maintain brain updates, and eventually subscribe to other Lettuces in an organization so company context can become distributed instead of centralized.
+The protocol does not own chat surfaces, inboxes, OAuth grants, or service integrations. The agent runtime owns those. Lettuce teaches the agent how to connect the right signal sources, preserve provenance, write stream events, run handlers, maintain brain updates, and prepare for shared-stream coordination across Lettuces in an organization so company context can become distributed instead of centralized.
 
 ## Optional Company Hub
 
@@ -125,7 +125,7 @@ The first repeatable source connector is deliberately local and boring: `add-sou
 
 `add-source email|fathom|granola|transcript|zoom` records repo-owned source configuration intent under `sources/` and creates the target stream directory. These records can include `access_status`, `sample_policy`, `privacy_notes`, and `setup_next_action`, so the operator's agent can see whether it can sample now or needs to guide setup first. Manual-only behavior should be described in the recipe/source record body rather than invented as a new CLI status. `lettuce onboard` can create or reuse those same records and then reference them from `onboarding/setup/handoff.json` along with cadence/trigger hints and first-sample outcome. It does not pretend to provision forwarding addresses, OAuth, or webhooks by itself; agent-owned setup can attach to the same source record later.
 
-`subscribe` records remote/shared stream subscription intent under `subscriptions/`. For local simulation, `pull-subscriptions` can now import new events from another local Lettuce repo into a scoped `streams/shared/*` mirror with subscription checkpoints and preserved provenance. Optional policy strings such as `allow_streams=streams/shared/*` block subscription writes outside allowed local stream paths. See `docs/trust-boundary.md` for the formal mutation rules around `brain/*`, `sources/*`, `reviews/*`, and shared-stream mirrors. This proves the future org-distributed context path without requiring GitHub federation yet.
+`subscribe` records remote/shared stream subscription intent under `subscriptions/`. Shipped today: export declarations in `lettuce.yml`, subscription records, local-path export-policy checks, and local mirror-path/policy validation so subscriptions stay scoped to `streams/shared/*`. Not shipped yet: a real `pull-subscriptions` mirror command, remote polling, or checkpointed git mirroring. See `docs/trust-boundary.md` for the formal mutation rules around `brain/*`, `sources/*`, `reviews/*`, and shared-stream mirrors, and see roadmap issues `#20`, `#35`, `#36`, `#37`, and `#38` for the shared-stream/hub buildout.
 
 When a repo declares `exports` in `lettuce.yml`, it is intentionally marking specific `streams/shared/*` paths as shareable. Those export declarations are editorial metadata for agents and runtime checks; they never grant access beyond the underlying GitHub repo permissions.
 
@@ -138,9 +138,9 @@ When a repo declares `exports` in `lettuce.yml`, it is intentionally marking spe
 
 ## Minimal Maintenance Loop
 
-Lettuce v0 does not run its own daemon or own chat/email/OAuth/cron surfaces. The external runtime or cron decides when to check, then calls existing commands such as `lettuce status`, `lettuce ingest-*`, `lettuce run --review`, `lettuce reviews`, and later subscription-pull helpers.
+Lettuce v0 does not run its own daemon or own chat/email/OAuth/cron surfaces. The external runtime or cron decides when to check, then calls existing commands such as `lettuce status`, `lettuce ingest-*`, `lettuce run --review`, and `lettuce reviews`. Shared-stream mirroring remains planned follow-up work rather than a shipped CLI command.
 
-`lettuce status` now includes repo identity metadata alongside a small `freshness` summary so the agent can tell whether a repo is owned by a `human_operator` or a `role_agent`, whether it is `fresh`, `pending_review`, `blocked_on_setup`, or `idle_manual_only`, and which maintenance modes are configured: `manual`, `after-meeting`, `daily`, `source-check`, and `subscription-pull`.
+`lettuce status` now includes repo identity metadata alongside a small `freshness` summary so the agent can tell whether a repo is owned by a `human_operator` or a `role_agent`, whether it is `fresh`, `pending_review`, `blocked_on_setup`, or `idle_manual_only`, and which maintenance modes are configured: `manual`, `after-meeting`, `daily`, `source-check`, and `subscription-pull`. That last mode currently expresses subscription maintenance intent; it does not mean a built-in pull command already exists.
 
 Role-agent repos are first-class Lettuce repos, not hidden company-hub special cases. Use names such as `lettuce-acme-support-agent`, keep them `private` by default, and set `permission_basis` to the bounded GitHub identity that owns the repo access: `github-app`, `machine-user`, or `github-user`. A role agent should inherit only that identity's permitted scope, not become an all-seeing org brain.
 

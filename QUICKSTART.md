@@ -134,12 +134,12 @@ lettuce add-handler lens ./lettuce-demo \
 
 ## Record a shared stream subscription
 
-This records subscription intent only. Remote git polling and policy enforcement are follow-up runtime work.
+This records subscription intent only. Shipped today: the subscription record, export-policy checks for local-path remotes, and validation that the local mirror path stays under `streams/shared/*`. Not shipped yet: remote git polling or a `pull-subscriptions` mirror command.
 
 ```bash
 lettuce subscribe ./lettuce-demo \
   --remote github.com/demo/lettuce-demo \
-  --stream brain/decisions \
+  --stream streams/shared/decisions \
   --local-stream streams/shared/decisions \
   --commit
 ```

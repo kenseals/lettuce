@@ -20,7 +20,7 @@ optional company hub Lettuce repo
 
 other Lettuce repos
   subscribe to explicit exported streams
-  mirror them into streams/shared/*
+  later mirror them into streams/shared/*
   run local handlers before updating local brain/*
 ```
 
@@ -91,7 +91,7 @@ It should not contain everyone's raw private signal by default.
 
 ### 3. Shared streams
 
-A repo may export selected streams. Other repos may subscribe to those streams. Subscription pulls mirror remote events into local `streams/shared/*` only.
+A repo may export selected streams. Other repos may record subscriptions to those streams now. Planned next: subscription pulls mirror remote events into local `streams/shared/*` only.
 
 Remote/shared content is **signal**, not truth. It never writes directly into another repo's `brain/*`. The receiving repo's handlers decide whether and how to promote it.
 
@@ -169,6 +169,8 @@ exports:
 
 ### Pull/mirror command
 
+Planned next, not shipped in public v0:
+
 Implement `lettuce pull-subscriptions`:
 
 - fetch remote repo or read local path;
@@ -230,7 +232,7 @@ Flow:
 3. Surface candidates: personal repos, role-agent repos, hub repo if present.
 4. If no hub exists, ask whether to create `lettuce-{org}-hub`.
 5. Subscribe only to explicit exported streams.
-6. Mirror into `streams/shared/*`.
+6. When mirroring ships, mirror into `streams/shared/*`.
 7. Run local handlers to decide what enters local brain.
 
 If a hub is created, treat it as curated shared company context only. The initial shared stream convention is:
@@ -301,14 +303,8 @@ Guardrails:
 
 ## GitHub issue breakdown
 
-1. Define `lettuce.yml` identity/export schema for personal, role-agent, and hub repos.
-2. Implement `pull-subscriptions` mirror command with `streams/shared/*` boundary and provenance envelope.
-3. Add shared-stream policy verification against remote `lettuce.yml` exports.
-4. Add role-agent repo identity support.
-5. Define company hub repo convention and scaffolder path.
-6. Tighten docs to avoid overclaiming federation before mirror/policy actually ship.
-7. Add decision/conflict metadata for accepted company truth.
-8. Add onboarding branches for solo founder vs org/multi-operator setup.
+1. `#20`, `#35`, `#37`, and `#38` cover the shared-stream, export/policy, and hub roadmap this plan depends on.
+2. `#36` is the doc-accuracy pass that keeps public language honest while that roadmap lands.
 
 ## Bottom line
 

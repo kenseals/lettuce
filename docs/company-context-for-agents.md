@@ -16,7 +16,7 @@ For each `(operator, org)` pair, Lettuce provides:
 - markdown handlers/lenses that define what the agent should notice;
 - provenance and git history for durable context changes;
 - checkpoints/logs so runs are reconstructable;
-- subscription records so separate Lettuces can eventually exchange scoped streams.
+- subscription records so separate Lettuces can later exchange scoped streams.
 
 The agent runtime, OpenClaw in v0, owns conversation, tools, source access, auth, browser sessions, and scheduling. Lettuce owns the durable protocol the agent uses once it has signal.
 
@@ -87,9 +87,9 @@ Everything important is markdown or git state.
 
 The longer-term company version is not one centralized company brain that ingests everything.
 
-It is a set of operator-owned Lettuces, each mirroring what that operator and agent can actually see. Agents can subscribe to shared streams when useful and permitted.
+It is a set of operator-owned Lettuces, each reflecting what that operator and agent can actually see. Agents can prepare to subscribe to shared streams when useful and permitted.
 
-A teammate's agent might publish a scoped customer update. Your agent can subscribe to that stream, decide what matters for your work, and update your org-scoped brain without seeing your teammate's entire inbox or personal memory.
+A teammate's agent might publish a scoped customer update. Your agent should eventually be able to subscribe to that stream, decide what matters for your work, and update your org-scoped brain without seeing your teammate's entire inbox or personal memory.
 
 That is the eventual distributed-context shape:
 
@@ -102,6 +102,8 @@ operator A's agent + Lettuce ──shared stream──▶ operator B's agent + L
 GitHub permissions and runtime access remain the outer boundary. Lettuce policies, provenance, git history, and optional review modes add narrower control.
 
 An org may also keep an optional `company_hub` repo as a coordination point for curated shared streams and accepted org-level truth. The hub is not a replacement for operator-owned repos. It should hold exported shared context, discovery metadata, and owner/policy notes, while avoiding raw inbox/transcript dumps by default.
+
+Today that shared-stream story is only partially shipped: export declarations, subscription records, local export-policy checks, and repo identity scaffolding exist; real pull/mirror execution and broader policy verification are still roadmap work. See roadmap issues `#20`, `#35`, `#36`, `#37`, and `#38`.
 
 ## What v0 is honest about
 
@@ -123,8 +125,9 @@ Still future or in progress:
 
 - real recurring source polling;
 - real Linear side effects;
+- shared-stream pull/mirror execution;
 - remote stream polling;
-- policy enforcement for shared repos;
+- broader policy enforcement for shared repos;
 - org discovery;
 - polished multi-agent setup flow.
 

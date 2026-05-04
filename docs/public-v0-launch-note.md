@@ -10,6 +10,7 @@ Lettuce v0 is an agent-operated markdown + git protocol for turning messy work s
 - Handler outputs write useful context to local `brain/*` streams by default, with provenance and git history.
 - Optional review mode is available with `--review`, `lettuce reviews`, `review-approve`, and `review-decline` for calibration or sensitive changes.
 - Source intent records exist for email, transcripts, Telegram, Fathom, Granola, Zoom, and local files without pretending Lettuce owns those external auth surfaces.
+- Export declarations, subscription records, local export-policy checks, and `company_hub` scaffolding exist for the shared-stream roadmap.
 - OpenClaw can act as the operator runtime and run model-backed handlers through the optional OpenClaw provider adapter.
 - Synthetic corpus smoke tests exercise the stream, handler, brain, checkpoint, log, and git loop.
 
@@ -30,7 +31,8 @@ For the shorter manual path, start with `TRY_THIS_FIRST.md`. For the full walkth
 - Hosted SaaS runtime.
 - First-party Telegram/iMessage/Discord adapters.
 - Gmail, Zoom, Fathom, Granola, Linear, or Notion OAuth provisioning.
-- Remote shared-git polling and policy enforcement.
+- Remote shared-git polling or pull/mirror execution.
+- Broader shared-stream policy enforcement.
 - Automatic side effects into work systems.
 - Auto-approval policies.
 - Polished UI.
