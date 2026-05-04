@@ -62,25 +62,23 @@ When the operator gives you `https://github.com/kenseals/lettuce` or this `llms.
 
    If the shell cannot find `lettuce`, use `python3 -m lettuce.cli ...` or fix the Python user bin PATH.
 
-3. Create or choose one org-scoped repo.
+3. If you have an interactive shell, prefer the guided helper:
+
+   ```bash
+   lettuce setup --commit
+   ```
+
+   This helper introduces Lettuce, confirms the operator wants to continue, asks for org/operator/repo/source details, configures manual/direct ingestion, optionally records email and transcript source intent, ingests a first setup signal, runs handlers behind the review gate, and prints the final operator summary.
+
+   If you are interacting with the operator in Telegram or another chat surface, do not ask them to run this command. Run it yourself through your runtime tools, or follow the same flow manually with the lower-level commands below.
+
+4. If you cannot use the interactive helper, create or choose one org-scoped repo and record sources manually.
 
    Keep this separate from personal memory. Example: `--org acme --operator ken`.
-
-4. Record source intent.
 
    For each source the operator named, record whether it is available now, needs setup, deferred, or manual-only. Do not pretend external OAuth/polling exists if it does not.
 
    ```bash
-   lettuce add-source email ./lettuce-demo --name work-email --access-status needs_setup --setup-next-action "connect forwarding/export before sampling" --commit
-   lettuce add-source transcript ./lettuce-demo --name calls --access-status defer --setup-next-action "choose transcript source later" --commit
-   ```
-
-   Direct chat/current conversation input does not need a source adapter; it can be written with `ingest-direct` or `onboard`.
-
-5. Ingest one small meaningful sample and run handlers.
-
-   ```bash
-   printf 'Customer says agent context is stale.\n' > /tmp/lettuce-first-signal.md
    lettuce onboard ./lettuce-demo \
      --org demo \
      --operator you \
@@ -89,14 +87,20 @@ When the operator gives you `https://github.com/kenseals/lettuce` or this `llms.
      --source agent.direct \
      --surface chat \
      --consent operator-direct-request \
+     --review \
      --commit
+   lettuce add-source direct ./lettuce-demo --name manual-direct --access-status available_now --sample-policy "operator-forwarded-or-pasted-signals" --commit
+   lettuce add-source email ./lettuce-demo --name work-email --access-status needs_setup --setup-next-action "connect forwarding/export before sampling" --commit
+   lettuce add-source transcript ./lettuce-demo --name calls --access-status defer --setup-next-action "choose transcript source later" --commit
    ```
 
-   If you are OpenClaw and model-backed judgment is available, add `--openclaw-provider`.
+   Direct chat/current conversation input does not need a source adapter to ingest, but manual/direct source intent should still be recorded so future agent behavior is inspectable.
 
-   Do not add `--review` by default. The normal v0 loop publishes to local `brain/*` streams with git history/provenance. Use `--review` only for optional calibration, sensitive sources, uncertain/high-impact updates, or if the operator explicitly asks to review before updates land.
+   If you are OpenClaw and model-backed judgment is available, add `--openclaw-provider` to `onboard` or `run`.
 
-6. Show what changed in human terms.
+   Use `--review` during onboarding unless the operator explicitly asks to bypass review. The normal long-term product should not require review for every signal forever, but first setup should usually show pending review proposals before durable brain updates.
+
+5. Show what changed in human terms.
 
    Include:
 

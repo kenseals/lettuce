@@ -23,16 +23,21 @@ If the operator already gave some of this context, summarize your assumptions an
 
 ## Agent Setup Instructions
 
+This is agent-operated onboarding. If you are interacting with the operator in Telegram, Slack, iMessage, Discord, or another chat surface, do **not** ask the operator to run CLI commands. You should install/run helpers yourself if your runtime has tool access, then summarize the result back in chat.
+
 - Install Lettuce from the repo URL only after the operator confirms setup: `python3 -m pip install 'git+https://github.com/kenseals/lettuce.git'`.
+- If you have an interactive shell, the preferred helper is `lettuce setup --commit`. It implements the explain/confirm/questions/manual-source/first-signal/final-summary flow.
+- If you cannot run an interactive helper, follow `docs/agent-operated-onboarding.md` and use lower-level commands such as `lettuce onboard`, `lettuce add-source`, `lettuce ingest-direct`, `lettuce run --review`, and `lettuce reviews` yourself.
 - Create or choose a local Lettuce repo for one confirmed organization/work context, not for the operator's personal memory.
-- Record source intent for the sources discussed with the operator, including whether each is `available_now`, `needs_setup`, `defer`, or manual-only.
+- Configure manual/direct ingestion in every normal setup so the operator can later say “run Lettuce on this.”
+- Record source intent for sources discussed with the operator, including whether each is `available_now`, `needs_setup`, `defer`, or manual-only. Common early sources are email and call transcripts.
 - Ingest one small operator-approved sample signal first. Do not use the setup request itself as the sample unless the operator explicitly says to.
-- Run handlers so the repo has a first useful brain/context update. Do not make the human review every signal by default.
+- Run handlers behind a review gate during onboarding unless the operator explicitly asks to bypass review. The first run should create pending review proposals or a clear skip reason before durable `brain/*` writes.
 - Preserve provenance, consent basis, source surface, and org/operator scope.
 - Do not build duplicate chat, email, browser, OAuth, or service integrations inside Lettuce. Use your runtime's existing access, then write Lettuce stream events.
-- End onboarding with a concise handoff: repo path, configured sources and their status, cadence/trigger model, what the first run added, how to use Lettuce next, and the next useful setup step.
+- End onboarding with a concise handoff: repo path, configured sources and their status, cadence/trigger model, what the first run proposed, how to use Lettuce next, and the next useful setup step.
 
-Use the review commands only for optional calibration, sensitive sources, uncertain/high-impact updates, or if the operator explicitly asks to approve changes before they land. Review is a safety valve, not the core product loop.
+Review is a safety/control loop for onboarding, calibration, sensitive sources, uncertain/high-impact updates, or explicit operator preference. The product is durable company context for agents, not making the human review every signal forever.
 
 ## Start Here
 
