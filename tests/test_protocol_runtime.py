@@ -1102,6 +1102,121 @@ print(json.dumps({
                     policy="allow_streams=brain/*",
                 )
 
+    def test_configure_subscription_allows_local_remote_exported_stream(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "lettuce-acme-ken"
+            remote_repo = Path(tmp) / "lettuce-acme-hub"
+            init_repo(repo, org="acme", operator="ken", initialize_git=False)
+            init_repo(
+                remote_repo,
+                org="acme",
+                operator="ken",
+                repo_type="company_hub",
+                exports=[
+                    {
+                        "stream": "streams/shared/customers",
+                        "description": "Curated customer context",
+                        "sensitivity": "internal",
+                        "owner": "sales",
+                        "allowed_readers": ["github:team:acme/customer-facing"],
+                    }
+                ],
+                initialize_git=False,
+            )
+
+            result = configure_subscription(
+                repo,
+                str(remote_repo),
+                stream="streams/shared/customers",
+                local_stream="streams/shared/customers",
+            )
+
+            self.assertEqual(result.remote, str(remote_repo))
+            self.assertEqual(result.stream, "streams/shared/customers")
+            self.assertEqual(result.status, "configured")
+            self.assertTrue(Path(result.subscription_path).exists())
+
+    def test_configure_subscription_rejects_local_remote_non_exported_stream(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "lettuce-acme-ken"
+            remote_repo = Path(tmp) / "lettuce-acme-hub"
+            init_repo(repo, org="acme", operator="ken", initialize_git=False)
+            init_repo(
+                remote_repo,
+                org="acme",
+                operator="ken",
+                repo_type="company_hub",
+                exports=[
+                    {
+                        "stream": "streams/shared/roadmap",
+                        "description": "Curated roadmap context",
+                        "sensitivity": "internal",
+                        "owner": "product",
+                    }
+                ],
+                initialize_git=False,
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                rf"remote_repo={remote_repo} stream=streams/shared/customers reason=stream is not explicitly exported",
+            ):
+                configure_subscription(
+                    repo,
+                    str(remote_repo),
+                    stream="streams/shared/customers",
+                    local_stream="streams/shared/customers",
+                )
+
+    def test_configure_subscription_rejects_local_remote_with_malformed_policy(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "lettuce-acme-ken"
+            remote_repo = Path(tmp) / "lettuce-acme-hub"
+            init_repo(repo, org="acme", operator="ken", initialize_git=False)
+            remote_repo.mkdir(parents=True, exist_ok=True)
+            (remote_repo / "lettuce.yml").write_text(
+                """lettuce_version: 0.1.0
+type: company_hub
+owner_kind: human_operator
+operator: ken
+org: acme
+role_agent_id: null
+permission_basis: github-user
+visibility: private
+exports: invalid
+""",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                rf"remote_repo={remote_repo} stream=streams/shared/customers reason=lettuce\.yml exports must be a list",
+            ):
+                configure_subscription(
+                    repo,
+                    str(remote_repo),
+                    stream="streams/shared/customers",
+                    local_stream="streams/shared/customers",
+                )
+
+    def test_configure_subscription_rejects_local_remote_missing_lettuce_config(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "lettuce-acme-ken"
+            remote_repo = Path(tmp) / "lettuce-acme-hub"
+            init_repo(repo, org="acme", operator="ken", initialize_git=False)
+            remote_repo.mkdir(parents=True, exist_ok=True)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                rf"remote_repo={remote_repo} stream=streams/shared/customers reason=missing lettuce\.yml",
+            ):
+                configure_subscription(
+                    repo,
+                    str(remote_repo),
+                    stream="streams/shared/customers",
+                    local_stream="streams/shared/customers",
+                )
+
     def test_subscribe_cli_reports_clean_error_before_init(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp) / "lettuce-acme-ken"
