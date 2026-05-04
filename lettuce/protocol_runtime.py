@@ -29,6 +29,7 @@ _HANDLER_TEMPLATE_DIRS = {
     "router": "routers",
     "handler": "helpers",
 }
+_AGENT_INSTRUCTIONS_FILENAME = "LETTUCE_AGENT.md"
 
 
 @dataclass(frozen=True)
@@ -101,6 +102,7 @@ class RuntimeStatus:
     streams: dict[str, int]
     checkpoints: dict[str, int]
     log_entries: int
+    agent_instructions_path: str | None = None
     last_log: dict[str, Any] | None = None
 
 
@@ -456,6 +458,9 @@ default_model: {default_model}
     log_path = state_dir / "runtime.log"
     if not log_path.exists():
         log_path.write_text("", encoding="utf-8")
+    instructions_path = _write_agent_instructions(repo)
+    if instructions_path not in written:
+        written.append(instructions_path)
     if initialize_git:
         _ensure_git_repo(repo)
         tracked = [path for path in written if ".lettuce" not in path.parts]
@@ -771,12 +776,13 @@ def configure_source(
     if path.exists():
         raise FileExistsError(f"source already exists: {path}")
     path.write_text(_render_markdown_event(frontmatter, body), encoding="utf-8")
+    instructions_path = _write_agent_instructions(repo)
     stream_keep = repo / resolved_stream / ".gitkeep"
     stream_keep.parent.mkdir(parents=True, exist_ok=True)
     if not stream_keep.exists():
         stream_keep.write_text("", encoding="utf-8")
     if commit:
-        _git_commit(repo, [path, stream_keep], f"source: {source_id}")
+        _git_commit(repo, [path, stream_keep, instructions_path], f"source: {source_id}")
     return SourceConfigResult(
         source_type=resolved_source_type,
         config_path=str(path),
@@ -891,6 +897,129 @@ def _append_log(repo: Path, entry: dict[str, Any]) -> None:
 
 def _repo_config(repo: Path) -> dict[str, Any]:
     return _read_simple_yaml(repo / "lettuce.yml")
+
+
+def _agent_instructions_path(repo: Path) -> Path:
+    return repo / _AGENT_INSTRUCTIONS_FILENAME
+
+
+def _source_records(repo: Path) -> list[dict[str, Any]]:
+    source_dir = repo / "sources"
+    records: list[dict[str, Any]] = []
+    if not source_dir.exists():
+        return records
+    for path in sorted(source_dir.glob("*.md")):
+        if path.name == ".gitkeep":
+            continue
+        text = path.read_text(encoding="utf-8")
+        match = _FRONTMATTER_RE.match(text)
+        if not match:
+            continue
+        frontmatter = _parse_simple_frontmatter(match.group(1))
+        frontmatter["path"] = str(path.relative_to(repo))
+        records.append(frontmatter)
+    return records
+
+
+def _cadence_summary(records: list[dict[str, Any]]) -> str:
+    cadence_hints: list[str] = []
+    for record in records:
+        poll = str(record.get("poll") or record.get("cadence") or "").strip()
+        if not poll:
+            continue
+        name = str(record.get("name") or record.get("id") or "source")
+        cadence_hints.append(f"`{name}`: {poll}")
+    if cadence_hints:
+        return "Configured cadence hints: " + "; ".join(cadence_hints)
+    return "Manual/agent-triggered for now. No recurring cadence is recorded in `sources/*.md` yet."
+
+
+def _render_agent_instructions(repo: Path) -> str:
+    config = _repo_config(repo)
+    org = str(config.get("org") or "unknown-org")
+    operator = str(config.get("operator") or "operator")
+    records = _source_records(repo)
+    if records:
+        source_lines = [
+            (
+                f"- `{record.get('name') or record.get('id')}` "
+                f"(`{record.get('type')}` -> `{record.get('stream')}`): "
+                f"`{record.get('access_status') or 'unknown'}`"
+                + (
+                    f"; next: {record.get('setup_next_action')}"
+                    if str(record.get("setup_next_action") or "").strip()
+                    else ""
+                )
+            )
+            for record in records
+        ]
+    else:
+        source_lines = [
+            "- No source records yet. Configure at least a manual/direct source and inspect `sources/*.md` before sampling anything else."
+        ]
+    source_summary = "\n".join(source_lines)
+    return f"""# Lettuce Repo Agent Instructions
+
+This file is repo-local behavior for agents using this Lettuce repo. It is scoped to `{org}` and must not overwrite global agent identity, system prompts, or personal memory.
+
+## Scope
+
+- Org/project: `{org}`
+- Operator: `{operator}`
+- Default repo path: `{repo}`
+
+## Default Trigger
+
+Use this repo when the operator refers to `{org}`-scoped work context or says "run Lettuce on this".
+
+## Manual/Direct Ingestion Command Shape
+
+```bash
+lettuce ingest-direct {repo} \\
+  --title "<short title>" \\
+  --body-file <tmp-signal.md> \\
+  --source <agent.surface> \\
+  --surface <surface> \\
+  --consent operator-direct-request \\
+  --commit
+lettuce run {repo} --review --commit
+lettuce reviews {repo}
+```
+
+## Review Policy
+
+- Default to `--review` before durable `brain/*` writes.
+- Only bypass review if the operator explicitly asks.
+- Preserve provenance, consent basis, source ids, timestamps, URLs, and redaction notes on every ingested event.
+
+## Source Records
+
+Inspect `sources/*.md` before connecting or sampling a source. These records carry access status, sample policy, privacy notes, and next setup actions.
+
+{source_summary}
+
+## Privacy And Boundary Rules
+
+- Keep this repo scoped to `{org}` work context, not personal memory and not other orgs.
+- The runtime owns chat surfaces, inboxes, browser sessions, OAuth, MCP connectors, API keys, and schedules.
+- Lettuce owns durable repo state such as `lettuce.yml`, `streams/*`, `brain/*`, `sources/*`, `reviews/*`, `subscriptions/*`, and `.lettuce/*`.
+- Do not bulk ingest during onboarding or source setup unless the operator explicitly asks.
+- Skip personal-life context and unrelated org/project signal unless the operator wants a separate Lettuce for that scope.
+
+## Cadence
+
+{_cadence_summary(records)}
+
+## Runtime Notes
+
+Runtime-specific skills, prompts, and agent wrappers should read this file first when deciding which Lettuce repo to use and how ongoing manual/direct ingestion should behave.
+"""
+
+
+def _write_agent_instructions(repo: Path) -> Path:
+    path = _agent_instructions_path(repo)
+    path.write_text(_render_agent_instructions(repo), encoding="utf-8")
+    return path
 
 
 def _handler_invocation(handler: HandlerDefinition, event: StreamEvent, repo: Path) -> HandlerInvocation:
@@ -1328,5 +1457,6 @@ def status(repo_path: str | Path) -> RuntimeStatus:
         streams=streams,
         checkpoints=checkpoints,
         log_entries=len(all_logs),
+        agent_instructions_path=str(_agent_instructions_path(repo)) if _agent_instructions_path(repo).exists() else None,
         last_log=recent_logs[-1] if recent_logs else None,
     )

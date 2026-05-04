@@ -32,6 +32,7 @@ Keep these rules true on every run:
 When a new operator request arrives:
 
 1. Identify the org/project scope and the matching Lettuce repo.
+   Check `LETTUCE_AGENT.md` in that repo first for the default trigger phrase, review policy, source boundaries, and repo-local runtime instructions.
 2. Decide whether the request needs existing company context, new ingestion, both, or neither.
 3. If context is needed, read the smallest relevant Lettuce state first.
 4. If new signal should become durable context, ingest it with provenance, then run handlers.
@@ -226,6 +227,8 @@ Expected handoff summary:
 ```text
 I captured the signal in <repo-path> with direct-input provenance, ran the active handlers, and generated <n> review proposal(s). Nothing was written durably to brain streams yet. Approve, edit, or decline these updates. Manual/direct ingestion remains the trigger for ad hoc use; recurring source checks are <configured cadence or manual only>.
 ```
+
+Runtime-specific skills, prompts, or wrappers should point to `<repo-path>/LETTUCE_AGENT.md` instead of relying on global memory for repo choice or trigger behavior.
 
 ## Minimal Handoff Template
 

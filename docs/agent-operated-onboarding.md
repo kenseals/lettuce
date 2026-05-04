@@ -181,15 +181,17 @@ lettuce add-source granola <repo-path> --name <name> --workspace <workspace> --a
 
 The source record is a setup/status contract for the operator's agent. It should say whether the agent can sample now, what privacy boundary applies, and what the next setup step is. Supported transcript records include `fathom`, `granola`, `zoom`, and generic `transcript`.
 
-For manual/direct ingestion, make the behavior durable too. The operator's agent should leave repo-local instructions or a skill reference saying:
+For manual/direct ingestion, make the behavior durable too. The operator's agent should write repo-local instructions in `LETTUCE_AGENT.md` at the repo root saying:
 
-- what phrase triggers manual ingestion, such as “run Lettuce on this”;
+- what phrase triggers manual ingestion, such as "run Lettuce on this";
 - which repo/org it should use by default;
 - what provenance and consent fields to preserve;
 - whether review is required before `brain/*` writes;
 - what kinds of personal/private signal should be skipped.
+- where to inspect `sources/*.md` for current source status, privacy notes, and setup next actions;
+- what cadence is configured, or that the repo is manual/agent-triggered for now.
 
-Until repo-local agent-instruction conventions are richer, record this in a small setup note such as `sources/manual-direct.md` or the appropriate agent skill/config surface used by the runtime.
+Runtime-specific skills, prompts, and wrappers should point to `LETTUCE_AGENT.md` first, then inspect `sources/*.md` for the current source contract.
 
 ### 5. First Ingestion
 
@@ -249,6 +251,8 @@ End onboarding with a concise durable summary:
 ```text
 Done. I set up Lettuce for <org> at <repo>. Manual/direct ingestion is ready, so you can say “run Lettuce on this” and I’ll capture the signal with provenance, run lenses, and show review proposals before durable brain updates. I also recorded <sources> with <sample/privacy policy>. Going forward I’ll use this Lettuce for <org>-scoped work context, not personal memory, and I’ll ask before bulk ingesting or writing sensitive updates.
 ```
+
+Also surface the repo-local instruction path, for example: `Repo-local agent instructions: <repo>/LETTUCE_AGENT.md`.
 
 If recurring checks are configured, say exactly what cadence/trigger owns them. If they are not configured yet, say what the operator needs to connect or forward next.
 

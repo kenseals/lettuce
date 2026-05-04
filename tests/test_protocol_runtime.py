@@ -16,14 +16,19 @@ class ProtocolRuntimeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp) / "lettuce-acme-ken"
             init_repo(repo, org="acme", operator="ken", initialize_git=False)
+            agent_text = (repo / "LETTUCE_AGENT.md").read_text(encoding="utf-8")
 
             self.assertTrue((repo / "lettuce.yml").exists())
+            self.assertTrue((repo / "LETTUCE_AGENT.md").exists())
             self.assertTrue((repo / "handlers/lenses/default-lens.md").exists())
             self.assertTrue((repo / "handlers/routers/brain-router.md").exists())
             self.assertTrue((repo / "streams/inbox/direct/.gitkeep").exists())
             self.assertTrue((repo / "brain/general/.gitkeep").exists())
             self.assertIn("operator: ken", (repo / "lettuce.yml").read_text(encoding="utf-8"))
             self.assertIn(".lettuce/", (repo / ".gitignore").read_text(encoding="utf-8"))
+            self.assertIn('says "run Lettuce on this"', agent_text)
+            self.assertIn(f"Default repo path: `{repo}`", agent_text)
+            self.assertIn("must not overwrite global agent identity", agent_text)
 
     def test_default_lens_prompts_include_skip_boundaries(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -371,8 +376,10 @@ else:
 
             self.assertIn("Lettuce is a work-context layer", completed.stdout)
             self.assertIn("Manual/direct ingestion is ready", completed.stdout)
+            self.assertIn("Repo-local agent instructions:", completed.stdout)
             self.assertIn("pending reviews", completed.stdout)
             self.assertTrue((repo / "lettuce.yml").exists())
+            self.assertTrue((repo / "LETTUCE_AGENT.md").exists())
             self.assertTrue((repo / "sources" / "direct-manual-direct.md").exists())
             self.assertTrue((repo / "sources" / "email-walm-e-email.md").exists())
             self.assertTrue(any((repo / "reviews" / "pending").glob("*.md")))
@@ -666,6 +673,27 @@ print(json.dumps({
             self.assertIn("stream: streams/inbox/email", text)
             self.assertIn("access_status: unknown", text)
             self.assertIn("access_owner: operator-agent", text)
+
+    def test_configure_source_updates_repo_local_agent_instructions(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "lettuce-acme-ken"
+            init_repo(repo, org="acme", operator="ken", initialize_git=False)
+
+            configure_source(
+                repo,
+                "email",
+                name="support-forward",
+                metadata={"address": "lettuce-support@example.com", "poll": "weekday-mornings"},
+                access_status="needs_setup",
+                setup_next_action="connect forwarding before sampling",
+            )
+
+            agent_text = (repo / "LETTUCE_AGENT.md").read_text(encoding="utf-8")
+
+            self.assertIn("support-forward", agent_text)
+            self.assertIn("`needs_setup`", agent_text)
+            self.assertIn("connect forwarding before sampling", agent_text)
+            self.assertIn("Configured cadence hints: `support-forward`: weekday-mornings", agent_text)
 
     def test_add_source_cli_configures_transcript_source_with_setup_state(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1074,6 +1102,7 @@ print(json.dumps({
             self.assertEqual(current.handlers, 6)
             self.assertEqual(current.streams["streams/inbox/direct"], 1)
             self.assertGreaterEqual(current.log_entries, 1)
+            self.assertEqual(current.agent_instructions_path, str(repo / "LETTUCE_AGENT.md"))
             self.assertTrue(current.last_log)
             self.assertEqual(len(logs), 2)
 

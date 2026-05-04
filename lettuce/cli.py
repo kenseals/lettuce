@@ -412,6 +412,7 @@ def _run(argv: list[str] | None = None) -> int:
                     "streams": current.streams,
                     "checkpoints": current.checkpoints,
                     "log_entries": current.log_entries,
+                    "agent_instructions_path": current.agent_instructions_path,
                     "last_log": current.last_log,
                 },
             }
@@ -519,6 +520,7 @@ def _run(argv: list[str] | None = None) -> int:
         print("\nDone.")
         print(f"I set up Lettuce for {org} at {repo_path}.")
         print("Manual/direct ingestion is ready: say “run Lettuce on this” and the agent should capture the signal with provenance, run lenses, and show review proposals before durable brain updates.")
+        print(f"Repo-local agent instructions: {current.agent_instructions_path}")
         print("Configured sources:")
         for source in configured_sources:
             print(f"- {source}")
@@ -706,6 +708,7 @@ def _run(argv: list[str] | None = None) -> int:
                 "streams": result.streams,
                 "checkpoints": result.checkpoints,
                 "log_entries": result.log_entries,
+                "agent_instructions_path": result.agent_instructions_path,
                 "last_log": result.last_log,
             }
         )
