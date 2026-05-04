@@ -153,6 +153,28 @@ class SubscriptionConfigResult:
 
 
 @dataclass(frozen=True)
+class RepoIdentity:
+    repo_type: str
+    org: str
+    owner_kind: str
+    operator: str
+    role_agent_id: str | None
+    permission_basis: str
+    visibility: str
+
+
+@dataclass(frozen=True)
+class ExportedStream:
+    stream: str
+    description: str
+    sensitivity: str
+    owner: str
+    allowed_readers: list[str]
+    allowed_writers: list[str]
+    review_required: bool
+
+
+@dataclass(frozen=True)
 class SourceRecord:
     id: str
     source_type: str
@@ -228,6 +250,8 @@ def _slugify(value: str) -> str:
 
 def _parse_scalar(value: str) -> Any:
     value = value.strip()
+    if value in {"null", "Null", "NULL", "~", "None"}:
+        return None
     if value in {"true", "True"}:
         return True
     if value in {"false", "False"}:
@@ -322,6 +346,198 @@ def _validate_subscription_policy(policy: str) -> str:
     return value
 
 
+def _parse_lettuce_yaml(text: str) -> dict[str, Any]:
+    config: dict[str, Any] = {}
+    exports: list[dict[str, Any]] = []
+    current_export: dict[str, Any] | None = None
+    in_exports = False
+
+    for raw_line in text.splitlines():
+        stripped = raw_line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        indent = len(raw_line) - len(raw_line.lstrip(" "))
+        if stripped == "exports:":
+            in_exports = True
+            config["exports"] = exports
+            current_export = None
+            continue
+        if indent == 0:
+            in_exports = False
+            current_export = None
+            if ":" not in stripped:
+                continue
+            key, value = stripped.split(":", 1)
+            config[key.strip()] = _parse_scalar(value)
+            continue
+        if not in_exports:
+            continue
+        if stripped.startswith("- "):
+            item = stripped[2:].strip()
+            current_export = {}
+            exports.append(current_export)
+            if item:
+                if ":" not in item:
+                    raise ValueError("invalid export entry in lettuce.yml")
+                key, value = item.split(":", 1)
+                current_export[key.strip()] = _parse_scalar(value)
+            continue
+        if current_export is None or ":" not in stripped:
+            continue
+        key, value = stripped.split(":", 1)
+        current_export[key.strip()] = _parse_scalar(value)
+    if "exports" not in config and "exports: []" in text:
+        config["exports"] = []
+    return config
+
+
+def _read_lettuce_yaml(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {}
+    return _parse_lettuce_yaml(path.read_text(encoding="utf-8"))
+
+
+_VALID_REPO_TYPES = {"personal", "company_hub"}
+_VALID_OWNER_KINDS = {"human_operator", "role_agent"}
+_VALID_PERMISSION_BASES = {"github-user", "github-app", "machine-user"}
+
+
+def _normalize_repo_identity(config: dict[str, Any]) -> RepoIdentity:
+    repo_type = str(config.get("type") or "personal").strip() or "personal"
+    owner_kind = str(config.get("owner_kind") or "human_operator").strip() or "human_operator"
+    operator = str(config.get("operator") or "").strip()
+    role_agent_raw = config.get("role_agent_id")
+    role_agent_id = None if role_agent_raw is None else str(role_agent_raw).strip() or None
+    permission_basis = str(config.get("permission_basis") or "github-user").strip() or "github-user"
+    visibility = str(config.get("visibility") or "private").strip() or "private"
+    org = str(config.get("org") or "").strip()
+
+    if repo_type not in _VALID_REPO_TYPES:
+        raise ValueError(f"invalid lettuce.yml type: {repo_type}")
+    if owner_kind not in _VALID_OWNER_KINDS:
+        raise ValueError(f"invalid lettuce.yml owner_kind: {owner_kind}")
+    if permission_basis not in _VALID_PERMISSION_BASES:
+        raise ValueError(f"invalid lettuce.yml permission_basis: {permission_basis}")
+    if owner_kind == "role_agent" and not role_agent_id:
+        raise ValueError("role_agent repos must set role_agent_id in lettuce.yml")
+    if owner_kind == "human_operator":
+        role_agent_id = None
+    return RepoIdentity(
+        repo_type=repo_type,
+        org=org,
+        owner_kind=owner_kind,
+        operator=operator,
+        role_agent_id=role_agent_id,
+        permission_basis=permission_basis,
+        visibility=visibility,
+    )
+
+
+def _validate_export_stream_path(path: str) -> str:
+    value = _validate_relative_stream_path(path, field_name="export stream")
+    if not value.startswith("streams/shared/"):
+        raise ValueError("export stream must stay under streams/shared/")
+    return value
+
+
+def _normalize_exported_streams(config: dict[str, Any]) -> list[ExportedStream]:
+    raw_exports = config.get("exports") or []
+    if not isinstance(raw_exports, list):
+        raise ValueError("lettuce.yml exports must be a list")
+
+    def _as_string_list(value: Any) -> list[str]:
+        if value is None:
+            return []
+        if isinstance(value, list):
+            return [str(item).strip() for item in value if str(item).strip()]
+        if isinstance(value, str) and not value.strip():
+            return []
+        return [str(value).strip()]
+
+    exports: list[ExportedStream] = []
+    for index, item in enumerate(raw_exports, start=1):
+        if not isinstance(item, dict):
+            raise ValueError(f"lettuce.yml export #{index} must be a mapping")
+        exports.append(
+            ExportedStream(
+                stream=_validate_export_stream_path(str(item.get("stream") or "")),
+                description=str(item.get("description") or "").strip(),
+                sensitivity=str(item.get("sensitivity") or "").strip(),
+                owner=str(item.get("owner") or "").strip(),
+                allowed_readers=_as_string_list(item.get("allowed_readers")),
+                allowed_writers=_as_string_list(item.get("allowed_writers")),
+                review_required=bool(item.get("review_required", False)),
+            )
+        )
+    return exports
+
+
+def read_repo_identity(repo_path: str | Path) -> RepoIdentity:
+    repo = Path(repo_path).expanduser().resolve()
+    _require_lettuce_repo(repo)
+    return _normalize_repo_identity(_read_lettuce_yaml(repo / "lettuce.yml"))
+
+
+def read_exported_streams(repo_path: str | Path) -> list[ExportedStream]:
+    repo = Path(repo_path).expanduser().resolve()
+    _require_lettuce_repo(repo)
+    config = _read_lettuce_yaml(repo / "lettuce.yml")
+    _normalize_repo_identity(config)
+    return _normalize_exported_streams(config)
+
+
+def _render_lettuce_config(
+    *,
+    org: str,
+    operator: str,
+    default_model: str,
+    created_at: str,
+    repo_type: str,
+    owner_kind: str,
+    role_agent_id: str | None,
+    permission_basis: str,
+    visibility: str,
+    exports: list[dict[str, Any]] | None,
+) -> str:
+    identity = _normalize_repo_identity(
+        {
+            "type": repo_type,
+            "org": org,
+            "owner_kind": owner_kind,
+            "operator": operator,
+            "role_agent_id": role_agent_id,
+            "permission_basis": permission_basis,
+            "visibility": visibility,
+        }
+    )
+    normalized_exports = _normalize_exported_streams({"exports": exports or []})
+    lines = [
+        "lettuce_version: 0.1.0",
+        f"type: {identity.repo_type}",
+        f"owner_kind: {identity.owner_kind}",
+        f"operator: {identity.operator}",
+        f"org: {identity.org}",
+        f"role_agent_id: {identity.role_agent_id if identity.role_agent_id is not None else 'null'}",
+        f"permission_basis: {identity.permission_basis}",
+        f"visibility: {identity.visibility}",
+        f"created_at: {created_at}",
+        f"default_model: {default_model}",
+    ]
+    if not normalized_exports:
+        lines.append("exports: []")
+        return "\n".join(lines) + "\n"
+    lines.append("exports:")
+    for export in normalized_exports:
+        lines.append(f"  - stream: {export.stream}")
+        lines.append(f"    description: {export.description}")
+        lines.append(f"    sensitivity: {export.sensitivity}")
+        lines.append(f"    owner: {export.owner}")
+        lines.append(f"    allowed_readers: {_format_frontmatter_value(export.allowed_readers)}")
+        lines.append(f"    allowed_writers: {_format_frontmatter_value(export.allowed_writers)}")
+        lines.append(f"    review_required: {_format_frontmatter_value(export.review_required)}")
+    return "\n".join(lines) + "\n"
+
+
 def _default_handler_md(handler_id: str, name: str, handler_type: str, subscribes: str, publishes: str, body: str) -> str:
     return f"""---
 id: {handler_id}
@@ -391,19 +607,30 @@ def init_repo(
     org: str,
     operator: str,
     default_model: str = "claude-sonnet-4",
+    repo_type: str = "personal",
+    owner_kind: str = "human_operator",
+    role_agent_id: str | None = None,
+    permission_basis: str = "github-user",
+    visibility: str = "private",
+    exports: list[dict[str, Any]] | None = None,
     initialize_git: bool = True,
 ) -> list[Path]:
     repo = Path(repo_path).expanduser().resolve()
     repo.mkdir(parents=True, exist_ok=True)
     created_at = now_utc().replace(microsecond=0).isoformat().replace("+00:00", "Z")
     files: dict[str, str] = {
-        "lettuce.yml": f"""lettuce_version: 0.1.0
-type: personal
-operator: {operator}
-org: {org}
-created_at: {created_at}
-default_model: {default_model}
-""",
+        "lettuce.yml": _render_lettuce_config(
+            org=org,
+            operator=operator,
+            default_model=default_model,
+            created_at=created_at,
+            repo_type=repo_type,
+            owner_kind=owner_kind,
+            role_agent_id=role_agent_id,
+            permission_basis=permission_basis,
+            visibility=visibility,
+            exports=exports,
+        ),
         ".gitignore": ".lettuce/\n",
         "handlers/lenses/default-lens.md": _default_handler_md(
             "default-lens",
@@ -1306,7 +1533,7 @@ def _append_log(repo: Path, entry: dict[str, Any]) -> None:
 
 
 def _repo_config(repo: Path) -> dict[str, Any]:
-    return _read_simple_yaml(repo / "lettuce.yml")
+    return _read_lettuce_yaml(repo / "lettuce.yml")
 
 
 def _agent_instructions_path(repo: Path) -> Path:

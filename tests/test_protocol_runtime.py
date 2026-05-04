@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import patch
 
 from lettuce.openclaw_provider import build_prompt, extract_json_object, run_openclaw
-from lettuce.protocol_runtime import add_handler, add_stream_event, approve_review, configure_source, configure_subscription, decline_review, ensure_source_config, import_source_event, ingest_email_signal, init_repo, list_reviews, read_logs, read_source_record, read_stream_events, run_once, status
+from lettuce.protocol_runtime import add_handler, add_stream_event, approve_review, configure_source, configure_subscription, decline_review, ensure_source_config, import_source_event, ingest_email_signal, init_repo, list_reviews, read_exported_streams, read_logs, read_repo_identity, read_source_record, read_stream_events, run_once, status
 
 
 class ProtocolRuntimeTests(unittest.TestCase):
@@ -17,6 +17,8 @@ class ProtocolRuntimeTests(unittest.TestCase):
             repo = Path(tmp) / "lettuce-acme-ken"
             init_repo(repo, org="acme", operator="ken", initialize_git=False)
             agent_text = (repo / "LETTUCE_AGENT.md").read_text(encoding="utf-8")
+            config_text = (repo / "lettuce.yml").read_text(encoding="utf-8")
+            identity = read_repo_identity(repo)
 
             self.assertTrue((repo / "lettuce.yml").exists())
             self.assertTrue((repo / "LETTUCE_AGENT.md").exists())
@@ -24,11 +26,122 @@ class ProtocolRuntimeTests(unittest.TestCase):
             self.assertTrue((repo / "handlers/routers/brain-router.md").exists())
             self.assertTrue((repo / "streams/inbox/direct/.gitkeep").exists())
             self.assertTrue((repo / "brain/general/.gitkeep").exists())
-            self.assertIn("operator: ken", (repo / "lettuce.yml").read_text(encoding="utf-8"))
+            self.assertIn("operator: ken", config_text)
+            self.assertIn("owner_kind: human_operator", config_text)
+            self.assertIn("permission_basis: github-user", config_text)
+            self.assertIn("exports: []", config_text)
             self.assertIn(".lettuce/", (repo / ".gitignore").read_text(encoding="utf-8"))
             self.assertIn('says "run Lettuce on this"', agent_text)
             self.assertIn(f"Default repo path: `{repo}`", agent_text)
             self.assertIn("must not overwrite global agent identity", agent_text)
+            self.assertEqual(identity.repo_type, "personal")
+            self.assertEqual(identity.owner_kind, "human_operator")
+            self.assertEqual(identity.permission_basis, "github-user")
+            self.assertIsNone(identity.role_agent_id)
+
+    def test_read_repo_identity_defaults_missing_fields_for_existing_repo(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "lettuce-acme-ken"
+            repo.mkdir(parents=True, exist_ok=True)
+            (repo / "lettuce.yml").write_text(
+                """lettuce_version: 0.1.0
+operator: ken
+org: acme
+created_at: 2026-05-04T00:00:00Z
+default_model: claude-sonnet-4
+""",
+                encoding="utf-8",
+            )
+
+            identity = read_repo_identity(repo)
+            exports = read_exported_streams(repo)
+
+            self.assertEqual(identity.repo_type, "personal")
+            self.assertEqual(identity.owner_kind, "human_operator")
+            self.assertEqual(identity.permission_basis, "github-user")
+            self.assertEqual(identity.visibility, "private")
+            self.assertIsNone(identity.role_agent_id)
+            self.assertEqual(exports, [])
+
+    def test_read_repo_identity_supports_company_hub_repo(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "lettuce-acme-hub"
+            init_repo(
+                repo,
+                org="acme",
+                operator="ken",
+                repo_type="company_hub",
+                exports=[
+                    {
+                        "stream": "streams/shared/customers",
+                        "description": "Curated account updates",
+                        "sensitivity": "internal",
+                        "owner": "sales",
+                        "allowed_readers": ["github:team:acme/customer-facing"],
+                        "allowed_writers": ["github:team:acme/sales"],
+                        "review_required": True,
+                    }
+                ],
+                initialize_git=False,
+            )
+
+            identity = read_repo_identity(repo)
+            exports = read_exported_streams(repo)
+
+            self.assertEqual(identity.repo_type, "company_hub")
+            self.assertEqual(identity.owner_kind, "human_operator")
+            self.assertEqual(len(exports), 1)
+            self.assertEqual(exports[0].stream, "streams/shared/customers")
+            self.assertEqual(exports[0].allowed_readers, ["github:team:acme/customer-facing"])
+            self.assertTrue(exports[0].review_required)
+
+    def test_read_repo_identity_supports_role_agent_repo(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "lettuce-acme-support-agent"
+            init_repo(
+                repo,
+                org="acme",
+                operator="ken",
+                owner_kind="role_agent",
+                role_agent_id="support-agent",
+                permission_basis="github-app",
+                initialize_git=False,
+            )
+
+            identity = read_repo_identity(repo)
+
+            self.assertEqual(identity.repo_type, "personal")
+            self.assertEqual(identity.owner_kind, "role_agent")
+            self.assertEqual(identity.role_agent_id, "support-agent")
+            self.assertEqual(identity.permission_basis, "github-app")
+
+    def test_read_exported_streams_rejects_unsafe_export_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "lettuce-acme-ken"
+            repo.mkdir(parents=True, exist_ok=True)
+            (repo / "lettuce.yml").write_text(
+                """lettuce_version: 0.1.0
+type: personal
+owner_kind: human_operator
+operator: ken
+org: acme
+role_agent_id: null
+permission_basis: github-user
+visibility: private
+exports:
+  - stream: brain/general
+    description: unsafe
+    sensitivity: internal
+    owner: sales
+    allowed_readers: [github:team:acme/customer-facing]
+    allowed_writers: [github:team:acme/sales]
+    review_required: true
+""",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "streams/shared/"):
+                read_exported_streams(repo)
 
     def test_default_lens_prompts_include_skip_boundaries(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

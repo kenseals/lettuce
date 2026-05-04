@@ -108,6 +108,8 @@ The first repeatable source connector is deliberately local and boring: `add-sou
 
 `subscribe` records remote/shared stream subscription intent under `subscriptions/`. For local simulation, `pull-subscriptions` can now import new events from another local Lettuce repo into a scoped `streams/shared/*` mirror with subscription checkpoints and preserved provenance. Optional policy strings such as `allow_streams=streams/shared/*` block subscription writes outside allowed local stream paths. See `docs/trust-boundary.md` for the formal mutation rules around `brain/*`, `sources/*`, `reviews/*`, and shared-stream mirrors. This proves the future org-distributed context path without requiring GitHub federation yet.
 
+When a repo declares `exports` in `lettuce.yml`, it is intentionally marking specific `streams/shared/*` paths as shareable. Those export declarations are editorial metadata for agents and runtime checks; they never grant access beyond the underlying GitHub repo permissions.
+
 ## Minimal Maintenance Loop
 
 Lettuce v0 does not run its own daemon or own chat/email/OAuth/cron surfaces. The external runtime or cron decides when to check, then calls existing commands such as `lettuce status`, `lettuce ingest-*`, `lettuce run --review`, `lettuce reviews`, and later subscription-pull helpers.
