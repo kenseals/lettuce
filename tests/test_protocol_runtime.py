@@ -810,6 +810,33 @@ print(json.dumps({
             self.assertIn("stream: brain/decisions", text)
             self.assertIn("policy: read-only", text)
 
+    def test_configure_subscription_rejects_non_shared_local_stream(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "lettuce-acme-ken"
+            init_repo(repo, org="acme", operator="ken", initialize_git=False)
+
+            with self.assertRaisesRegex(ValueError, "streams/shared/"):
+                configure_subscription(
+                    repo,
+                    "github.com/acme/lettuce-acme",
+                    stream="brain/decisions",
+                    local_stream="brain/decisions",
+                )
+
+    def test_configure_subscription_rejects_non_shared_allow_streams_policy(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "lettuce-acme-ken"
+            init_repo(repo, org="acme", operator="ken", initialize_git=False)
+
+            with self.assertRaisesRegex(ValueError, "streams/shared/\\*"):
+                configure_subscription(
+                    repo,
+                    "github.com/acme/lettuce-acme",
+                    stream="brain/decisions",
+                    local_stream="streams/shared/decisions",
+                    policy="allow_streams=brain/*",
+                )
+
     def test_subscribe_cli_reports_clean_error_before_init(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp) / "lettuce-acme-ken"
@@ -863,6 +890,32 @@ print(json.dumps({
             self.assertEqual(output["stream"], "brain/customers")
             self.assertEqual(output["status"], "configured")
             self.assertIn("local_stream: streams/shared/customers", text)
+
+    def test_subscribe_cli_rejects_non_shared_local_stream(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "lettuce-acme-ken"
+            init_repo(repo, org="acme", operator="ken", initialize_git=False)
+            completed = subprocess.run(
+                [
+                    "python3",
+                    "-m",
+                    "lettuce.cli",
+                    "subscribe",
+                    str(repo),
+                    "--remote",
+                    "github.com/acme/lettuce-acme",
+                    "--stream",
+                    "brain/customers",
+                    "--local-stream",
+                    "brain/customers",
+                ],
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(completed.returncode, 2)
+            self.assertIn("streams/shared/", completed.stderr)
+            self.assertNotIn("Traceback", completed.stderr)
 
     def test_add_source_cli_imports_stdin_and_can_run_handlers(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

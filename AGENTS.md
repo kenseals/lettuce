@@ -46,9 +46,10 @@ The CLI is the agent's reliable helper for file/git/schema/checkpoint work. It i
 4. `docs/company-context-for-agents.md` — product frame and boundaries.
 5. `docs/agent-operated-onboarding.md` — detailed onboarding phases.
 6. `docs/source-discovery-recipes.md` — source setup and sampling rules.
-7. `docs/LETTUCE_VERIFY.md` — post-setup verification runbook.
-8. `docs/LETTUCE_RESOLVER.md` — ongoing-use resolver after setup.
-9. `HANDLERS.md` and `LETTUCE_V0_SPEC.md` — protocol details if you are changing handlers/runtime behavior.
+7. `docs/trust-boundary.md` — formal trust modes, operation classes, and mutation rules.
+8. `docs/LETTUCE_VERIFY.md` — post-setup verification runbook.
+9. `docs/LETTUCE_RESOLVER.md` — ongoing-use resolver after setup.
+10. `HANDLERS.md` and `LETTUCE_V0_SPEC.md` — protocol details if you are changing handlers/runtime behavior.
 
 ## Core trust boundary
 
@@ -93,6 +94,7 @@ During first setup:
 - **Smoke test:** `TRY_THIS_FIRST.md`.
 - **Verify setup:** `docs/LETTUCE_VERIFY.md`.
 - **Operate Lettuce after setup:** `docs/LETTUCE_RESOLVER.md`.
+- **Trust boundary and mutation rules:** `docs/trust-boundary.md`.
 - **Human/product overview:** `README.md` and `docs/company-context-for-agents.md`.
 - **Source setup:** `docs/source-discovery-recipes.md` and `docs/source-recipes/`.
 - **OpenClaw-specific usage:** `skills/openclaw-lettuce/SKILL.md`.

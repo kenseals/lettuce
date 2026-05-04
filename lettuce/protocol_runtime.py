@@ -254,6 +254,38 @@ def now_utc() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _validate_relative_stream_path(path: str, *, field_name: str) -> str:
+    value = path.strip()
+    if not value:
+        raise ValueError(f"{field_name} is required")
+    if value.startswith("/") or value.startswith("../") or "/../" in value or value == "..":
+        raise ValueError(f"{field_name} must stay within the Lettuce repo")
+    normalized = Path(value)
+    if normalized.is_absolute() or ".." in normalized.parts:
+        raise ValueError(f"{field_name} must stay within the Lettuce repo")
+    return value
+
+
+def _validate_subscription_local_stream(path: str) -> str:
+    value = _validate_relative_stream_path(path, field_name="subscription local_stream")
+    if not value.startswith("streams/shared/"):
+        raise ValueError("subscription local_stream must stay under streams/shared/")
+    return value
+
+
+def _validate_subscription_policy(policy: str) -> str:
+    value = policy.strip()
+    if not value:
+        raise ValueError("subscription policy is required")
+    if value.startswith("allow_streams="):
+        allowed = value.split("=", 1)[1].strip()
+        if not allowed:
+            raise ValueError("subscription allow_streams policy requires a path")
+        if allowed != "streams/shared/*":
+            raise ValueError("subscription allow_streams policy must stay within streams/shared/*")
+    return value
+
+
 def _default_handler_md(handler_id: str, name: str, handler_type: str, subscribes: str, publishes: str, body: str) -> str:
     return f"""---
 id: {handler_id}
@@ -773,6 +805,7 @@ def configure_subscription(
         raise ValueError("subscription remote is required")
     if not resolved_stream:
         raise ValueError("subscription stream is required")
+    resolved_stream = _validate_relative_stream_path(resolved_stream, field_name="subscription stream")
     source_id = _slugify(name or f"{resolved_remote}-{resolved_stream}")
     created_at = now_utc().replace(microsecond=0).isoformat().replace("+00:00", "Z")
     frontmatter = {
@@ -783,13 +816,13 @@ def configure_subscription(
         "created_at": created_at,
     }
     if local_stream:
-        frontmatter["local_stream"] = local_stream
+        frontmatter["local_stream"] = _validate_subscription_local_stream(local_stream)
     if policy:
-        frontmatter["policy"] = policy
+        frontmatter["policy"] = _validate_subscription_policy(policy)
     body = (
         f"# {name or source_id}\n\n"
         f"Subscribe this Lettuce to `{resolved_remote}:{resolved_stream}`.\n\n"
-        "Remote git fetch, policy checks, and checkpointed polling are intentionally follow-up runtime work. This record keeps the operator-owned subscription intent in markdown first.\n"
+        "Remote git fetch, trust-mode checks, policy checks, and checkpointed polling are intentionally follow-up runtime work. This record keeps the operator-owned subscription intent in markdown first.\n"
     )
     path = repo / "subscriptions" / f"{source_id}.md"
     path.parent.mkdir(parents=True, exist_ok=True)
