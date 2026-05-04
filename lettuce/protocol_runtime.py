@@ -346,6 +346,18 @@ def _validate_subscription_policy(policy: str) -> str:
     return value
 
 
+def _resolve_local_subscription_remote(remote: str) -> Path | None:
+    stripped = remote.strip()
+    if not stripped:
+        return None
+    candidate = Path(stripped).expanduser()
+    if candidate.is_absolute():
+        return candidate.resolve()
+    if stripped.startswith(".") or stripped.startswith(".."):
+        return candidate.resolve()
+    return None
+
+
 def _parse_lettuce_yaml(text: str) -> dict[str, Any]:
     config: dict[str, Any] = {}
     exports: list[dict[str, Any]] = []
@@ -484,6 +496,34 @@ def read_exported_streams(repo_path: str | Path) -> list[ExportedStream]:
     config = _read_lettuce_yaml(repo / "lettuce.yml")
     _normalize_repo_identity(config)
     return _normalize_exported_streams(config)
+
+
+def _verify_remote_export_policy(remote: str, stream: str) -> None:
+    remote_repo = _resolve_local_subscription_remote(remote)
+    if remote_repo is None:
+        return
+
+    def _policy_error(reason: str) -> ValueError:
+        return ValueError(
+            f"subscription denied by remote export policy: remote_repo={remote_repo} stream={stream} reason={reason}"
+        )
+
+    if not remote_repo.exists():
+        raise _policy_error("remote repo path does not exist")
+    if not remote_repo.is_dir():
+        raise _policy_error("remote repo path is not a directory")
+
+    config_path = remote_repo / "lettuce.yml"
+    if not config_path.exists():
+        raise _policy_error("missing lettuce.yml")
+
+    try:
+        exports = read_exported_streams(remote_repo)
+    except (FileNotFoundError, ValueError) as exc:
+        raise _policy_error(str(exc)) from exc
+
+    if not any(export.stream == stream for export in exports):
+        raise _policy_error("stream is not explicitly exported")
 
 
 def _render_lettuce_config(
@@ -1302,6 +1342,7 @@ def configure_subscription(
     if not resolved_stream:
         raise ValueError("subscription stream is required")
     resolved_stream = _validate_relative_stream_path(resolved_stream, field_name="subscription stream")
+    _verify_remote_export_policy(resolved_remote, resolved_stream)
     source_id = _slugify(name or f"{resolved_remote}-{resolved_stream}")
     created_at = now_utc().replace(microsecond=0).isoformat().replace("+00:00", "Z")
     frontmatter = {
