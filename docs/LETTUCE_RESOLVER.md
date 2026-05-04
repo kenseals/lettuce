@@ -89,7 +89,7 @@ Reach for source records when the operator asks to connect, change, or inspect o
 Follow this order:
 
 1. Check whether the runtime already has access.
-2. Classify the source as `available_now`, `needs_setup`, or `defer`.
+2. Classify the source as `available_now`, `needs_setup`, `defer`, or manual-only. Treat manual-only as a recipe posture for operator-forwarded/runtime-triggered sources, then persist the closest truthful CLI `access_status`.
 3. Record or update the source contract under `sources/*`.
 4. Sample small before any backfill.
 
@@ -105,6 +105,7 @@ lettuce add-source <type> <repo-path> \
 ```
 
 The runtime owns the real connector, browser, OAuth, forwarding, export, or polling work. Lettuce records the durable contract so future runs are inspectable.
+Use `docs/source-recipes/` when you need the exact operator questions, sample path, verification checks, and handoff language for direct/manual or email setup.
 
 ## Trigger: Review Approve, Edit, Or Decline
 

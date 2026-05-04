@@ -81,7 +81,7 @@ Expected:
 
 - There is a source record for manual/direct/operator-forwarded signal, or an equivalent repo-local instruction.
 - It says the trigger behavior clearly, for example: operator can say “run Lettuce on this.”
-- It records access status as available now/manual-only and includes a sample/privacy policy.
+- It records a truthful CLI `access_status` such as `available_now` and explicitly says the source is manual-only/operator-triggered in the source record text or sample policy.
 
 If it fails:
 
@@ -101,7 +101,7 @@ Inspect source records for email, transcripts, GitHub/Linear/Notion/Slack, local
 
 Expected:
 
-- Each candidate source has a status such as `available_now`, `needs_setup`, `defer`, or manual-only.
+- Each candidate source has a truthful CLI `access_status` such as `available_now`, `needs_setup`, `defer`, or `unknown`, plus any manual-only/operator-triggered behavior called out in the source record when relevant.
 - The setup next action is specific when setup is needed.
 - The record does not pretend OAuth, polling, forwarding, or webhook access exists when the runtime does not actually have it.
 - No bulk ingestion happened during first setup unless the operator explicitly asked.

@@ -137,8 +137,9 @@ Do not bulk-ingest during onboarding. A first source is “set up” when source
 For each candidate source, classify:
 
 - `available_now`: agent already has access and can ingest with standing consent or explicit approval.
-- `needs_operator_setup`: operator must connect OAuth, forwarding, export, webhook, MCP, or browser session.
-- `not_now`: useful later, but not worth onboarding friction today.
+- `needs_setup`: operator must connect OAuth, forwarding, export, webhook, MCP, or browser session.
+- `defer`: useful later, but not worth onboarding friction today.
+- `manual-only`: the runtime can ingest only when the operator forwards, pastes, exports, or explicitly points to the source. Treat this as a recipe posture and persist the closest truthful CLI `access_status`.
 
 ### 4. Record Source Intent
 
@@ -255,7 +256,7 @@ Future multi-operator setup: once shared streams are implemented, onboarding sho
 
 ## Source Recipes
 
-Detailed source-discovery recipes live in `docs/source-discovery-recipes.md`. Use those before building new adapters or asking the operator for setup.
+Detailed source-discovery recipes live in `docs/source-discovery-recipes.md`. For concrete agent-readable patterns and handoff language, use `docs/source-recipes/README.md` plus the matching recipe under `docs/source-recipes/` before building new adapters or asking the operator for setup.
 
 ### Direct Input
 

@@ -52,6 +52,8 @@ Required source-record fields, either explicit or implied by CLI defaults:
 - `privacy_notes`: what to exclude or redact;
 - `setup_next_action`: the smallest next step if access is not ready.
 
+`manual-only` is a useful agent recipe classification for operator-forwarded/runtime-triggered sources, but the current CLI persists `access_status` as `available_now`, `needs_setup`, `defer`, or `unknown`. Record manual-only behavior in the source record text and sample policy instead of inventing a new enum.
+
 Example:
 
 ```bash
