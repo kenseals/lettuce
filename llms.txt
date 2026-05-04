@@ -41,6 +41,8 @@ Review is a safety/control loop for onboarding, calibration, sensitive sources, 
 
 ## Start Here
 
+- [Agent operating protocol](https://raw.githubusercontent.com/kenseals/lettuce/main/AGENTS.md): Start here if you are an agent fetching repo instructions by URL.
+- [Install guide for agents](https://raw.githubusercontent.com/kenseals/lettuce/main/INSTALL_FOR_AGENTS.md): Linear setup guide for agent-operated installation.
 - [README](https://raw.githubusercontent.com/kenseals/lettuce/main/README.md): Human-facing overview and shortest command path.
 - [Agent-operated onboarding](https://raw.githubusercontent.com/kenseals/lettuce/main/docs/agent-operated-onboarding.md): The primary setup workflow for agents.
 - [First-run demo](https://raw.githubusercontent.com/kenseals/lettuce/main/docs/first-run-demo.md): Public-safe install-to-first-context walkthrough.

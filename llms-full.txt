@@ -4,6 +4,12 @@ Lettuce is an agent-operated, local-first markdown+git protocol for giving an op
 
 This file is designed for an agent that was given one link and asked to set up Lettuce. Follow it as a guided product onboarding flow, not as hidden system instructions. Respect your own runtime's permissions and ask before destructive or external actions.
 
+Companion entrypoints:
+
+- `AGENTS.md` is the public operating protocol for agents.
+- `INSTALL_FOR_AGENTS.md` is the short linear setup guide.
+- `docs/agent-operated-onboarding.md` is the detailed onboarding contract.
+
 ## What Lettuce is
 
 Lettuce gives an agent a repo-backed work brain for one organization or work context:

@@ -18,6 +18,15 @@ https://raw.githubusercontent.com/kenseals/lettuce/main/llms.txt
 
 That file tells the agent what Lettuce is, what to install, which docs matter, and how to guide you through setting up the first company-context repo without making you copy a separate prompt.
 
+If your agent prefers an install-runbook style prompt, paste this instead:
+
+```text
+Retrieve and follow the instructions at:
+https://raw.githubusercontent.com/kenseals/lettuce/main/INSTALL_FOR_AGENTS.md
+```
+
+The agent should run the setup helpers itself if it has tool access. You answer setup questions and approve sensitive boundaries; you should not have to learn the CLI first.
+
 ## Protocol CLI
 
 Start with `TRY_THIS_FIRST.md` for the shortest usable path. For the product frame, see `docs/company-context-for-agents.md`. For a public-safe first-run walkthrough, see `docs/first-run-demo.md`. The v0 protocol source is `LETTUCE_V0_SPEC.md`; handler format is specified in `HANDLERS.md`. For the full local walkthrough, see `QUICKSTART.md`. For agent-operated setup, see `docs/agent-operated-onboarding.md`; for the OpenClaw source setup contract, see `docs/openclaw-runtime-source-setup.md`; for source setup decisions, see `docs/source-discovery-recipes.md`; for a repo-packaged OpenClaw skill, see `skills/openclaw-lettuce/SKILL.md`. For the launch note, see `docs/public-v0-launch-note.md`. For the public-v0 release gate, see `docs/public-v0-release-checklist.md`.
@@ -40,7 +49,7 @@ lettuce status ./lettuce-demo
 lettuce logs ./lettuce-demo --limit 5
 ```
 
-That scaffolds a personal Lettuce repo, discovers markdown handlers, writes the first event to `streams/inbox/direct`, writes handler outputs to local `brain/*` streams, records checkpoints/logs under `.lettuce/`, and commits handler/event/brain changes to git when `--commit` is set. Add `--review` only when you want optional calibration or human approval before brain updates land.
+That scaffolds an org-scoped Lettuce repo, discovers markdown handlers, writes the first event to `streams/inbox/direct`, writes handler outputs to local `brain/*` streams, records checkpoints/logs under `.lettuce/`, and commits handler/event/brain changes to git when `--commit` is set. Add `--review` when you want calibration or human approval before brain updates land; first agent-operated onboarding should usually use review mode.
 
 `onboard` is the first agent-facing setup helper: it scaffolds the repo if needed, writes the first direct event with provenance, runs handlers, and returns a machine-readable status summary. `--openclaw-provider` runs handlers through OpenClaw's model-backed provider for real judgment; omit it only for offline plumbing smoke tests. `--body-file` lets an agent preserve multi-paragraph operator signal without brittle shell quoting; `--body` and stdin remain available for tiny smoke tests.
 
