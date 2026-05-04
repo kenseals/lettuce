@@ -82,6 +82,7 @@ Expected:
 - There is a source record for manual/direct/operator-forwarded signal, or an equivalent repo-local instruction.
 - It says the trigger behavior clearly, for example: operator can say “run Lettuce on this.”
 - It records a truthful CLI `access_status` such as `available_now` and explicitly says the source is manual-only/operator-triggered in the source record text or sample policy.
+- `LETTUCE_AGENT.md` exists at the repo root and points runtime-specific skills/agents to the correct repo, review policy, and source-record inspection path.
 
 If it fails:
 
@@ -167,6 +168,7 @@ Ask the agent/operator-facing setup summary to include:
 - what first event was ingested;
 - what review proposals were created or skipped;
 - how the operator triggers future manual/direct use;
+- where the repo-local instruction file lives, usually `<repo-path>/LETTUCE_AGENT.md`;
 - whether any recurring cadence exists;
 - the next useful source to connect or sample.
 
