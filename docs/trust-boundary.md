@@ -38,6 +38,20 @@ Role-agent repos follow the same boundary. They are first-class Lettuce repos wi
 
 Optional `company_hub` repos follow the same outer GitHub boundary. They narrow behavior further: shared pulls and mirrors may only write under `streams/shared/*`, and the hub should store curated shared context rather than every operator's raw inbox or transcripts.
 
+Accepted company-hub truth should carry explicit status metadata so conflicts and supersession stay legible:
+
+```yaml
+status: active # active | superseded | disputed | draft
+decision_owner: sarah
+supersedes: previous-event-id
+effective_at: 2026-05-04T00:00:00Z
+source_events:
+  - github.com/acme/lettuce-acme-ken:streams/shared/customers/event.md
+confidence: medium
+```
+
+Treat these fields as append-only editorial state. If accepted truth becomes disputed or is replaced, write a new event with `status: disputed` or `status: active` plus `supersedes`; do not silently rewrite the older event away.
+
 ## Trust Modes
 
 ### 1. Local CLI

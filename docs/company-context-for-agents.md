@@ -105,6 +105,20 @@ An org may also keep an optional `company_hub` repo as a coordination point for 
 
 Today that shared-stream story is only partially shipped: export declarations, subscription records, local export-policy checks, and repo identity scaffolding exist; real pull/mirror execution and broader policy verification are still roadmap work. See roadmap issues `#20`, `#35`, `#36`, `#37`, and `#38`.
 
+Accepted company-hub truth should carry explicit status metadata so agents can reason about conflicts and freshness:
+
+```yaml
+status: active # active | superseded | disputed | draft
+decision_owner: sarah
+supersedes: previous-event-id
+effective_at: 2026-05-04T00:00:00Z
+source_events:
+  - github.com/acme/lettuce-acme-ken:streams/shared/customers/event.md
+confidence: medium
+```
+
+Do not silently overwrite disputed or superseded company truth in place. Publish a new event with explicit `status` and `supersedes` metadata so the older entry remains visible.
+
 ## What v0 is honest about
 
 Working now:

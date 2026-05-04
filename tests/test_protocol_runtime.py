@@ -110,6 +110,9 @@ default_model: claude-sonnet-4
             self.assertTrue((repo / "streams/shared/incidents/.gitkeep").exists())
             self.assertTrue((repo / "streams/shared/projects/.gitkeep").exists())
             self.assertTrue((repo / "docs/company-hub/README.md").exists())
+            self.assertTrue((repo / "docs/company-hub/accepted-truth-metadata.md").exists())
+            self.assertTrue((repo / "docs/company-hub/example-decision.md").exists())
+            self.assertTrue((repo / "docs/company-hub/example-customer-fact.md").exists())
             self.assertTrue((repo / "docs/company-hub/stream-catalog.md").exists())
             self.assertTrue((repo / "docs/company-hub/owners-and-policies.md").exists())
             self.assertIn("type: company_hub", config_text)
@@ -124,6 +127,15 @@ default_model: claude-sonnet-4
             )
             self.assertIn("shared stream curation", agent_text)
             self.assertIn("may only write under `streams/shared/*`", agent_text)
+            self.assertIn("Do not silently overwrite disputed or superseded company truth", agent_text)
+
+            metadata_text = (repo / "docs/company-hub/accepted-truth-metadata.md").read_text(encoding="utf-8")
+            decision_example = (repo / "docs/company-hub/example-decision.md").read_text(encoding="utf-8")
+            customer_example = (repo / "docs/company-hub/example-customer-fact.md").read_text(encoding="utf-8")
+
+            self.assertIn("status: active # active | superseded | disputed | draft", metadata_text)
+            self.assertIn("supersedes:", decision_example)
+            self.assertIn("status: disputed", customer_example)
 
     def test_read_repo_identity_supports_role_agent_repo(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
