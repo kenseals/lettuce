@@ -27,7 +27,7 @@ From the repo root:
 bash examples/synthetic-corpus/run.sh /tmp/lettuce-synthetic-demo
 ```
 
-The default run uses the deterministic fallback provider and the public-v0 review gate. It proves stream, handler, review, checkpoint, log, and git plumbing, but it is not a model-quality judgment. It writes handler outputs to `reviews/pending` by default; set `LETTUCE_SYNTHETIC_REVIEW=false` only when you intentionally want direct-publish plumbing behavior.
+The default run uses the deterministic fallback provider and direct brain writes. It proves stream, handler, brain, checkpoint, log, and git plumbing, but it is not a model-quality judgment. Set `LETTUCE_SYNTHETIC_REVIEW=true` only when you intentionally want optional review-mode plumbing behavior.
 
 For real model judgment:
 
@@ -44,7 +44,7 @@ This corpus is not a benchmark. It is a product QA fixture. Inspect whether Lett
 - skips irrelevant or personal-ish noise
 - routes account/customer context differently from product discovery
 - preserves source provenance
-- creates pending review markdown outputs
+- creates durable `brain/*` markdown outputs, or clear skip/noise logs
 - exposes missing handlers, such as a future email normalizer or action router
 
 The `expected_handlers` field in `manifest.json` is an expectation guide, not a strict assertion. Model-backed handler judgment may legitimately skip or publish differently if the note content changes.

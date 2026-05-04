@@ -10,12 +10,21 @@ Lettuce gives an agent a repo-backed work brain for one organization or work con
 
 - `streams/*` hold incoming and shared signal events.
 - `handlers/*` hold markdown lenses/routers/helpers that interpret events.
-- `reviews/pending/*` holds proposed brain updates.
-- `reviews/approved/*` and `reviews/declined/*` preserve review decisions.
-- `brain/*` holds durable approved company context.
+- `brain/*` holds durable company context the agent can use later.
+- `sources/*` records which signal sources should feed the work brain and their setup state.
+- `subscriptions/*` records shared-stream intent between Lettuces.
 - `.lettuce/*` holds local runtime checkpoints and logs.
+- `reviews/*` exists as an optional safety/calibration mechanism, not as the normal product loop.
 
-The review loop is the safety mechanism. The product is company context for agents.
+The product is not "make the human review AI summaries." The product is company context for agents: durable, scoped, portable context that helps future agent work start with the right memory.
+
+## Runtime boundary
+
+The agent runtime owns chat surfaces, inboxes, browser sessions, OAuth grants, credentials, tools, and operator conversation.
+
+Lettuce owns the durable protocol state: repo, streams, handlers, source records, subscriptions, brain updates, checkpoints, provenance, and git commits.
+
+Do not create a new Telegram bot, Gmail integration, Discord adapter, browser automation layer, or OAuth service inside Lettuce just because a source is mentioned. If your runtime can access a signal with operator permission, write it into Lettuce with provenance.
 
 ## Human onboarding contract
 
@@ -23,33 +32,28 @@ Do not begin by silently installing, initializing, and ingesting the setup reque
 
 Your first response should orient the human in plain language:
 
-> Lettuce gives your agent a local markdown+git work brain for one company/project. It keeps work context separate from personal memory, turns approved signals into reviewed brain updates, and records which sources should feed that context. I can set up a local Lettuce for one work context now, run one small sample through review mode, then show you exactly what it created before anything becomes durable brain state.
+> Lettuce gives your agent a local markdown+git work brain for one company/project. It keeps that work context separate from personal memory, records which sources should feed it, and lets the agent keep the context fresh from signals it can access. The point is not to make you review every signal. The point is to give your agent durable company context it can use later.
 
 Then say you need a few quick answers before setup:
 
 1. Which work context is this for? Examples: a company, project, client, newsletter, product idea, or team.
 2. Should setup start locally first, or use an existing repo/path?
 3. What signal sources should eventually feed this Lettuce? Examples: direct chat notes, email, call transcripts, GitHub, Linear, Notion, Slack, local files.
-4. What one small meaningful sample signal should be ingested first?
-5. Should the agent run that sample now in review mode?
+4. Which sources can the agent access now, and which should be marked as later/needs setup?
+5. What cadence or trigger should keep it fresh? Examples: manual for now, daily, after meetings, when asked, or a project-specific cron/agent lane.
+6. What one small meaningful sample signal should be ingested first?
 
 If some answers are obvious from the conversation, summarize assumptions and ask for confirmation. Do not infer everything and run setup without a confirmation moment.
 
 The setup request itself is not a good first signal. Use it only if the operator explicitly says to use the setup request as the sample. Prefer a real work signal from the scoped context.
 
-## Runtime boundary
-
-The agent runtime owns chat surfaces, inboxes, browser sessions, OAuth grants, credentials, tools, and operator conversation.
-
-Lettuce owns the durable protocol state: repo, streams, handlers, source records, subscriptions, reviews, brain updates, checkpoints, provenance, and git commits.
-
-Do not create a new Telegram bot, Gmail integration, Discord adapter, browser automation layer, or OAuth service inside Lettuce just because a source is mentioned. If your runtime can access a signal with operator permission, write it into Lettuce with provenance.
-
 ## One-link setup workflow
 
 When the operator gives you `https://github.com/kenseals/lettuce` or this `llms.txt` URL:
 
-1. Install Lettuce.
+1. Explain and ask the onboarding questions above. Wait for confirmation.
+
+2. Install Lettuce.
 
    ```bash
    python3 -m pip install 'git+https://github.com/kenseals/lettuce.git'
@@ -58,15 +62,22 @@ When the operator gives you `https://github.com/kenseals/lettuce` or this `llms.
 
    If the shell cannot find `lettuce`, use `python3 -m lettuce.cli ...` or fix the Python user bin PATH.
 
-2. Ask for and confirm one organization/work context name and operator name.
+3. Create or choose one org-scoped repo.
 
    Keep this separate from personal memory. Example: `--org acme --operator ken`.
 
-3. Ask the operator for one small meaningful sample signal, or use one they already gave you and explicitly confirm it.
+4. Record source intent.
 
-   The first sample should be operator-approved and small. Do not bulk ingest first. Do not use the setup request itself unless the operator explicitly chooses it.
+   For each source the operator named, record whether it is available now, needs setup, deferred, or manual-only. Do not pretend external OAuth/polling exists if it does not.
 
-4. Run onboarding in review mode.
+   ```bash
+   lettuce add-source email ./lettuce-demo --name work-email --access-status needs_setup --setup-next-action "connect forwarding/export before sampling" --commit
+   lettuce add-source transcript ./lettuce-demo --name calls --access-status defer --setup-next-action "choose transcript source later" --commit
+   ```
+
+   Direct chat/current conversation input does not need a source adapter; it can be written with `ingest-direct` or `onboard`.
+
+5. Ingest one small meaningful sample and run handlers.
 
    ```bash
    printf 'Customer says agent context is stale.\n' > /tmp/lettuce-first-signal.md
@@ -78,49 +89,33 @@ When the operator gives you `https://github.com/kenseals/lettuce` or this `llms.
      --source agent.direct \
      --surface chat \
      --consent operator-direct-request \
-     --review \
      --commit
    ```
 
    If you are OpenClaw and model-backed judgment is available, add `--openclaw-provider`.
 
-5. Show pending reviews.
+   Do not add `--review` by default. The normal v0 loop publishes to local `brain/*` streams with git history/provenance. Use `--review` only for optional calibration, sensitive sources, uncertain/high-impact updates, or if the operator explicitly asks to review before updates land.
 
-   ```bash
-   lettuce reviews ./lettuce-demo
-   ```
-
-   Summarize what each proposed update would change, why it exists, and where it would publish (`brain/general`, `brain/discovery`, etc.). Do not show only opaque review titles. Do not approve automatically unless the operator explicitly asked for auto-approval.
-
-6. Approve or decline based on operator direction.
-
-   ```bash
-   lettuce review-approve ./lettuce-demo --first --operator you --commit
-   # or
-   lettuce review-decline ./lettuce-demo --first --operator you --reason "not useful" --commit
-   ```
-
-7. Verify state.
-
-   ```bash
-   lettuce status ./lettuce-demo
-   lettuce logs ./lettuce-demo --limit 5
-   git -C ./lettuce-demo status --short
-   ```
-
-   A clean git state after committed actions is ideal.
-
-8. End with an onboarding handoff.
+6. Show what changed in human terms.
 
    Include:
 
-   - local repo path;
+   - repo path;
    - org/operator scope;
-   - source records configured and their status (`available_now`, `needs_setup`, `defer`);
-   - whether any recurring schedule exists. If none exists, say that new signals are manual/agent-triggered for now;
-   - what was approved, declined, or left pending;
-   - how the operator can use Lettuce next, in one or two examples;
-   - the most useful next source setup step if they want more value.
+   - first signal/event path;
+   - brain entries created, summarized in one sentence each;
+   - source records and setup state;
+   - checkpoint/log status;
+   - whether any recurring schedule exists. If none exists, say new signals are manual/agent-triggered for now.
+
+7. Offer next steps.
+
+   Give 2-3 choices, such as:
+
+   - connect/sample one source now;
+   - set a recurring agent check schedule;
+   - ingest another hand-picked sample;
+   - stop after local setup.
 
 ## Ingesting later signals
 
@@ -134,7 +129,7 @@ lettuce ingest-direct ./lettuce-demo \
   --surface telegram \
   --consent operator-direct-request \
   --commit
-lettuce run ./lettuce-demo --review --commit
+lettuce run ./lettuce-demo --commit
 ```
 
 For operator-selected or forwarded emails:
@@ -155,7 +150,7 @@ For local export folders, use sample-first checkpointed import:
 
 ```bash
 lettuce add-source directory ./lettuce-demo --input /tmp/lettuce-export --sample-limit 3 --commit
-lettuce run ./lettuce-demo --review --commit
+lettuce run ./lettuce-demo --commit
 ```
 
 The directory connector imports new or changed `.md`/`.txt` files and records file provenance.
@@ -173,28 +168,46 @@ For model-backed handler judgment:
 ```bash
 LETTUCE_HANDLER_COMMAND="python3 -m lettuce.openclaw_provider" \
 LETTUCE_OPENCLAW_MODEL="anthropic/claude-haiku-4-5" \
-lettuce run ./lettuce-demo --review --commit
+lettuce run ./lettuce-demo --commit
 ```
 
 The shorthand `--openclaw-provider` on `onboard` and `run` configures this provider command for that run.
+
+## Optional review mode
+
+Review mode is available but should not be the default onboarding story.
+
+Use review mode when:
+
+- a source is sensitive;
+- the handler is new or untrusted;
+- the operator asks to inspect first;
+- the update would trigger external side effects;
+- you are calibrating initial lens quality.
+
+```bash
+lettuce run ./lettuce-demo --review --commit
+lettuce reviews ./lettuce-demo
+lettuce review-approve ./lettuce-demo --first --operator you --commit
+```
 
 ## What success looks like
 
 A successful first setup should produce:
 
-- a local Lettuce repo with `lettuce.yml`, handlers, streams, reviews, and brain folders;
+- a local Lettuce repo with `lettuce.yml`, handlers, streams, sources, brain folders, checkpoints, and logs;
 - one stream event with source/provenance/consent metadata;
-- one or more pending review files;
-- an operator approval or decline decision;
-- approved brain entries only after approval;
+- at least one useful brain/context entry or a clear skip reason;
+- source records that explain what is available now and what needs setup;
 - git commits for committed actions;
-- clean or explainable git status at the end.
+- a clean or explainable git status;
+- a human who understands where the Lettuce is, what feeds it, how it stays fresh, and what to ask the agent next.
 
 ## What not to do
 
 - Do not mix company/work context into personal memory.
-- Do not bulk ingest before a small sample works.
-- Do not publish `brain/*` updates without operator approval unless explicitly requested.
+- Do not bulk-ingest before a small sample works.
+- Do not force the human to approve every routine brain update.
 - Do not hide provenance.
 - Do not pretend Lettuce provisions Gmail, Zoom, Fathom, Telegram, or OAuth.
 - Do not make external side effects such as Linear issue creation unless the operator explicitly asks and the configured tool path is available.

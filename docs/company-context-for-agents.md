@@ -14,7 +14,7 @@ For each `(operator, org)` pair, Lettuce provides:
 - markdown streams for work signal;
 - markdown brain entries for durable company context;
 - markdown handlers/lenses that define what the agent should notice;
-- review gates before durable context changes;
+- provenance and git history for durable context changes;
 - checkpoints/logs so runs are reconstructable;
 - subscription records so separate Lettuces can eventually exchange scoped streams.
 
@@ -30,7 +30,7 @@ Company context needs different properties:
 - **Portable:** the operator should not lose work context when switching agent runtimes.
 - **Inspectable:** humans should be able to read and edit the context directly.
 - **Versioned:** every durable change should be reversible through git.
-- **Reviewable:** the agent should not silently rewrite company truth.
+- **Reversible:** the agent should not make unrecoverable changes to company truth.
 - **Shareable:** teams need scoped streams between agents, not one giant centralized ingest bucket.
 
 ## Current public-v0 loop
@@ -44,14 +44,14 @@ agent writes org-scoped stream event
         ↓
 Lettuce handlers interpret the signal
         ↓
-review proposals are written to reviews/pending
+useful updates become markdown brain entries
         ↓
-operator/agent approves, edits, or declines
+updates are committed with provenance and checkpoints
         ↓
-approved updates become markdown brain entries committed to git
+operator can inspect, edit, revert, or optionally require review for sensitive flows
 ```
 
-This is not the whole company-context system yet. It is the control loop that makes the larger system safe enough to build.
+This is not the whole company-context system yet. It is the control loop that makes the larger system concrete enough to improve.
 
 ## What the agent runtime owns
 
@@ -76,7 +76,7 @@ Lettuce owns the protocol shape:
 - brain directories;
 - source records;
 - subscription records;
-- reviews;
+- optional review records;
 - checkpoints;
 - logs;
 - apply/decline rules.
@@ -89,7 +89,7 @@ The longer-term company version is not one centralized company brain that ingest
 
 It is a set of operator-owned Lettuces, each mirroring what that operator and agent can actually see. Agents can subscribe to shared streams when useful and permitted.
 
-A teammate's agent might publish a scoped customer update. Your agent can subscribe to that stream, review what matters for your work, and update your org-scoped brain without seeing your teammate's entire inbox or personal memory.
+A teammate's agent might publish a scoped customer update. Your agent can subscribe to that stream, decide what matters for your work, and update your org-scoped brain without seeing your teammate's entire inbox or personal memory.
 
 That is the eventual distributed-context shape:
 
@@ -99,7 +99,7 @@ operator A's agent + Lettuce ──shared stream──▶ operator B's agent + L
          └── owned personal work repo                └── owned personal work repo
 ```
 
-GitHub permissions and runtime access remain the outer boundary. Lettuce policies and review gates add narrower editorial control.
+GitHub permissions and runtime access remain the outer boundary. Lettuce policies, provenance, git history, and optional review modes add narrower control.
 
 ## What v0 is honest about
 
@@ -111,8 +111,8 @@ Working now:
 - source intent records;
 - markdown handlers;
 - deterministic and OpenClaw-backed handler execution;
-- pending review proposals;
-- approve/decline lifecycle;
+- direct brain updates with provenance;
+- optional review/approve/decline lifecycle;
 - markdown brain updates;
 - git commits;
 - local tests and CI.

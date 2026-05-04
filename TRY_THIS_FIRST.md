@@ -23,7 +23,7 @@ python3 -m pip install -e .
 ## 2. Create a Lettuce repo from one signal
 
 ```bash
-printf 'Customer says agent context is stale and wants review before durable updates.\n' > /tmp/lettuce-first-signal.md
+printf 'Customer says agent context is stale and wants the agent to remember work context better.\n' > /tmp/lettuce-first-signal.md
 
 lettuce onboard ./lettuce-demo \
   --org demo \
@@ -33,46 +33,41 @@ lettuce onboard ./lettuce-demo \
   --source openclaw.telegram \
   --surface telegram \
   --consent operator-direct-request \
-  --review \
   --commit
 ```
 
 Add `--openclaw-provider` when running inside OpenClaw and you want model-backed handler judgment. Omit it for offline plumbing smoke tests.
 
-## 3. Review proposed updates
-
-```bash
-lettuce reviews ./lettuce-demo
-lettuce review-approve ./lettuce-demo --first --operator you --commit
-# or:
-lettuce review-decline ./lettuce-demo <review-id> --reason "not useful" --operator you --commit
-```
-
-Approve publishes the reviewed body to its target `brain/*` stream. Decline archives the proposal without publishing.
-
-## 4. Check state
+## 3. Check state
 
 ```bash
 lettuce status ./lettuce-demo
 lettuce logs ./lettuce-demo --limit 5
+find ./lettuce-demo/brain -type f | sort
 git -C ./lettuce-demo status --short
 ```
 
 A clean first run should leave a git-backed Lettuce repo with:
 
 - one direct input event under `streams/inbox/direct/`
-- one or more review records under `reviews/pending/`, `reviews/approved/`, or `reviews/declined/`
-- approved updates under `brain/*`
+- one or more durable context entries under `brain/*`, or clear skip reasons in logs
 - runtime checkpoints/logs under `.lettuce/`
-- clean git status after committed review actions
+- clean git status after committed actions
 
-## 5. Run the synthetic QA fixture
+Optional review mode is available for calibration or sensitive changes:
+
+```bash
+lettuce run ./lettuce-demo --review --commit
+lettuce reviews ./lettuce-demo
+```
+
+## 4. Run the synthetic QA fixture
 
 ```bash
 bash examples/synthetic-corpus/run.sh /tmp/lettuce-synthetic-demo
 ```
 
-Default behavior uses deterministic fallback and the public-v0 review gate. Expected smoke shape: synthetic signals ingest, pending reviews are created, direct `brain/*` writes are avoided until approval.
+Default behavior uses deterministic fallback and exercises the file, stream, brain, checkpoint, log, and git loop.
 
 For model-backed judgment inside OpenClaw:
 
@@ -90,7 +85,7 @@ After installing, run:
 bash examples/quick-demo.sh /tmp/lettuce-demo-public
 ```
 
-This runs onboarding, lists reviews, approves the first review, prints status/logs, and confirms the demo repo git status.
+This runs onboarding, prints status/logs, and confirms the demo repo git status.
 
 ## Current baseline
 
@@ -101,5 +96,5 @@ Latest local verification:
 - `python3 -m unittest discover -s tests` -> 74 tests passing
 - `python3 -m py_compile lettuce/*.py`
 - `python3 -m lettuce.runtime --smoke`
-- fresh venv install/use smoke with installed `lettuce` CLI, `onboard --review`, `reviews`, `review-approve --commit`, `status`, and clean demo git state
-- OpenClaw-backed onboarding dogfood produced pending reviews, then approved review records and brain entries cleanly
+- fresh venv install/use smoke with installed `lettuce` CLI, `onboard`, `status`, logs, and clean demo git state
+- OpenClaw-backed onboarding dogfood produced brain updates directly with provenance and git history

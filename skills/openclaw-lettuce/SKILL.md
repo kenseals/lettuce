@@ -1,11 +1,11 @@
 ---
 name: openclaw-lettuce
-description: Use when an operator asks an OpenClaw agent to set up, run, dogfood, or operate a Lettuce implementation for an organization or project. Covers onboarding, direct signal ingestion, source discovery, handler runs, and the approve/edit/decline review gate.
+description: Use when an operator asks an OpenClaw agent to set up, run, dogfood, or operate a Lettuce implementation for an organization or project. Covers onboarding, direct signal ingestion, source discovery, handler runs, and the inspect/adjust optional review mode.
 ---
 
 # OpenClaw Lettuce
 
-Lettuce is an agent-operated markdown+git protocol. OpenClaw is the runtime in v0: it owns conversation surfaces, tool access, identity, auth, and setup guidance. Lettuce owns durable state: repo, streams, handlers, brain entries, subscriptions, checkpoints, logs, and review/apply conventions.
+Lettuce is an agent-operated markdown+git protocol. OpenClaw is the runtime in v0: it owns conversation surfaces, tool access, identity, auth, and setup guidance. Lettuce owns durable state: repo, streams, handlers, brain entries, source records, subscriptions, checkpoints, logs, and optional review conventions.
 
 Do not build duplicate chat surfaces for direct input. If the operator is talking to OpenClaw through Telegram, iMessage, Discord, CLI, or another surface, OpenClaw already owns that surface. Write selected direct input into Lettuce with provenance.
 
@@ -17,7 +17,7 @@ Use this skill when the operator asks to:
 - run Lettuce onboarding
 - ingest a direct signal into Lettuce
 - add or discover signal sources
-- run handlers and review brain outputs
+- run handlers and inspect brain outputs
 - inspect Lettuce status/logs
 - tune handlers/lenses/routers
 
@@ -38,7 +38,7 @@ Read only the specific file needed for the task.
 When setting up a new Lettuce, do not silently install/init/ingest. First explain the product in one short paragraph:
 
 ```text
-Lettuce gives your agent a local markdown+git work brain for one company/project. It keeps work context separate from personal memory, turns approved signals into reviewed brain updates, and records which sources should feed that context. I can set up a local Lettuce now, run one small sample through review mode, then show you exactly what it created before anything becomes durable brain state.
+Lettuce gives your agent a local markdown+git work brain for one company/project. It keeps work context separate from personal memory, records which sources should feed that context, and lets me keep useful company context fresh from signals I can access. The point is not to make you review every signal; it is to give me durable work context I can use later.
 ```
 
 Then ask/confirm the setup inputs:
@@ -47,6 +47,8 @@ Then ask/confirm the setup inputs:
 - operator handle/name
 - repo path or whether to start locally first
 - signal sources that should eventually feed this Lettuce
+- sources that are available now vs need setup/defer
+- cadence or trigger model for keeping context fresh
 - first meaningful direct signal to ingest, if not already in the conversation
 - consent basis for ingesting that first signal
 
@@ -65,7 +67,6 @@ lettuce onboard <repo-path> \
   --sender "<operator>" \
   --consent "operator-direct-request" \
   --openclaw-provider \
-  --review \
   --commit
 ```
 
@@ -78,21 +79,15 @@ After running, summarize the JSON result in operator language:
 - repo initialized or reused
 - event path and source provenance
 - handlers that ran
-- pending review proposals written, with a plain-English explanation of what each would add and why it exists
+- brain updates written, with a plain-English explanation of what each added and why it matters
 - skipped handlers/errors/noisy output
 - current checkpoints/log count
 - configured source records and whether each is available now, needs setup, or deferred
 - whether there is any recurring schedule; if none, say new signals are manual/agent-triggered for now
 
-Ask one review question:
+If something looks wrong, offer to edit or revert the git commit. Do not turn normal operation into a standing approval queue.
 
-```text
-Approve, edit, or decline these proposed updates?
-```
-
-If approved, run `lettuce review-approve <repo-path> <review-id> --operator <operator> --commit`. If edited, edit the pending review markdown first, then approve. If declined, run `lettuce review-decline <repo-path> <review-id> --reason "<short reason>" --operator <operator> --commit`. Do not proceed to bulk ingestion before this first review moment.
-
-After approval/edit/decline, give a final onboarding handoff: repo path, scoped org/project, source plan, current trigger/schedule model, what was approved or left pending, and the next useful source setup step.
+Then give a final onboarding handoff: repo path, scoped org/project, source plan, current trigger/schedule model, what was added or skipped, and the next useful source setup step.
 
 ## Direct Signal Ingestion
 
@@ -109,8 +104,7 @@ lettuce ingest-direct <repo-path> \
   --consent "<basis>" \
   --commit
 
-lettuce run <repo-path> --review --commit
-lettuce reviews <repo-path>
+lettuce run <repo-path> --commit
 lettuce status <repo-path>
 lettuce logs <repo-path> --limit 5
 ```
@@ -141,7 +135,7 @@ Use this classification:
 - `needs_setup`: the operator must connect OAuth, forwarding, export, webhook, MCP, or provide credentials/files.
 - `defer`: useful later, not needed for the first working Lettuce.
 
-Always sample small first, usually 1-5 items, then review outputs before bulk backfill.
+Always sample small first, usually 1-5 items, then inspect outputs before bulk backfill.
 
 When a source will recur, record durable source intent:
 
@@ -157,16 +151,16 @@ Use source records as agent-readable setup/status contracts: what access exists,
 Run handlers with:
 
 ```bash
-lettuce run <repo-path> --review --commit
+lettuce run <repo-path> --commit
 ```
 
-The command prints handler progress to stderr and returns machine-readable JSON on stdout. In OpenClaw, prefer `lettuce run --openclaw-provider --review <repo-path> --commit` for real judgment. Review proposals can be listed with `lettuce reviews <repo-path>` and then approved or declined with the review lifecycle commands. If model-backed handlers are slow, use `LETTUCE_HANDLER_TIMEOUT_SECONDS` to cap each handler command.
+The command prints handler progress to stderr and returns machine-readable JSON on stdout. In OpenClaw, prefer `lettuce run --openclaw-provider <repo-path> --commit` for real judgment. Brain updates land in `brain/*` by default with provenance and git history. Use optional `--review` only for sensitive sources, calibration, high-impact changes, or explicit operator approval gates. If model-backed handlers are slow, use `LETTUCE_HANDLER_TIMEOUT_SECONDS` to cap each handler command.
 
 ## Safety Rules
 
 - Do not exfiltrate private data into a Lettuce repo.
 - Do not ingest personal-life context into an org-scoped Lettuce.
-- Do not bulk-ingest before a reviewed sample.
+- Do not bulk-ingest before a small inspected sample.
 - Do not create OAuth/webhook/bot infrastructure when OpenClaw already has access or direct input.
 - Do not apply external writes without explicit approval or a standing rule.
 - Prefer git commits for reversible checkpoints.
@@ -179,6 +173,7 @@ A good first setup ends with:
 - default handlers discovered
 - one direct signal ingested with provenance
 - handlers run successfully
-- at least one pending review proposal written or a clear skip reason logged
+- at least one brain update written or a clear skip reason logged
+- source plan captured
 - checkpoints/logs present
-- operator asked approve/edit/decline
+- operator understands where the repo lives and how new signals will flow

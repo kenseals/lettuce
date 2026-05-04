@@ -24,7 +24,7 @@ When an operator provides the repo or `llms.txt` link and asks to set up Lettuce
 
 First say, briefly:
 
-> Lettuce gives your agent a local markdown+git work brain for one company/project. It keeps work context separate from personal memory, turns approved signals into reviewed brain updates, and records which sources should feed that context. I can set up a local Lettuce for one work context now, run one small sample through review mode, then show you exactly what it created before anything becomes durable brain state.
+> Lettuce gives your agent a local markdown+git work brain for one company/project. It keeps work context separate from personal memory, records which sources should feed that context, and lets the agent keep useful company context fresh from signals it can access. The point is not to make you review every signal; it is to give the agent durable work context it can use later.
 
 Then ask the minimum setup questions:
 
@@ -32,7 +32,8 @@ Then ask the minimum setup questions:
 2. Should we start locally first, or use an existing repo/path?
 3. What signal sources should eventually feed it?
 4. What one small meaningful sample signal should we ingest first?
-5. Should I run that sample now in review mode?
+5. What cadence or trigger should keep it fresh? For example: manual for now, daily, after meetings, when asked, or a project-specific agent lane.
+6. Should I run that sample now and show you what context was added?
 
 If the conversation already implies an answer, summarize it as an assumption and ask for confirmation. Example: "I think this is for The Ultra Minute and we should start locally first. Is that right?"
 
@@ -83,11 +84,10 @@ lettuce onboard <repo-path> \
   --surface "<surface>" \
   --consent "<basis>" \
   --openclaw-provider \
-  --review \
   --commit
 ```
 
-For one-sentence smoke tests, `--body "<first direct signal body>"` is fine. For real operator messages, pasted transcripts, or multi-paragraph signal, prefer `--body-file` so the agent preserves the exact text and avoids shell quoting mistakes. If neither body option is provided, `lettuce onboard` reads stdin. Use `--openclaw-provider` for real OpenClaw dogfood so handlers make judgment calls instead of using the deterministic fallback adapter. Use `--review` for onboarding so first-pass handler output becomes explicit pending review proposals before any durable brain write.
+For one-sentence smoke tests, `--body "<first direct signal body>"` is fine. For real operator messages, pasted transcripts, or multi-paragraph signal, prefer `--body-file` so the agent preserves the exact text and avoids shell quoting mistakes. If neither body option is provided, `lettuce onboard` reads stdin. Use `--openclaw-provider` for real OpenClaw dogfood so handlers make judgment calls instead of using the deterministic fallback adapter. Omit `--review` by default; routine local brain updates should land with provenance and git history. Use `--review` only for optional calibration, sensitive sources, high-impact changes, or when the operator asks to inspect before applying.
 
 For manual control, the agent can run the lower-level steps directly:
 
@@ -165,8 +165,7 @@ For direct input after initial onboarding:
 
 ```bash
 lettuce ingest-direct <repo-path> --title "<title>" --body "<body>" --source "<agent.surface>" --surface "<surface>" --consent "<basis>" --commit
-lettuce run <repo-path> --review --commit
-lettuce reviews <repo-path>
+lettuce run <repo-path> --commit
 lettuce status <repo-path>
 lettuce logs <repo-path> --limit 5
 ```
@@ -186,7 +185,7 @@ For OpenClaw, the skill should wrap the CLI rather than expose it as operator wo
 
 1. Explain Lettuce in one short paragraph and ask/confirm org, operator, repo path, source candidates, first meaningful sample, and consent basis.
 2. Write the first signal to a temporary UTF-8 markdown file when it is longer than a sentence.
-3. Run `lettuce onboard` with `--body-file`, provenance fields, `--openclaw-provider`, `--review`, and `--commit`.
+3. Run `lettuce onboard` with `--body-file`, provenance fields, `--openclaw-provider`, and `--commit`.
 4. Parse stdout JSON and translate it into a short operator summary.
 5. Keep stderr progress available for debugging, but do not paste raw logs unless needed.
 
@@ -195,21 +194,15 @@ The summary should include:
 - repo initialized or reused
 - event path and source provenance
 - handlers/events processed
-- pending reviews written, each with a human explanation of what it would add and why it exists
+- brain updates written, each with a human explanation of what it added and why it matters
 - skipped/errors/noise
 - current log/checkpoint count
 - configured source records and whether they are `available_now`, `needs_setup`, or deferred
 - whether any recurring schedule exists; if none, say that new signal sampling is manual/agent-triggered for now
 
-Then ask exactly one review question:
+If something looks wrong, offer to edit or revert the git commit. Do not turn normal operation into a standing approval queue.
 
-```text
-Approve, edit, or decline these proposed updates?
-```
-
-If the operator says approve, run `lettuce review-approve <repo> <review-id> --operator <operator> --commit` for each approved item and recommend the next source to sample. If they say edit, make the smallest markdown edit in the pending review file first, then approve it. If they say decline, run `lettuce review-decline <repo> <review-id> --reason "<short reason>" --operator <operator> --commit`. Avoid direct publishing during onboarding unless the operator explicitly asks to bypass review.
-
-After the approve/edit/decline moment, give a final handoff:
+Then give a final handoff:
 
 - where the Lettuce repo lives;
 - what it is scoped to;

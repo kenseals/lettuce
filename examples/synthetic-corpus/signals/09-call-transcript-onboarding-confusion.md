@@ -19,4 +19,4 @@ Maya: Should updates go straight into shared memory?
 
 Riley: No. I need a review screen first. My team needs to see what changed and why.
 
-Possible product signal: onboarding should guide source selection by pain and sample size, then insist on review before durable updates.
+Possible product signal: onboarding should guide source selection by pain and sample size, then make durable updates inspectable and reversible without forcing review for every routine signal.

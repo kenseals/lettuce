@@ -2,11 +2,11 @@
 
 Lettuce is an agent-operated, local-first protocol for giving an operator's agent durable company context that is separate from personal memory, owned by the operator, and portable across agent runtimes.
 
-It gives the agent a markdown+git work brain for one organization, a stream model for connecting signal sources, explicit handlers for interpreting what matters, and a review gate before durable context changes. The review loop is the safety mechanism; the product is company context for agents.
+It gives the agent a markdown+git work brain for one organization, a stream model for connecting signal sources, and explicit handlers for interpreting what matters into durable context. Git history, provenance, source boundaries, and optional review mode are the safety mechanisms; the product is company context for agents.
 
 Current status: **first v0 protocol loop**. The installable `lettuce` CLI scaffolds and runs a markdown+git Lettuce repo. The operator's agent is the runtime: OpenClaw in v0, and later any agent that can read files, call tools, and follow the protocol.
 
-The protocol does not own chat surfaces, inboxes, OAuth grants, or service integrations. The agent runtime owns those. Lettuce teaches the agent how to connect the right signal sources, preserve provenance, write stream events, run handlers, review proposed brain updates, and eventually subscribe to other Lettuces in an organization so company context can become distributed instead of centralized.
+The protocol does not own chat surfaces, inboxes, OAuth grants, or service integrations. The agent runtime owns those. Lettuce teaches the agent how to connect the right signal sources, preserve provenance, write stream events, run handlers, maintain brain updates, and eventually subscribe to other Lettuces in an organization so company context can become distributed instead of centralized.
 
 ## Give This To Your Agent
 
@@ -16,11 +16,11 @@ Give your agent this one link:
 https://raw.githubusercontent.com/kenseals/lettuce/main/llms.txt
 ```
 
-That file tells the agent what Lettuce is, what to install, which docs matter, and how to set up the first review-gated company-context repo without making you copy a separate prompt.
+That file tells the agent what Lettuce is, what to install, which docs matter, and how to guide you through setting up the first company-context repo without making you copy a separate prompt.
 
 ## Protocol CLI
 
-Start with `TRY_THIS_FIRST.md` for the shortest usable path. For the product frame, see `docs/company-context-for-agents.md`. For a public-safe install-to-approval walkthrough, see `docs/first-run-demo.md`. The v0 protocol source is `LETTUCE_V0_SPEC.md`; handler format is specified in `HANDLERS.md`. For the full local walkthrough, see `QUICKSTART.md`. For agent-operated setup, see `docs/agent-operated-onboarding.md`; for the OpenClaw source setup contract, see `docs/openclaw-runtime-source-setup.md`; for source setup decisions, see `docs/source-discovery-recipes.md`; for a repo-packaged OpenClaw skill, see `skills/openclaw-lettuce/SKILL.md`. For the launch note, see `docs/public-v0-launch-note.md`. For the public-v0 release gate, see `docs/public-v0-release-checklist.md`.
+Start with `TRY_THIS_FIRST.md` for the shortest usable path. For the product frame, see `docs/company-context-for-agents.md`. For a public-safe first-run walkthrough, see `docs/first-run-demo.md`. The v0 protocol source is `LETTUCE_V0_SPEC.md`; handler format is specified in `HANDLERS.md`. For the full local walkthrough, see `QUICKSTART.md`. For agent-operated setup, see `docs/agent-operated-onboarding.md`; for the OpenClaw source setup contract, see `docs/openclaw-runtime-source-setup.md`; for source setup decisions, see `docs/source-discovery-recipes.md`; for a repo-packaged OpenClaw skill, see `skills/openclaw-lettuce/SKILL.md`. For the launch note, see `docs/public-v0-launch-note.md`. For the public-v0 release gate, see `docs/public-v0-release-checklist.md`.
 
 Install from GitHub:
 
@@ -35,14 +35,12 @@ If your shell cannot find the installed `lettuce` script because the user Python
 
 ```bash
 printf 'Customer says agent context is stale.\n' > /tmp/lettuce-first-signal.md
-lettuce onboard ./lettuce-demo --org demo --operator you --title "Demo signal" --body-file /tmp/lettuce-first-signal.md --source openclaw.telegram --surface telegram --consent operator-direct-request --openclaw-provider --review --commit
-lettuce reviews ./lettuce-demo
-lettuce review-approve ./lettuce-demo --first --operator you --commit
+lettuce onboard ./lettuce-demo --org demo --operator you --title "Demo signal" --body-file /tmp/lettuce-first-signal.md --source openclaw.telegram --surface telegram --consent operator-direct-request --openclaw-provider --commit
 lettuce status ./lettuce-demo
 lettuce logs ./lettuce-demo --limit 5
 ```
 
-That scaffolds a personal Lettuce repo, discovers markdown handlers, writes the first event to `streams/inbox/direct`, writes handler outputs to `reviews/pending`, records checkpoints/logs under `.lettuce/`, and commits handler/event/review changes to git when `--commit` is set. `review-approve` publishes an approved proposal to its target `brain/*` stream; `review-decline` moves it to `reviews/declined` without publishing.
+That scaffolds a personal Lettuce repo, discovers markdown handlers, writes the first event to `streams/inbox/direct`, writes handler outputs to local `brain/*` streams, records checkpoints/logs under `.lettuce/`, and commits handler/event/brain changes to git when `--commit` is set. Add `--review` only when you want optional calibration or human approval before brain updates land.
 
 `onboard` is the first agent-facing setup helper: it scaffolds the repo if needed, writes the first direct event with provenance, runs handlers, and returns a machine-readable status summary. `--openclaw-provider` runs handlers through OpenClaw's model-backed provider for real judgment; omit it only for offline plumbing smoke tests. `--body-file` lets an agent preserve multi-paragraph operator signal without brittle shell quoting; `--body` and stdin remain available for tiny smoke tests.
 
@@ -60,7 +58,7 @@ lettuce ingest-direct ./lettuce-demo \
   --surface telegram \
   --consent operator-direct-request \
   --commit
-lettuce run ./lettuce-demo --openclaw-provider --review --commit
+lettuce run ./lettuce-demo --openclaw-provider --commit
 ```
 
 For operator-selected or forwarded emails, keep the event email-shaped:
@@ -92,7 +90,7 @@ To run handlers through the local OpenClaw model stack:
 ```bash
 LETTUCE_HANDLER_COMMAND="python3 -m lettuce.openclaw_provider" \
 LETTUCE_OPENCLAW_MODEL="anthropic/claude-haiku-4-5" \
-lettuce run ./lettuce-demo --review --commit
+lettuce run ./lettuce-demo --commit
 ```
 
 The OpenClaw provider is intentionally a thin optional command adapter. It reads the standard handler invocation JSON from stdin, calls `openclaw capability model run --gateway`, extracts the model's JSON handler output, and writes that JSON to stdout for the runtime to validate and publish. During `lettuce run`, handler start/finish progress is printed to stderr while the machine-readable run result stays on stdout; each handler command is capped by `LETTUCE_HANDLER_TIMEOUT_SECONDS`, and the OpenClaw adapter also honors `LETTUCE_OPENCLAW_TIMEOUT_SECONDS` for its nested model call.

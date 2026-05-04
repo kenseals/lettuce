@@ -22,12 +22,12 @@ class SyntheticCorpusTests(unittest.TestCase):
         self.assertIn("work-system", source_types)
         self.assertTrue(any(not signal["expected_handlers"] for signal in signals))
 
-    def test_runner_defaults_to_review_mode(self) -> None:
+    def test_runner_defaults_to_direct_brain_updates(self) -> None:
         text = (CORPUS / "run.sh").read_text(encoding="utf-8")
 
-        self.assertIn("review=${LETTUCE_SYNTHETIC_REVIEW:-true}", text)
+        self.assertIn("review=${LETTUCE_SYNTHETIC_REVIEW:-false}", text)
         self.assertIn("run_args+=(--review)", text)
-        self.assertIn("reviews \"$repo\"", text)
+        self.assertIn("if [[ \"$review\" != \"false\" ]]", text)
 
     def test_manifest_files_exist_and_are_public_safe(self) -> None:
         manifest = json.loads((CORPUS / "manifest.json").read_text(encoding="utf-8"))

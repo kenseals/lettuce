@@ -277,7 +277,7 @@ Handler versions follow semver:
 
 The runtime records the handler version on every published event (in event frontmatter). This means brain entries are traceable to the exact handler version that produced them, which matters when debugging "why did the brain say this thing two months ago" questions.
 
-When `lettuce run --review` or `lettuce onboard --review` is used, handler publishes are written first as review proposals under `reviews/pending/`. The proposal preserves the target stream, source event, handler id, handler version, title, and body. `lettuce review-approve` publishes the reviewed body to its target stream and moves the review record to `reviews/approved/`; `lettuce review-decline` moves it to `reviews/declined/` without publishing.
+By default, handler publishes are written directly to their target local streams with source event, handler id, handler version, title, and body preserved in markdown/git state. When optional review mode is used with `lettuce run --review` or `lettuce onboard --review`, handler publishes are written first as review proposals under `reviews/pending/`. `lettuce review-approve` publishes the reviewed body to its target stream and moves the review record to `reviews/approved/`; `lettuce review-decline` moves it to `reviews/declined/` without publishing.
 
 ---
 

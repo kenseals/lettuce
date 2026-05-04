@@ -4,7 +4,9 @@ Goal: ship a public v0 that proves Lettuce as an agent-operated markdown+git pro
 
 ## Public v0 promise
 
-An operator can ask their agent to set up a Lettuce repo, ingest one approved signal sample, run markdown handlers, review proposed brain updates, approve or decline them, and keep the result in git.
+An operator can ask their agent to set up a Lettuce repo, ingest one approved signal sample, run markdown handlers, write useful brain updates with provenance, and keep the result in git.
+
+Optional review mode exists for calibration, sensitive updates, or explicit approval gates. It is not the default product loop.
 
 ## Ready now
 
@@ -16,27 +18,27 @@ An operator can ask their agent to set up a Lettuce repo, ingest one approved si
 - Checkpointed local directory source import for repeatable sample-first source ingestion.
 - Local shared-stream subscription simulation with provenance, checkpoints, and local stream policy gates.
 - Optional OpenClaw model-backed handler provider.
-- Native review gate: `--review`, `reviews`, `review-approve`, `review-decline`.
+- Optional review mode: `--review`, `reviews`, `review-approve`, `review-decline`.
 - Synthetic public-safe signal corpus for repeatable QA.
 - Fresh install smoke with installed `lettuce` console script.
 
 ## Must pass before public v0
 
-- Fresh install quickstart passes from a clean venv using `pip install .` and the review-required path.
+- Fresh install quickstart passes from a clean venv using the first-run path.
 - `python3 -m unittest discover -s tests` passes.
 - `python3 -m py_compile lettuce/*.py` passes.
 - `python3 -m lettuce.runtime --smoke` passes.
 - Synthetic corpus deterministic runner passes.
-- One OpenClaw-provider dogfood run produces review proposals, not direct brain writes.
+- One OpenClaw-provider dogfood run produces direct brain updates with provenance and git history.
 - README and QUICKSTART describe agent-owned surfaces clearly and do not imply Lettuce owns Telegram, Gmail, Zoom, Fathom, Granola, or OAuth.
-- PR #3 is reviewed for accidental private data, stale app-first claims, commands that require unavailable credentials, and archive boundaries for historical docs.
+- Public-facing files are checked for accidental private data, stale app-first claims, commands that require unavailable credentials, and archive boundaries for historical docs.
 
 ## Should pass before public v0
 
-- A clean temp repo can approve one review and decline one review with clean git status afterward.
+- A clean temp repo can run optional review mode, approve one review, and decline one review with clean git status afterward.
 - `reviews --status all` shows pending/approved/declined records coherently.
 - At least 3 synthetic signals are inspected manually for judgment quality, including one skip/noise case.
-- The repo-packaged OpenClaw skill uses `--review` during onboarding.
+- The repo-packaged OpenClaw skill uses direct brain updates by default and documents optional review mode only as a safety/calibration path.
 
 ## Explicitly deferred
 
@@ -47,19 +49,18 @@ An operator can ask their agent to set up a Lettuce repo, ingest one approved si
 - Linear side-effect execution.
 - Auto-approval policies.
 
-## Current status: public-v0 candidate, final ship gates remain
+## Current status: public-v0 candidate, public repo live
 
-The core protocol loop is merged to `main` and usable for internal dogfood. Fresh install review-mode smoke has passed, the repo-packaged OpenClaw skill uses the native review gate, and OpenClaw-provider review-mode dogfood produced pending reviews before approval. A clean `git+https://github.com/kenseals/lettuce.git` install also succeeded while the private repo is accessible to this operator environment. Older app-first/runtime-preview docs are not included in the public v0 repo. Packaging has been fixed for legacy pip installs, and the first-use handoff docs exist.
+The core protocol loop is merged to `main` and usable for internal dogfood. Fresh install smoke has passed, the repo-packaged OpenClaw skill now uses direct brain updates by default, and OpenClaw-provider dogfood should write brain entries without making the operator approve every signal. Older app-first/runtime-preview docs are not included in the public v0 repo. Packaging has been fixed for legacy pip installs, and the one-link first-use handoff docs exist.
 
-As of the latest local check, the repo is private, has no GitHub release, and has no open PRs. The main remaining public-v0 risk is not core functionality; it is first-user experience and public packaging.
+The GitHub repo is public. There is no GitHub release yet. The main remaining public-v0 risk is not core functionality; it is first-user experience and alignment with the company-context-for-agents product promise.
 
-### Must do to ship public today
+### Must do before wider announcement
 
-- Re-run the final clean install/onboarding/usage path only if more launch-path code changes land.
+- Re-run the final clean install/onboarding/usage path after launch-path code/doc changes land.
 - Verify the repo contains no private operator/workspace context in public-facing files.
-- Decide whether public v0 ships as a public GitHub repo only or also with a tagged GitHub release.
-- Make the GitHub repo public after final operator approval.
-- Add a short launch note / first public issue list that says what works, what is intentionally deferred, and how to try it.
+- Keep GitHub Releases/tags off until explicitly approved.
+- Track spec-alignment gaps as GitHub issues.
 
 ### Nice but not blocking
 

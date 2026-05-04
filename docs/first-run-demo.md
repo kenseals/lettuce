@@ -1,6 +1,6 @@
 # First Run Demo
 
-This is the short public-safe walkthrough for Lettuce v0: install from GitHub, onboard one signal, review proposals, approve one update, and inspect the resulting markdown/git state.
+This is the short public-safe walkthrough for Lettuce v0: install from GitHub, onboard one signal, write a first durable brain update, and inspect the resulting markdown/git state.
 
 ## 1. Install
 
@@ -16,8 +16,8 @@ lettuce --help
 ```bash
 cat > /tmp/lettuce-first-signal.md <<'EOF'
 A founder says their agent keeps using stale pricing and old onboarding notes.
-They want a review step before the company brain changes, because one bad
-automatic update already confused a sales call.
+They want the agent to maintain durable work context with source provenance
+so future work starts from the current truth.
 EOF
 
 lettuce onboard ./lettuce-demo \
@@ -28,7 +28,6 @@ lettuce onboard ./lettuce-demo \
   --source cli \
   --surface terminal \
   --consent operator-direct-request \
-  --review \
   --commit
 ```
 
@@ -43,69 +42,35 @@ lettuce: running discovery-lens on ...
 lettuce: discovery-lens ok in 0.1s
 ```
 
-The command initializes a markdown+git Lettuce repo, writes the signal to `streams/inbox/direct/`, runs handlers, and writes review-gated proposals to `reviews/pending/`.
+The command initializes a markdown+git Lettuce repo, writes the signal to `streams/inbox/direct/`, runs handlers, writes useful handler output to `brain/*`, records checkpoints/logs, and commits the result when `--commit` is set.
 
-## 3. Review proposals
-
-```bash
-lettuce reviews ./lettuce-demo
-```
-
-Expected shape:
-
-```json
-{
-  "reviews": [
-    {
-      "id": "...-default-lens-...",
-      "status": "pending",
-      "target_stream": "brain/general",
-      "title": "Default Lens: Stale agent context"
-    },
-    {
-      "id": "...-discovery-lens-...",
-      "status": "pending",
-      "target_stream": "brain/discovery",
-      "title": "Discovery Lens: Stale agent context"
-    }
-  ]
-}
-```
-
-## 4. Approve one update
-
-Approve the first pending review:
+## 3. Inspect durable state
 
 ```bash
-lettuce review-approve ./lettuce-demo --first --operator you --commit
-```
-
-For a specific proposal, copy one review `id` from `lettuce reviews` and pass it instead of `--first`.
-
-Expected shape:
-
-```json
-{
-  "status": "published",
-  "target_stream": "brain/general",
-  "publish_path": ".../brain/general/...md"
-}
-```
-
-## 5. Inspect durable state
-
-```bash
-find ./lettuce-demo/brain -type f -name '*.md'
+find ./lettuce-demo/brain -type f -name '*.md' | sort
+lettuce status ./lettuce-demo
+lettuce logs ./lettuce-demo --limit 5
 git -C ./lettuce-demo log --oneline --max-count 5
 git -C ./lettuce-demo status --short
 ```
 
 Expected outcome:
 
-- approved proposals become markdown under `brain/*`;
-- review files move from `reviews/pending/` to `reviews/approved/`;
+- useful handler output becomes markdown under `brain/*`, or logs explain why it was skipped;
+- the original signal remains under `streams/inbox/direct/` with provenance;
+- checkpoints/logs show what was processed;
 - each committed action is visible in git history;
 - `git status --short` is clean after committed actions.
+
+## Optional: calibration review mode
+
+Use review mode only when you want to inspect proposed updates before they land:
+
+```bash
+lettuce run ./lettuce-demo --review --commit
+lettuce reviews ./lettuce-demo
+lettuce review-approve ./lettuce-demo --first --operator you --commit
+```
 
 ## Optional: one-command local demo
 
@@ -115,7 +80,7 @@ From a cloned Lettuce repo:
 bash examples/quick-demo.sh /tmp/lettuce-demo
 ```
 
-That script runs the same basic loop with the deterministic local provider so install, onboarding, review, approval, status, logs, and git cleanliness can be checked quickly.
+That script runs the same basic loop with the deterministic local provider so install, onboarding, brain updates, status, logs, and git cleanliness can be checked quickly.
 
 ## Optional: OpenClaw-backed handler judgment
 
@@ -131,8 +96,7 @@ lettuce onboard ./lettuce-demo \
   --surface telegram \
   --consent operator-direct-request \
   --openclaw-provider \
-  --review \
   --commit
 ```
 
-In the public-v0 gate, the OpenClaw-backed path correctly created review proposals for stale-context customer pain and skipped an irrelevant grocery note.
+In the public-v0 gate, the OpenClaw-backed path should create useful brain updates for stale-context customer pain and skip irrelevant noise.

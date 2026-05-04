@@ -3,7 +3,7 @@ set -euo pipefail
 
 repo=${1:-/tmp/lettuce-synthetic-demo}
 provider=${LETTUCE_SYNTHETIC_PROVIDER:-deterministic}
-review=${LETTUCE_SYNTHETIC_REVIEW:-true}
+review=${LETTUCE_SYNTHETIC_REVIEW:-false}
 
 if command -v lettuce >/dev/null 2>&1; then
   lettuce_cmd=(lettuce)

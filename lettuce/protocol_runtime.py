@@ -862,7 +862,7 @@ def configure_source(
         f"This source records `{resolved_source_type}` signal intent for `{resolved_stream}`.\n\n"
         "Access and setup are agent-owned. The record exists so an operator or agent can inspect what is available, what still needs setup, what sample policy applies, and what should be skipped before any bulk ingestion.\n\n"
         "## Agent Instructions\n\n"
-        "- If `access_status` is `available_now`, ingest only a small reviewed sample first.\n"
+        "- If `access_status` is `available_now`, ingest only a small inspected sample first.\n"
         "- If `access_status` is `needs_setup`, guide the operator through the smallest setup step listed in `setup_next_action`.\n"
         "- If `access_status` is `defer`, do not ingest until the operator reopens this source.\n"
         "- Preserve source ids, timestamps, URLs, and privacy/redaction notes on every event derived from this source.\n"

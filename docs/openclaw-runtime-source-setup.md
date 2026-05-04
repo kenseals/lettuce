@@ -7,9 +7,11 @@ Lettuce's job is to give the runtime a durable protocol for turning agent-observ
 1. discover what signal source is available;
 2. record the source intent and access boundary;
 3. ingest a small operator-approved sample into a stream;
-4. run handlers in review mode;
-5. apply approved brain updates;
+4. run handlers;
+5. write useful brain updates with provenance and git history;
 6. only then decide whether recurring polling or deeper setup is worth it.
+
+Optional review mode exists for calibration, sensitive sources, high-impact updates, or explicit operator approval gates. It is not the normal product loop.
 
 ## Source setup loop
 
@@ -46,7 +48,7 @@ Required source-record fields, either explicit or implied by CLI defaults:
 - `stream`: where normalized events should land;
 - `access_status`: `available_now`, `needs_setup`, `defer`, or `unknown`;
 - `access_owner`: usually `operator-agent`;
-- `sample_policy`: how much to ingest before review;
+- `sample_policy`: how much to ingest before wider backfill;
 - `privacy_notes`: what to exclude or redact;
 - `setup_next_action`: the smallest next step if access is not ready.
 
@@ -60,7 +62,7 @@ lettuce add-source email ./lettuce-acme-ken \
   --access-owner operator-agent \
   --sample-policy "operator-selected single-message sample before recurring ingest" \
   --privacy-notes "skip personal, legal, recruiting, and unrelated family email" \
-  --setup-next-action "ingest one forwarded/customer-selected email, then review output" \
+  --setup-next-action "ingest one forwarded/customer-selected email, then inspect output" \
   --commit
 ```
 
@@ -105,35 +107,27 @@ lettuce add-source file ./lettuce-acme-ken \
   --commit
 ```
 
-### 5. Run handlers in review mode
+### 5. Run handlers and inspect output
 
 For real dogfood inside OpenClaw, use model-backed judgment:
 
 ```bash
-lettuce run ./lettuce-acme-ken --openclaw-provider --review --commit
+lettuce run ./lettuce-acme-ken --openclaw-provider --commit
 ```
 
 For offline install/plumbing tests, omit `--openclaw-provider`.
-
-### 6. Ask one review question
 
 The agent should summarize:
 
 - source ingested;
 - handlers that fired or skipped;
-- pending review proposals;
+- brain updates written;
 - evidence and uncertainty;
-- what should not update.
+- what did not update.
 
-Then ask for one approve/edit/decline decision. Use the review lifecycle commands:
+If something looks wrong, the agent can edit/revert the git commit or rerun with `--review` for calibration. Do not make the human approve every routine signal.
 
-```bash
-lettuce reviews ./lettuce-acme-ken
-lettuce review-approve ./lettuce-acme-ken --first --operator operator --commit
-lettuce review-decline ./lettuce-acme-ken --first --operator operator --reason "too noisy" --commit
-```
-
-### 7. Decide whether recurring ingest is earned
+### 6. Decide whether recurring ingest is earned
 
 Only after the first sample proves useful should the agent propose:
 
@@ -162,7 +156,7 @@ Prefer exported transcript files first. If Fathom, Granola, Zoom, Otter, or anot
 
 ### GitHub issues / Linear / work systems
 
-For work-system signal, preserve the source URL, issue/ticket id, author when available, and whether the runtime has read-only or write access. Side effects should remain review-gated.
+For work-system signal, preserve the source URL, issue/ticket id, author when available, and whether the runtime has read-only or write access. External side effects should remain explicitly approved or governed by a standing rule.
 
 ## Public-v0 boundary
 
@@ -170,6 +164,6 @@ Public v0 proves the agent-operated protocol loop. It does not claim to provisio
 
 The honest promise is:
 
-> Point your agent at a Lettuce repo. The agent can record source intent, ingest a selected work signal, run handlers, ask for review, and commit approved company-context updates to markdown/git.
+> Point your agent at a Lettuce repo. The agent can record source intent, ingest a selected work signal, run handlers, and commit useful company-context updates to markdown/git with provenance.
 
 The next product step is turning one or two source records into recurring agent-owned ingest routines once the sample loop proves value.

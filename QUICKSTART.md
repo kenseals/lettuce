@@ -35,8 +35,7 @@ lettuce onboard ./lettuce-demo \
   --surface telegram \
   --consent operator-direct-request \
   --openclaw-provider \
-  --review \
-  --commit
+    --commit
 ```
 
 `--body "..."` is fine for a one-line smoke test. For real operator messages, use `--body-file` or stdin so pasted formatting survives. Use `--openclaw-provider` for actual OpenClaw dogfood; omit it only when you want an offline deterministic plumbing test.
@@ -135,26 +134,24 @@ lettuce subscribe ./lettuce-demo \
 lettuce pull-subscriptions ./lettuce-demo --commit
 ```
 
-## Run handlers and review proposals
+## Run handlers and update the brain
 
 ```bash
-lettuce run ./lettuce-demo --review --commit
-lettuce reviews ./lettuce-demo
-lettuce review-approve ./lettuce-demo --first --operator you --commit
-lettuce review-decline ./lettuce-demo <review-id> --reason "not useful" --operator you --commit
+lettuce run ./lettuce-demo --commit
 lettuce status ./lettuce-demo
 lettuce logs ./lettuce-demo --limit 5
+find ./lettuce-demo/brain -type f | sort
 ```
 
-`--review` writes handler outputs to `reviews/pending` instead of publishing directly to `brain/*`. Approving a review publishes it to its target stream and moves the review record to `reviews/approved`; declining moves it to `reviews/declined` without publishing. Omit `--review` only for direct-publish plumbing tests.
+By default, handler outputs publish directly to local `brain/*` streams with provenance and git history. Use `--review` only when you want optional calibration or human approval before a brain update lands; then `lettuce reviews`, `review-approve`, and `review-decline` are available.
 
-Without provider configuration, Lettuce uses the bundled deterministic provider adapter so the file, stream, checkpoint, log, review, and git loop can be tested without model credentials. `lettuce run` prints handler start/finish progress to stderr and keeps machine-readable run JSON on stdout.
+Without provider configuration, Lettuce uses the bundled deterministic provider adapter so the file, stream, checkpoint, log, brain, and git loop can be tested without model credentials. `lettuce run` prints handler start/finish progress to stderr and keeps machine-readable run JSON on stdout.
 
 To use the OpenClaw model-backed provider seam:
 
 ```bash
 LETTUCE_OPENCLAW_MODEL="anthropic/claude-haiku-4-5" \
-lettuce run ./lettuce-demo --openclaw-provider --review --commit
+lettuce run ./lettuce-demo --openclaw-provider --commit
 ```
 
 Use `--handler-command "<command>"` only when testing a custom provider adapter. Use `LETTUCE_HANDLER_TIMEOUT_SECONDS` to cap each handler command invocation. The OpenClaw adapter also honors `LETTUCE_OPENCLAW_TIMEOUT_SECONDS` for the nested model command.
