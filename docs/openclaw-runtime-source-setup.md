@@ -43,6 +43,7 @@ Prefer the lowest-friction first sample. Do not create a new bot, webhook, OAuth
 ### 3. Record source intent
 
 Use `lettuce add-source` to create a source record under `sources/` even when the runtime is doing the real access work.
+During first setup, `lettuce onboard` can create or reuse the same source records with repeated `--source-plan` or `--source-record` flags, then write `onboarding/setup/handoff.json` so the next agent run can inspect source-plan and cadence state without replaying chat.
 
 Required source-record fields, either explicit or implied by CLI defaults:
 

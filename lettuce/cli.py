@@ -7,7 +7,7 @@ import sys
 from typing import Any
 
 from .handlers import discover_handlers
-from .protocol_runtime import add_handler, add_stream_event, approve_review, configure_source, configure_subscription, decline_review, import_source_event, ingest_direct_signal, ingest_email_signal, init_repo, list_reviews, read_logs, run_once, status
+from .protocol_runtime import add_handler, add_stream_event, approve_review, configure_source, configure_subscription, decline_review, ensure_source_config, import_source_event, ingest_direct_signal, ingest_email_signal, init_repo, list_reviews, read_logs, read_source_record, record_onboarding_handoff, run_once, status
 
 
 def _print_json(value: object) -> None:
@@ -90,6 +90,80 @@ def _source_summary(source_type: str, result: object) -> str:
     return f"{source_type} -> {getattr(result, 'config_path')} ({getattr(result, 'access_status')})"
 
 
+def _parse_source_plan(value: str) -> dict[str, Any]:
+    try:
+        payload = json.loads(value)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"source plan must be valid JSON: {exc.msg}") from exc
+    if not isinstance(payload, dict):
+        raise ValueError("source plan must decode to a JSON object")
+    return payload
+
+
+def _source_plan_record(repo_path: str, payload: dict[str, Any], *, commit: bool) -> dict[str, Any]:
+    source_type = str(payload.get("source_type") or payload.get("type") or "").strip()
+    if not source_type:
+        raise ValueError("source plan requires source_type")
+    metadata = {
+        key: value
+        for key, value in payload.items()
+        if key
+        not in {
+            "source_type",
+            "type",
+            "name",
+            "stream",
+            "access_status",
+            "access_owner",
+            "sample_policy",
+            "privacy_notes",
+            "setup_next_action",
+        }
+    }
+    result = ensure_source_config(
+        repo_path,
+        source_type,
+        name=str(payload.get("name") or "").strip() or None,
+        stream=str(payload.get("stream") or "").strip() or None,
+        metadata=metadata,
+        access_status=str(payload.get("access_status") or "unknown"),
+        access_owner=str(payload.get("access_owner") or "operator-agent"),
+        sample_policy=str(payload.get("sample_policy") or "").strip() or None,
+        privacy_notes=str(payload.get("privacy_notes") or "").strip() or None,
+        setup_next_action=str(payload.get("setup_next_action") or "").strip() or None,
+        commit=commit,
+    )
+    return read_source_record(repo_path, Path(result.config_path).name)
+
+
+def _first_sample_outcome(run_result: Any, *, no_run: bool, review: bool) -> str:
+    if no_run or run_result is None:
+        return "ingested_only"
+    if any(run.errors for run in run_result.runs):
+        return "handler_errors"
+    if review and any(publish.status == "pending_review" for run in run_result.runs for publish in run.publishes):
+        return "review_pending"
+    if any(run.publishes for run in run_result.runs):
+        return "processed"
+    if any(run.skipped for run in run_result.runs):
+        return "no_publish"
+    return "processed"
+
+
+def _resolve_review_id(path: str, review_id: str | None, *, first: bool) -> str:
+    if review_id and first:
+        raise ValueError("use either a review id or --first, not both")
+    if review_id:
+        return review_id
+    if not first:
+        raise ValueError("provide a review id or use --first")
+    reviews = list_reviews(path, status="pending")
+    if not reviews:
+        raise ValueError("no pending reviews found")
+    return reviews[0].id
+
+
+
 def _run(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="lettuce", description="Lettuce v0 protocol CLI")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -168,6 +242,11 @@ def _run(argv: list[str] | None = None) -> int:
     onboard_parser.add_argument("--commit", action="store_true", help="Commit scaffold, event, and review proposals/publishes to git")
     onboard_parser.add_argument("--review", action="store_true", help="Write first-pass handler outputs to reviews/pending instead of publishing directly")
     onboard_parser.add_argument("--no-run", action="store_true", help="Only initialize and ingest the first direct event")
+    onboard_parser.add_argument("--source-plan", action="append", default=[], help="JSON source-plan object to create/reuse and include in onboarding handoff")
+    onboard_parser.add_argument("--source-record", action="append", default=[], help="Existing source record id/path to include in onboarding handoff")
+    onboard_parser.add_argument("--cadence-hint", help="Cadence hint for post-onboarding source refresh, e.g. manual-for-now or daily")
+    onboard_parser.add_argument("--cadence-trigger", help="Trigger hint for post-onboarding refresh, e.g. when-asked or after-meetings")
+    onboard_parser.add_argument("--handoff-summary", help="Concise onboarding handoff summary to record")
     onboard_parser.add_argument("--openclaw-provider", action="store_true", help="Run handlers through python3 -m lettuce.openclaw_provider")
     onboard_parser.add_argument("--handler-command", help="Provider command for handler execution")
 
@@ -359,6 +438,9 @@ def _run(argv: list[str] | None = None) -> int:
             default_model=args.default_model,
             initialize_git=args.commit,
         )
+        source_plan_records = [read_source_record(repo_path, source_ref) for source_ref in args.source_record]
+        for payload in [_parse_source_plan(value) for value in args.source_plan]:
+            source_plan_records.append(_source_plan_record(str(repo_path), payload, commit=args.commit))
         metadata = {"chat_id": args.chat_id} if args.chat_id else None
         direct = ingest_direct_signal(
             repo_path,
@@ -377,6 +459,24 @@ def _run(argv: list[str] | None = None) -> int:
         )
         handler_command = _resolve_handler_command(args)
         run_result = None if args.no_run else run_once(repo_path, stream="streams/inbox/direct", commit=args.commit, review=args.review, progress=_print_progress, handler_command=handler_command)
+        handoff = record_onboarding_handoff(
+            repo_path,
+            source_plan=source_plan_records,
+            first_sample={
+                "type": "direct",
+                "source": direct.source,
+                "stream": "streams/inbox/direct",
+                "title": direct.title,
+                "event_path": str(Path(direct.event_path).relative_to(repo_path)),
+                "event_id": Path(direct.event_path).stem,
+                "consent_basis": direct.consent_basis,
+                "outcome": _first_sample_outcome(run_result, no_run=args.no_run, review=args.review),
+            },
+            cadence_hint=args.cadence_hint,
+            cadence_trigger=args.cadence_trigger,
+            handoff_summary=args.handoff_summary,
+            commit=args.commit,
+        )
         current = status(repo_path)
         _print_json(
             {
@@ -407,12 +507,17 @@ def _run(argv: list[str] | None = None) -> int:
                         for run in run_result.runs
                     ],
                 },
+                "onboarding": current.onboarding,
+                "sources": current.sources,
+                "handoff_path": handoff["path"],
                 "status": {
                     "handlers": current.handlers,
                     "streams": current.streams,
                     "checkpoints": current.checkpoints,
                     "log_entries": current.log_entries,
                     "agent_instructions_path": current.agent_instructions_path,
+                    "sources": current.sources,
+                    "onboarding": current.onboarding,
                     "last_log": current.last_log,
                 },
             }
@@ -709,6 +814,8 @@ def _run(argv: list[str] | None = None) -> int:
                 "checkpoints": result.checkpoints,
                 "log_entries": result.log_entries,
                 "agent_instructions_path": result.agent_instructions_path,
+                "sources": result.sources,
+                "onboarding": result.onboarding,
                 "last_log": result.last_log,
                 "freshness": result.freshness,
             }

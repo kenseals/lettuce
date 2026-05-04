@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import patch
 
 from lettuce.openclaw_provider import build_prompt, extract_json_object, run_openclaw
-from lettuce.protocol_runtime import add_handler, add_stream_event, approve_review, configure_source, configure_subscription, decline_review, import_source_event, ingest_email_signal, init_repo, list_reviews, read_logs, read_stream_events, run_once, status
+from lettuce.protocol_runtime import add_handler, add_stream_event, approve_review, configure_source, configure_subscription, decline_review, ensure_source_config, import_source_event, ingest_email_signal, init_repo, list_reviews, read_logs, read_source_record, read_stream_events, run_once, status
 
 
 class ProtocolRuntimeTests(unittest.TestCase):
@@ -384,6 +384,130 @@ else:
             self.assertTrue((repo / "sources" / "email-walm-e-email.md").exists())
             self.assertTrue(any((repo / "reviews" / "pending").glob("*.md")))
             self.assertEqual(git_status.strip(), "")
+
+    def test_onboard_cli_records_source_plan_and_cadence_handoff(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "lettuce-acme-ken"
+            completed = subprocess.run(
+                [
+                    "python3",
+                    "-m",
+                    "lettuce.cli",
+                    "onboard",
+                    str(repo),
+                    "--org",
+                    "acme",
+                    "--operator",
+                    "ken",
+                    "--title",
+                    "First signal",
+                    "--body",
+                    "Customer wants a durable source-plan handoff.",
+                    "--source",
+                    "openclaw.telegram",
+                    "--surface",
+                    "telegram",
+                    "--consent",
+                    "operator-direct-request",
+                    "--source-plan",
+                    json.dumps(
+                        {
+                            "source_type": "email",
+                            "name": "customer-mailbox",
+                            "address": "customers@example.com",
+                            "access_status": "available_now",
+                            "sample_policy": "first-3-operator-approved",
+                        }
+                    ),
+                    "--source-plan",
+                    json.dumps(
+                        {
+                            "source_type": "granola",
+                            "name": "sales-calls",
+                            "workspace": "ken-granola",
+                            "access_status": "needs_setup",
+                            "setup_next_action": "connect existing export before polling",
+                        }
+                    ),
+                    "--cadence-hint",
+                    "after-meetings",
+                    "--cadence-trigger",
+                    "agent-lane",
+                    "--handoff-summary",
+                    "Email is ready now; meeting transcripts need setup before recurring ingest.",
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            output = json.loads(completed.stdout)
+            handoff_path = repo / output["handoff_path"]
+            handoff = json.loads(handoff_path.read_text(encoding="utf-8"))
+
+            self.assertTrue(handoff_path.exists())
+            self.assertEqual(handoff["cadence"]["hint"], "after-meetings")
+            self.assertEqual(handoff["cadence"]["trigger"], "agent-lane")
+            self.assertEqual(handoff["summary"], "Email is ready now; meeting transcripts need setup before recurring ingest.")
+            self.assertEqual(handoff["first_sample"]["type"], "direct")
+            self.assertEqual(handoff["first_sample"]["source"], "openclaw.telegram")
+            self.assertEqual(handoff["first_sample"]["outcome"], "processed")
+            self.assertEqual(len(handoff["source_plan"]), 2)
+            self.assertEqual(output["onboarding"]["path"], "onboarding/setup/handoff.json")
+            self.assertEqual(output["sources"]["count"], 2)
+            self.assertEqual(output["sources"]["by_access_status"]["available_now"], 1)
+            self.assertEqual(output["sources"]["by_access_status"]["needs_setup"], 1)
+            self.assertTrue((repo / "sources" / "email-customer-mailbox.md").exists())
+            self.assertTrue((repo / "sources" / "granola-sales-calls.md").exists())
+
+    def test_onboard_cli_can_reuse_existing_source_record_in_handoff(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "lettuce-acme-ken"
+            init_repo(repo, org="acme", operator="ken", initialize_git=False)
+            source = ensure_source_config(
+                repo,
+                "email",
+                name="customer-mailbox",
+                metadata={"address": "customers@example.com"},
+                access_status="available_now",
+            )
+
+            completed = subprocess.run(
+                [
+                    "python3",
+                    "-m",
+                    "lettuce.cli",
+                    "onboard",
+                    str(repo),
+                    "--org",
+                    "acme",
+                    "--operator",
+                    "ken",
+                    "--title",
+                    "Reuse source record",
+                    "--body",
+                    "Reuse the configured source record during onboarding.",
+                    "--source",
+                    "openclaw.telegram",
+                    "--surface",
+                    "telegram",
+                    "--consent",
+                    "operator-direct-request",
+                    "--source-record",
+                    source.source_id,
+                    "--no-run",
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            output = json.loads(completed.stdout)
+            handoff = json.loads((repo / output["handoff_path"]).read_text(encoding="utf-8"))
+
+            self.assertEqual(len(handoff["source_plan"]), 1)
+            self.assertEqual(handoff["source_plan"][0]["id"], source.source_id)
+            self.assertEqual(handoff["first_sample"]["outcome"], "ingested_only")
 
     def test_cli_rejects_body_and_body_file_together(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1187,9 +1311,67 @@ print(json.dumps({
             self.assertEqual(current.streams["streams/inbox/direct"], 1)
             self.assertGreaterEqual(current.log_entries, 1)
             self.assertEqual(current.agent_instructions_path, str(repo / "LETTUCE_AGENT.md"))
+            self.assertEqual(current.sources["count"], 0)
+            self.assertFalse(current.onboarding["handoff_recorded"])
             self.assertTrue(current.last_log)
             self.assertEqual(current.freshness["state"], "fresh")
             self.assertEqual(len(logs), 2)
+
+    def test_status_reports_source_plan_and_onboarding_handoff(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "lettuce-acme-ken"
+            init_repo(repo, org="acme", operator="ken", initialize_git=False)
+            configure_source(
+                repo,
+                "email",
+                name="support-forward",
+                metadata={"address": "support@example.com"},
+                access_status="needs_setup",
+                setup_next_action="connect mailbox export",
+            )
+            subprocess.run(
+                [
+                    "python3",
+                    "-m",
+                    "lettuce.cli",
+                    "onboard",
+                    str(repo),
+                    "--org",
+                    "acme",
+                    "--operator",
+                    "ken",
+                    "--title",
+                    "Status handoff",
+                    "--body",
+                    "Record the onboarding handoff for status.",
+                    "--source",
+                    "openclaw.telegram",
+                    "--surface",
+                    "telegram",
+                    "--consent",
+                    "operator-direct-request",
+                    "--source-record",
+                    "email-support-forward",
+                    "--cadence-hint",
+                    "manual-for-now",
+                    "--cadence-trigger",
+                    "when-asked",
+                    "--no-run",
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            current = status(repo)
+            source_record = read_source_record(repo, "email-support-forward")
+
+            self.assertEqual(current.sources["count"], 1)
+            self.assertEqual(current.sources["records"][0]["id"], source_record["id"])
+            self.assertEqual(current.sources["records"][0]["setup_next_action"], "connect mailbox export")
+            self.assertTrue(current.onboarding["handoff_recorded"])
+            self.assertEqual(current.onboarding["cadence"]["hint"], "manual-for-now")
+            self.assertEqual(current.onboarding["first_sample"]["outcome"], "ingested_only")
 
     def test_openclaw_provider_builds_prompt_and_extracts_fenced_json(self) -> None:
         invocation = {
