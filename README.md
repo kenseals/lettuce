@@ -72,6 +72,8 @@ That scaffolds an org-scoped Lettuce repo, discovers markdown handlers, writes t
 
 `onboard` is the first agent-facing setup helper: it scaffolds the repo if needed, writes the first direct event with provenance, runs handlers, records `onboarding/setup/handoff.json`, and returns a machine-readable status summary. `--openclaw-provider` runs handlers through OpenClaw's model-backed provider for real judgment; omit it only for offline plumbing smoke tests. `--body-file` lets an agent preserve multi-paragraph operator signal without brittle shell quoting; `--body` and stdin remain available for tiny smoke tests.
 
+Use the default `solo_founder` onboarding path unless the operator explicitly needs multi-operator coordination later. That keeps first setup simple: personal Lettuce repo, manual/direct signal, one source plan, first handler pass, and optional GitHub remote next. If the org already has multiple operators or role agents, `lettuce onboard ... --onboarding-path multi_operator` records that branch in `onboarding/setup/handoff.json` together with intent for personal/role-agent/hub repo discovery and future shared-stream coordination. It does not claim that remote mirroring or `pull-subscriptions` already ship.
+
 If the agent already knows the source plan and refresh cadence, record them during onboarding:
 
 ```bash

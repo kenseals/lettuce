@@ -520,6 +520,7 @@ else:
                     "y",
                     "WALM-E",
                     "ken",
+                    "n",
                     str(repo),
                     "operator-direct-request",
                     "y",
@@ -546,6 +547,7 @@ else:
             git_status = subprocess.run(["git", "status", "--short"], cwd=repo, check=True, capture_output=True, text=True).stdout
 
             self.assertIn("Lettuce is a work-context layer", completed.stdout)
+            self.assertIn("Onboarding path: `solo_founder`.", completed.stdout)
             self.assertIn("Manual/direct ingestion is ready", completed.stdout)
             self.assertIn("Repo-local agent instructions:", completed.stdout)
             self.assertIn("pending reviews", completed.stdout)
@@ -553,7 +555,47 @@ else:
             self.assertTrue((repo / "LETTUCE_AGENT.md").exists())
             self.assertTrue((repo / "sources" / "direct-manual-direct.md").exists())
             self.assertTrue((repo / "sources" / "email-walm-e-email.md").exists())
+            handoff = json.loads((repo / "onboarding" / "setup" / "handoff.json").read_text(encoding="utf-8"))
+            self.assertEqual(handoff["onboarding_path"], "solo_founder")
             self.assertTrue(any((repo / "reviews" / "pending").glob("*.md")))
+            self.assertEqual(git_status.strip(), "")
+
+    def test_setup_cli_can_record_multi_operator_branch_without_blocking_first_setup(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "lettuce-acme-ken"
+            setup_input = "\n".join(
+                [
+                    "y",
+                    "Acme",
+                    "ken",
+                    "y",
+                    str(repo),
+                    "operator-direct-request",
+                    "n",
+                    "n",
+                    "Setup signal",
+                    "Record multi-operator onboarding intent without pretending shared pulls ship today.",
+                    ".",
+                    "",
+                ]
+            )
+
+            completed = subprocess.run(
+                ["python3", "-m", "lettuce.cli", "setup", "--commit", "--no-run"],
+                input=setup_input,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            handoff = json.loads((repo / "onboarding" / "setup" / "handoff.json").read_text(encoding="utf-8"))
+            git_status = subprocess.run(["git", "status", "--short"], cwd=repo, check=True, capture_output=True, text=True).stdout
+
+            self.assertIn("Onboarding path: `multi_operator`.", completed.stdout)
+            self.assertIn("recorded as intent only", completed.stdout)
+            self.assertEqual(handoff["onboarding_path"], "multi_operator")
+            self.assertEqual(handoff["multi_operator_plan"]["shared_streams"]["subscription_scope"], "subscribe only to explicit exported streams")
+            self.assertEqual(handoff["multi_operator_plan"]["shared_streams"]["promotion_rule"], "run local handlers on shared signal before any local brain promotion")
             self.assertEqual(git_status.strip(), "")
 
     def test_onboard_cli_records_source_plan_and_cadence_handoff(self) -> None:
@@ -617,6 +659,7 @@ else:
             handoff = json.loads(handoff_path.read_text(encoding="utf-8"))
 
             self.assertTrue(handoff_path.exists())
+            self.assertEqual(handoff["onboarding_path"], "solo_founder")
             self.assertEqual(handoff["cadence"]["hint"], "after-meetings")
             self.assertEqual(handoff["cadence"]["trigger"], "agent-lane")
             self.assertEqual(handoff["summary"], "Email is ready now; meeting transcripts need setup before recurring ingest.")
@@ -678,6 +721,51 @@ else:
 
             self.assertEqual(len(handoff["source_plan"]), 1)
             self.assertEqual(handoff["source_plan"][0]["id"], source.source_id)
+            self.assertEqual(handoff["onboarding_path"], "solo_founder")
+            self.assertEqual(handoff["first_sample"]["outcome"], "ingested_only")
+
+    def test_onboard_cli_can_record_multi_operator_intent_without_blocking(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "lettuce-acme-ken"
+
+            completed = subprocess.run(
+                [
+                    "python3",
+                    "-m",
+                    "lettuce.cli",
+                    "onboard",
+                    str(repo),
+                    "--org",
+                    "acme",
+                    "--operator",
+                    "ken",
+                    "--onboarding-path",
+                    "multi_operator",
+                    "--title",
+                    "Multi-operator setup",
+                    "--body",
+                    "Record the multi-operator branch without inventing remote pulls.",
+                    "--source",
+                    "openclaw.telegram",
+                    "--surface",
+                    "telegram",
+                    "--consent",
+                    "operator-direct-request",
+                    "--no-run",
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            output = json.loads(completed.stdout)
+            handoff = json.loads((repo / output["handoff_path"]).read_text(encoding="utf-8"))
+
+            self.assertEqual(handoff["onboarding_path"], "multi_operator")
+            self.assertEqual(handoff["multi_operator_plan"]["github_org_scan"]["status"], "runtime_owned_discovery_not_run")
+            self.assertEqual(handoff["multi_operator_plan"]["hub_repo"]["suggested_name"], "lettuce-acme-hub")
+            self.assertEqual(handoff["multi_operator_plan"]["shared_streams"]["mirror_path"], "streams/shared/*")
+            self.assertEqual(handoff["multi_operator_plan"]["shared_streams"]["mirror_status"], "planned_runtime_followup")
             self.assertEqual(handoff["first_sample"]["outcome"], "ingested_only")
 
     def test_cli_rejects_body_and_body_file_together(self) -> None:
@@ -1658,6 +1746,7 @@ print(json.dumps({
             self.assertEqual(current.sources["records"][0]["id"], source_record["id"])
             self.assertEqual(current.sources["records"][0]["setup_next_action"], "connect mailbox export")
             self.assertTrue(current.onboarding["handoff_recorded"])
+            self.assertEqual(current.onboarding["onboarding_path"], "solo_founder")
             self.assertEqual(current.onboarding["cadence"]["hint"], "manual-for-now")
             self.assertEqual(current.onboarding["first_sample"]["outcome"], "ingested_only")
 

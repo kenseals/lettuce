@@ -69,6 +69,8 @@ lettuce setup --commit
 
 This helper introduces Lettuce, confirms the operator wants to continue, asks for org/operator/repo/source details, configures manual/direct ingestion, optionally records email and transcript source intent, ingests one first setup signal, runs handlers behind the review gate, and prints a concise final summary.
 
+Default to the solo-founder branch. That path should feel lightweight: personal repo, manual/direct ingestion, one source plan, first handler pass, optional GitHub remote later, shared streams mentioned only as future-ready context. Choose the multi-operator branch only when the operator explicitly expects multiple personal or role-agent Lettuces and wants the handoff to record hub/shared-stream intent.
+
 ## Step 4: If needed, run the lower-level flow yourself
 
 Create or choose one org-scoped repo. Do not mix multiple companies/projects into one Lettuce by default.
@@ -83,6 +85,7 @@ EOF
 lettuce onboard <repo-path> \
   --org <org-slug> \
   --operator <operator-name> \
+  --onboarding-path solo_founder \
   --title "First setup signal" \
   --body-file /tmp/lettuce-first-signal.md \
   --source <agent.surface> \
@@ -105,6 +108,8 @@ lettuce add-source direct <repo-path> \
 ```
 
 Treat that direct/manual source as `manual-only` in the recipe sense: operator-triggered, runtime-ingested, not polled. Keep the persisted CLI status truthful, usually `available_now`.
+
+If the operator explicitly wants the multi-operator branch, record intent rather than pretending unshipped GitHub org scans or remote shared-stream pulls already exist. The setup handoff should note likely personal, role-agent, and `lettuce-<org>-hub` candidates; future shared imports stay scoped to `streams/shared/*`; and any shared signal must run through local handlers before local brain promotion.
 
 Record other sources as intent, not fake integrations:
 

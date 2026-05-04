@@ -27,6 +27,8 @@ Happy-path outcome:
 - durable source/skill instructions are committed so the agent can keep using Lettuce after the chat ends;
 - the operator receives a concise summary of what changed and how the agent will use Lettuce going forward.
 
+Default onboarding branch: `solo_founder`. Use `multi_operator` only when the operator explicitly expects more than one personal or role-agent Lettuce and wants shared-stream coordination planned from the start.
+
 ## Core Rule
 
 Do not build duplicate surfaces inside Lettuce.
@@ -73,6 +75,13 @@ Why this matters: one operator can have multiple Lettuces. Work context for diff
 
 ### 2. Choose or Create the Repo
 
+Before repo creation, choose the onboarding branch:
+
+- `solo_founder`: default and preferred. Create one personal Lettuce repo, configure manual/direct ingestion, record one source plan, run the first handler pass, optionally offer GitHub remote setup, and mention shared streams only as future-ready context.
+- `multi_operator`: optional. Create one personal or role-agent Lettuce repo first, then record intent for GitHub-org discovery of personal, role-agent, and hub candidates. If no hub exists, offer `lettuce-<org>-hub`. Subscribe only to explicit exported streams, keep future mirrors under `streams/shared/*`, and run local handlers before any local brain promotion from shared signal.
+
+Do not make the multi-operator branch block first setup. If discovery or hub decisions are not ready, record the plan in `onboarding/setup/handoff.json` and continue with the local repo.
+
 Ask whether the operator wants to:
 
 - use an existing repo
@@ -105,11 +114,14 @@ For one-sentence smoke tests, `--body "<first direct signal body>"` is fine. For
 
 `lettuce onboard` now also writes `onboarding/setup/handoff.json`. That handoff is the repo-owned machine-readable record of:
 
+- the chosen onboarding branch (`solo_founder` or `multi_operator`);
 - source plan entries and access/setup state;
 - cadence/trigger hints for future refresh;
 - the first sample type/source/event path;
 - the first sample outcome; and
 - a concise summary for the next agent handoff.
+
+When the branch is `multi_operator`, the handoff may also record lightweight discovery notes and intent for personal/role-agent/hub candidates. It must not falsely imply that GitHub org scanning, remote mirroring, or `pull-subscriptions` are already shipped in Lettuce itself.
 
 Use `--source-record <id-or-path>` when the source records already exist under `sources/` and should just be referenced in the handoff.
 
