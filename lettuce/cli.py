@@ -78,12 +78,20 @@ def _ask_multiline(prompt: str, *, default: str) -> str:
     return body or default
 
 
-def _default_repo_path(path: str | None, org: str, operator: str) -> str:
+def _default_repo_path(
+    path: str | None,
+    org: str,
+    operator: str,
+    *,
+    owner_kind: str = "human_operator",
+    role_agent_id: str | None = None,
+) -> str:
     if path:
         return path
     def slug(value: str) -> str:
         return "-".join(part for part in value.lower().replace("_", "-").split() if part) or "demo"
-    return f"./lettuce-{slug(org)}-{slug(operator)}"
+    owner_slug = slug(role_agent_id or operator) if owner_kind == "role_agent" else slug(operator)
+    return f"./lettuce-{slug(org)}-{owner_slug}"
 
 
 def _source_summary(source_type: str, result: object) -> str:
@@ -272,9 +280,13 @@ def _run(argv: list[str] | None = None) -> int:
     onboard_parser.add_argument("--openclaw-provider", action="store_true", help="Run handlers through python3 -m lettuce.openclaw_provider")
     onboard_parser.add_argument("--handler-command", help="Provider command for handler execution")
 
-    setup_parser = subparsers.add_parser("setup", help="Interactive happy-path onboarding for an operator-owned Lettuce")
+    setup_parser = subparsers.add_parser("setup", help="Interactive happy-path onboarding for an operator-owned or role-agent Lettuce")
     setup_parser.add_argument("path", nargs="?", help="Lettuce repo path. If omitted, a path is suggested from org/operator")
     setup_parser.add_argument("--default-model", default="claude-sonnet-4", help="Default handler model for new repos")
+    setup_parser.add_argument("--owner-kind", choices=["human_operator", "role_agent"], default="human_operator", help="Identity owner kind for newly initialized repos")
+    setup_parser.add_argument("--role-agent-id", help="Required when --owner-kind=role_agent")
+    setup_parser.add_argument("--permission-basis", choices=["github-user", "github-app", "machine-user"], default="github-user", help="Bounded GitHub identity behind this repo")
+    setup_parser.add_argument("--visibility", default="private", help="Repo visibility label written to lettuce.yml")
     setup_parser.add_argument("--commit", action="store_true", help="Commit scaffold, sources, event, and review proposals to git")
     setup_parser.add_argument("--no-review", action="store_true", help="Publish directly instead of writing first-pass review proposals")
     setup_parser.add_argument("--no-run", action="store_true", help="Only initialize, configure sources, and ingest the first direct event")
@@ -572,7 +584,16 @@ def _run(argv: list[str] | None = None) -> int:
         operator = _ask("Operator name/handle")
         if not operator:
             raise ValueError("operator is required")
-        repo_input = _ask("Repo path", default=_default_repo_path(args.path, org, operator))
+        repo_input = _ask(
+            "Repo path",
+            default=_default_repo_path(
+                args.path,
+                org,
+                operator,
+                owner_kind=args.owner_kind,
+                role_agent_id=args.role_agent_id,
+            ),
+        )
         repo_path = Path(repo_input).expanduser().resolve()
         consent = _ask("Consent basis for the first manual signal", default="operator-direct-request")
 
@@ -601,7 +622,17 @@ def _run(argv: list[str] | None = None) -> int:
         body = _ask_multiline("Paste the first manual signal for this Lettuce.", default=default_signal)
 
         initialized = not (repo_path / "lettuce.yml").exists()
-        files_written = init_repo(repo_path, org=org, operator=operator, default_model=args.default_model, initialize_git=args.commit)
+        files_written = init_repo(
+            repo_path,
+            org=org,
+            operator=operator,
+            default_model=args.default_model,
+            owner_kind=args.owner_kind,
+            role_agent_id=args.role_agent_id,
+            permission_basis=args.permission_basis,
+            visibility=args.visibility,
+            initialize_git=args.commit,
+        )
         configured_sources: list[str] = []
         manual_source = configure_source(
             repo_path,
@@ -658,7 +689,15 @@ def _run(argv: list[str] | None = None) -> int:
 
         print("\nDone.")
         print(f"I set up Lettuce for {org} at {repo_path}.")
-        print("Repo identity defaults: type `personal`, owner_kind `human_operator`, permission_basis `github-user`, visibility `private`.")
+        print(
+            f"Repo identity: type `personal`, owner_kind `{current.identity.owner_kind}`, "
+            f"permission_basis `{current.identity.permission_basis}`, visibility `{current.identity.visibility}`."
+        )
+        if current.identity.role_agent_id:
+            print(
+                f"Role agent id: `{current.identity.role_agent_id}`. "
+                "Keep this repo bounded to that GitHub identity's permitted scope."
+            )
         print("Manual/direct ingestion is ready: say “run Lettuce on this” and the agent should capture the signal with provenance, run lenses, and show review proposals before durable brain updates.")
         print(f"Repo-local agent instructions: {current.agent_instructions_path}")
         print("Configured sources:")
@@ -844,6 +883,15 @@ def _run(argv: list[str] | None = None) -> int:
         _print_json(
             {
                 "repo": result.repo,
+                "identity": {
+                    "repo_type": result.identity.repo_type,
+                    "org": result.identity.org,
+                    "owner_kind": result.identity.owner_kind,
+                    "operator": result.identity.operator,
+                    "role_agent_id": result.identity.role_agent_id,
+                    "permission_basis": result.identity.permission_basis,
+                    "visibility": result.identity.visibility,
+                },
                 "handlers": result.handlers,
                 "streams": result.streams,
                 "checkpoints": result.checkpoints,

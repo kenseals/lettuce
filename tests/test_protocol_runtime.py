@@ -7,6 +7,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+from lettuce.cli import _default_repo_path
 from lettuce.openclaw_provider import build_prompt, extract_json_object, run_openclaw
 from lettuce.protocol_runtime import add_handler, add_stream_event, approve_review, configure_source, configure_subscription, decline_review, ensure_source_config, import_source_event, ingest_email_signal, init_repo, list_reviews, read_exported_streams, read_logs, read_repo_identity, read_source_record, read_stream_events, run_once, status
 
@@ -114,6 +115,17 @@ default_model: claude-sonnet-4
             self.assertEqual(identity.owner_kind, "role_agent")
             self.assertEqual(identity.role_agent_id, "support-agent")
             self.assertEqual(identity.permission_basis, "github-app")
+
+    def test_default_repo_path_uses_role_agent_id_for_role_agent_repos(self) -> None:
+        default_path = _default_repo_path(
+            None,
+            "Acme Corp",
+            "ken",
+            owner_kind="role_agent",
+            role_agent_id="support-agent",
+        )
+
+        self.assertEqual(default_path, "./lettuce-acme-corp-support-agent")
 
     def test_read_exported_streams_rejects_unsafe_export_path(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1535,6 +1547,8 @@ print(json.dumps({
             current = status(repo)
             logs = read_logs(repo, limit=2)
 
+            self.assertEqual(current.identity.owner_kind, "human_operator")
+            self.assertEqual(current.identity.permission_basis, "github-user")
             self.assertEqual(current.handlers, 6)
             self.assertEqual(current.streams["streams/inbox/direct"], 1)
             self.assertGreaterEqual(current.log_entries, 1)
@@ -1600,6 +1614,37 @@ print(json.dumps({
             self.assertTrue(current.onboarding["handoff_recorded"])
             self.assertEqual(current.onboarding["cadence"]["hint"], "manual-for-now")
             self.assertEqual(current.onboarding["first_sample"]["outcome"], "ingested_only")
+
+    def test_status_reports_role_agent_identity_in_runtime_and_cli_json(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "lettuce-acme-support-agent"
+            init_repo(
+                repo,
+                org="acme",
+                operator="ken",
+                owner_kind="role_agent",
+                role_agent_id="support-agent",
+                permission_basis="machine-user",
+                initialize_git=False,
+            )
+
+            current = status(repo)
+            completed = subprocess.run(
+                ["python3", "-m", "lettuce.cli", "status", str(repo)],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            output = json.loads(completed.stdout)
+
+            self.assertEqual(current.identity.owner_kind, "role_agent")
+            self.assertEqual(current.identity.role_agent_id, "support-agent")
+            self.assertEqual(current.identity.permission_basis, "machine-user")
+            self.assertEqual(current.identity.visibility, "private")
+            self.assertEqual(output["identity"]["owner_kind"], "role_agent")
+            self.assertEqual(output["identity"]["role_agent_id"], "support-agent")
+            self.assertEqual(output["identity"]["permission_basis"], "machine-user")
+            self.assertEqual(output["identity"]["visibility"], "private")
 
     def test_openclaw_provider_builds_prompt_and_extracts_fenced_json(self) -> None:
         invocation = {
