@@ -1,33 +1,47 @@
 # Lettuce
 
-Lettuce is an agent-operated, local-first protocol for giving an operator's agent durable company context that is separate from personal memory, owned by the operator, and portable across agent runtimes.
+**Distributed company context for agents, built on markdown and git.**
 
-It gives the agent a markdown+git work brain for one organization, a stream model for connecting signal sources, and explicit handlers for interpreting what matters into durable context. Git history, provenance, source boundaries, and optional review mode are the safety mechanisms; the product is company context for agents.
+Lettuce gives an operator's agent a durable work brain for one company, client, or project. Instead of relying only on chat history, personal memory, or a centralized all-seeing company brain, the agent can turn selected work signal into reviewed, provenance-backed context that lives in a repo the operator owns.
 
-Current status: **first v0 protocol loop**. The installable `lettuce` CLI scaffolds and runs a markdown+git Lettuce repo. The operator's agent is the runtime: OpenClaw in v0, and later any agent that can read files, call tools, and follow the protocol.
+The v0 shape is intentionally simple:
 
-The protocol does not own chat surfaces, inboxes, OAuth grants, or service integrations. The agent runtime owns those. Lettuce teaches the agent how to connect the right signal sources, preserve provenance, write stream events, run handlers, maintain brain updates, and prepare for shared-stream coordination across Lettuces in an organization so company context can become distributed instead of centralized.
+```text
+source signal -> stream event -> handler/lens -> optional review -> brain update -> git history
+```
 
-## Optional Company Hub
+A customer email, call note, Telegram message, support transcript, or local file becomes a markdown event with provenance. Markdown handlers decide what matters. The result is a durable context update your agent can use later, inspect, review, revise, and share deliberately.
 
-An org can also keep an optional `company_hub` Lettuce repo as a lightweight coordination point for curated shared context.
+## Why this exists
 
-Use the hub for:
+Agents are becoming good enough to help run real work, but their context is usually fragile:
 
-- exported shared streams under `streams/shared/*`
-- accepted company decisions and durable facts
-- discovery metadata for shared streams
-- stream owners and policy notes
+- chat memory goes stale or disappears across sessions;
+- personal assistant memory gets mixed with company/project truth;
+- generic knowledge bases preserve documents, not judgment;
+- centralized company-brain tools often want every inbox, transcript, and permission surface in one place;
+- downstream agents can act on stale or disputed context without a clear review trail.
 
-Do not use the hub for:
+Lettuce takes a narrower path: keep company context local-first, repo-owned, explicit, reviewable, and eventually distributed across bounded operator and role-agent repos.
 
-- every operator's raw inbox or transcripts
-- direct remote writes into `brain/*`
-- a centralized all-seeing company dump
+## What you can do today
 
-Shared pulls and mirrors may only write under `streams/shared/*`. GitHub access remains the outer boundary; Lettuce export and path policy narrows what gets shared inside that boundary.
+Current status: **first v0 protocol loop**.
 
-## Give This To Your Agent
+The installable `lettuce` CLI can:
+
+- scaffold a markdown+git Lettuce repo;
+- ingest direct, email-shaped, file, directory, and stdin signals as stream events;
+- run markdown handlers through a local adapter or optional OpenClaw model provider;
+- write proposed or accepted brain updates;
+- record provenance, checkpoints, logs, reviews, and setup handoffs;
+- keep first setup lightweight for a solo founder while recording optional multi-operator/shared-stream intent.
+
+The operator's agent is still the runtime. Lettuce does **not** own chat surfaces, inboxes, OAuth grants, browser sessions, service integrations, or scheduling. The agent runtime owns access to those systems, then writes selected signal into Lettuce with provenance.
+
+Not shipped yet: real remote shared-stream pulling, checkpointed git mirroring, or a built-in `pull-subscriptions` command.
+
+## Give this to your agent
 
 Give your agent this one link:
 
@@ -35,7 +49,7 @@ Give your agent this one link:
 https://raw.githubusercontent.com/kenseals/lettuce/main/llms.txt
 ```
 
-That file tells the agent what Lettuce is, what to install, which docs matter, and how to guide you through setting up the first company-context repo without making you copy a separate prompt.
+That file tells the agent what Lettuce is, what to install, which docs matter, and how to guide first setup without making you learn the CLI first.
 
 If your agent prefers an install-runbook style prompt, paste this instead:
 
@@ -44,11 +58,9 @@ Retrieve and follow the instructions at:
 https://raw.githubusercontent.com/kenseals/lettuce/main/INSTALL_FOR_AGENTS.md
 ```
 
-The agent should run the setup helpers itself if it has tool access. You answer setup questions and approve sensitive boundaries; you should not have to learn the CLI first.
+The intended operator experience is: answer setup questions, approve boundaries, and let the agent run the helper commands if it has tool access.
 
-## Protocol CLI
-
-Start with `TRY_THIS_FIRST.md` for the shortest usable path. For the product frame, see `docs/company-context-for-agents.md`. For a public-safe first-run walkthrough, see `docs/first-run-demo.md`. The v0 protocol source is `LETTUCE_V0_SPEC.md`; handler format is specified in `HANDLERS.md`. For the full local walkthrough, see `QUICKSTART.md`. For agent-operated setup, see `docs/agent-operated-onboarding.md`; for the formal local/runtime/shared trust model, see `docs/trust-boundary.md`; for post-setup verification, see `docs/LETTUCE_VERIFY.md`; for ongoing agent use after setup, see `docs/LETTUCE_RESOLVER.md`; for the OpenClaw source setup contract, see `docs/openclaw-runtime-source-setup.md`; for source setup decisions, see `docs/source-discovery-recipes.md`; for concrete agent-readable setup recipes, see `docs/source-recipes/`; for a repo-packaged OpenClaw skill, see `skills/openclaw-lettuce/SKILL.md`. For the launch note, see `docs/public-v0-launch-note.md`. For the public-v0 release gate, see `docs/public-v0-release-checklist.md`.
+## Try the first local loop
 
 Install from GitHub:
 
@@ -59,7 +71,7 @@ lettuce --help
 
 If your shell cannot find the installed `lettuce` script because the user Python bin directory is not on `PATH`, use `python3 -m lettuce.cli ...` for the same commands. For local development from a cloned repo, use `python3 -m pip install .`; for editable installs, upgrade pip first, then run `python3 -m pip install -e .`.
 
-## First Local Loop
+Run one demo signal through the loop:
 
 ```bash
 printf 'Customer says agent context is stale.\n' > /tmp/lettuce-first-signal.md
@@ -68,31 +80,87 @@ lettuce status ./lettuce-demo
 lettuce logs ./lettuce-demo --limit 5
 ```
 
-That scaffolds an org-scoped Lettuce repo, discovers markdown handlers, writes the first event to `streams/inbox/direct`, writes handler outputs to local `brain/*` streams, records checkpoints/logs under `.lettuce/`, and commits handler/event/brain changes to git when `--commit` is set. Add `--review` when you want calibration or human approval before brain updates land; first agent-operated onboarding should usually use review mode.
+That scaffolds an org-scoped Lettuce repo, writes the first event to `streams/inbox/direct`, runs handlers, records `onboarding/setup/handoff.json`, writes handler outputs to local `brain/*` streams, records checkpoints/logs under `.lettuce/`, and commits changes to git when `--commit` is set.
 
-`onboard` is the first agent-facing setup helper: it scaffolds the repo if needed, writes the first direct event with provenance, runs handlers, records `onboarding/setup/handoff.json`, and returns a machine-readable status summary. `--openclaw-provider` runs handlers through OpenClaw's model-backed provider for real judgment; omit it only for offline plumbing smoke tests. `--body-file` lets an agent preserve multi-paragraph operator signal without brittle shell quoting; `--body` and stdin remain available for tiny smoke tests.
+Add `--review` when you want calibration or human approval before brain updates land. First agent-operated onboarding should usually use review mode.
 
-Use the default `solo_founder` onboarding path unless the operator explicitly needs multi-operator coordination later. That keeps first setup simple: personal Lettuce repo, manual/direct signal, one source plan, first handler pass, and optional GitHub remote next. If the org already has multiple operators or role agents, `lettuce onboard ... --onboarding-path multi_operator` records that branch in `onboarding/setup/handoff.json` together with intent for personal/role-agent/hub repo discovery and future shared-stream coordination. It does not claim that remote mirroring or `pull-subscriptions` already ship.
+For the shortest guided path, see `TRY_THIS_FIRST.md`. For a public-safe walkthrough, see `docs/first-run-demo.md`.
 
-If the agent already knows the source plan and refresh cadence, record them during onboarding:
+## How Lettuce works
 
-```bash
-lettuce onboard ./lettuce-demo \
-  --org demo \
-  --operator you \
-  --title "Demo signal" \
-  --body-file /tmp/lettuce-first-signal.md \
-  --source openclaw.telegram \
-  --surface telegram \
-  --consent operator-direct-request \
-  --source-plan '{"source_type":"email","name":"customer-mailbox","address":"customers@example.com","access_status":"available_now","sample_policy":"first-3-operator-approved"}' \
-  --source-plan '{"source_type":"granola","name":"sales-calls","workspace":"demo-granola","access_status":"needs_setup","setup_next_action":"connect export or MCP before polling"}' \
-  --cadence-hint "after-meetings" \
-  --cadence-trigger "agent-lane" \
-  --handoff-summary "Email is ready now; transcripts need setup before recurring ingest."
+### 1. Streams preserve selected signal
+
+Streams are repo folders that hold timestamped markdown events. A direct chat input might land under `streams/inbox/direct`; an operator-forwarded email might land under `streams/inbox/email`; shared company decisions can later be exported under `streams/shared/*`.
+
+Each event keeps provenance: where it came from, who forwarded or approved it, and what consent/boundary applied.
+
+### 2. Handlers interpret what matters
+
+Handlers are markdown files with YAML frontmatter and a prompt body. They subscribe to streams, read events, and publish structured outputs.
+
+Lettuce uses three plain-English conventions:
+
+- **Lenses** interpret messy signal into durable meaning.
+- **Routers** decide where interpreted signal should go or what downstream action should be prepared.
+- **Handlers** are the general primitive for anything else: summarizers, fact-checkers, fan-outs, evaluators, maintenance checks.
+
+The runtime treats them the same; the names are for human and agent legibility.
+
+### 3. Review gates prevent silent brain drift
+
+A handler can publish directly, but the safer first setup is review mode: handler outputs become pending review proposals before they update `brain/*`.
+
+That matters because company context is not just storage. It is judgment. Lettuce is designed so an operator or agent can inspect why a fact, decision, customer insight, or route was promoted.
+
+### 4. Git makes the context portable and auditable
+
+Because the state is markdown in git, it can be diffed, branched, reverted, reviewed in PRs, copied across runtimes, and inspected without a proprietary dashboard.
+
+## Handlers: lenses and routers in practice
+
+Handlers are the most important primitive in Lettuce. They turn “we have a pile of inputs” into “the agent knows what changed and what to do next.”
+
+Example lenses:
+
+- **Customer pain lens**: reads calls, emails, and chats; publishes recurring pains, objections, exact customer language, and evidence into `brain/customers`.
+- **Decision lens**: watches meeting notes and operator messages; extracts accepted decisions, owners, effective dates, and supersession/conflict metadata into `brain/decisions` or shared decision streams.
+- **Risk lens**: scans support tickets or incidents; promotes only durable risks, open questions, and follow-up owners instead of dumping every log line.
+- **Market signal lens**: reads curated articles or research notes; records only the market shifts that should change product or positioning.
+
+Example routers:
+
+- **Linear router**: reads reviewed product/customer context and prepares issue candidates only when the evidence clears a threshold.
+- **Founder briefing router**: turns recent brain updates into a concise operator handoff for the next morning or next work block.
+- **Sales follow-up router**: notices buying intent or unresolved objections and drafts follow-up tasks without sending anything automatically.
+- **Role-agent router**: routes selected context to a support-agent or sales-agent Lettuce without giving that role agent every raw source.
+
+A minimal handler is just markdown:
+
+```markdown
+---
+id: customer-pain-lens
+name: Customer Pain Lens
+type: lens
+version: 0.1.0
+subscribes:
+  - stream: streams/inbox/direct
+publishes:
+  - stream: brain/customers
+    mode: append
+---
+
+Read the event. If it contains durable customer pain, publish a concise brain entry with:
+- the pain in the customer's words
+- why it matters
+- source evidence
+- suggested follow-up, if any
+
+If there is no durable customer signal, return {"skip": true}.
 ```
 
-## Signal Sources
+For the full handler format, see `HANDLERS.md`.
+
+## Signal sources
 
 Direct input from Telegram, iMessage, Discord, CLI, web chat, or any other operator surface should arrive through the operator's agent, then be written as a stream event with provenance such as `source: openclaw.telegram`. Lettuce should not build duplicate chat surfaces when the agent already owns them.
 
@@ -125,9 +193,34 @@ lettuce ingest-email ./lettuce-demo \
 
 The first repeatable source connector is deliberately local and boring: `add-source directory --input <dir>` imports a sample of new `.md`/`.txt` files into stream events, preserves file provenance and consent, and checkpoints imported file versions so later runs only pick up new or changed files. `add-source file` imports one local text/markdown file, and `add-source stdin` does the same for piped or supplied text.
 
-`add-source email|fathom|granola|transcript|zoom` records repo-owned source configuration intent under `sources/` and creates the target stream directory. These records can include `access_status`, `sample_policy`, `privacy_notes`, and `setup_next_action`, so the operator's agent can see whether it can sample now or needs to guide setup first. Manual-only behavior should be described in the recipe/source record body rather than invented as a new CLI status. `lettuce onboard` can create or reuse those same records and then reference them from `onboarding/setup/handoff.json` along with cadence/trigger hints and first-sample outcome. It does not pretend to provision forwarding addresses, OAuth, or webhooks by itself; agent-owned setup can attach to the same source record later.
+`add-source email|fathom|granola|transcript|zoom` records repo-owned source configuration intent under `sources/` and creates the target stream directory. These records can include `access_status`, `sample_policy`, `privacy_notes`, and `setup_next_action`, so the operator's agent can see whether it can sample now or needs to guide setup first.
 
-`subscribe` records remote/shared stream subscription intent under `subscriptions/`. Shipped today: export declarations in `lettuce.yml`, subscription records, local-path export-policy checks, and local mirror-path/policy validation so subscriptions stay scoped to `streams/shared/*`. Not shipped yet: a real `pull-subscriptions` mirror command, remote polling, or checkpointed git mirroring. See `docs/trust-boundary.md` for the formal mutation rules around `brain/*`, `sources/*`, `reviews/*`, and shared-stream mirrors, and see roadmap issues `#20`, `#35`, `#36`, `#37`, and `#38` for the shared-stream/hub buildout.
+`lettuce onboard` can create or reuse those same records and reference them from `onboarding/setup/handoff.json` along with cadence/trigger hints and first-sample outcome. It does not pretend to provision forwarding addresses, OAuth, or webhooks by itself; agent-owned setup can attach to the same source record later.
+
+## Distributed context and optional hubs
+
+Lettuce is designed for distributed company context rather than one centralized brain that sees everything.
+
+The default path is one personal/operator Lettuce repo for one company or project. That repo can stay private and local-first. If the organization later has multiple operators or role agents, each can have its own bounded Lettuce repo with its own GitHub identity and source access.
+
+An org can also keep an optional `company_hub` Lettuce repo as a lightweight coordination point for curated shared context.
+
+Use the hub for:
+
+- exported shared streams under `streams/shared/*`;
+- accepted company decisions and durable facts;
+- discovery metadata for shared streams;
+- stream owners and policy notes.
+
+Do not use the hub for:
+
+- every operator's raw inbox or transcripts;
+- direct remote writes into `brain/*`;
+- a centralized all-seeing company dump.
+
+Shared pulls and mirrors may only write under `streams/shared/*`. GitHub access remains the outer boundary; Lettuce export and path policy narrows what gets shared inside that boundary.
+
+`subscribe` records remote/shared stream subscription intent under `subscriptions/`. Shipped today: export declarations in `lettuce.yml`, subscription records, local-path export-policy checks, and local mirror-path/policy validation so subscriptions stay scoped to `streams/shared/*`. Not shipped yet: a real `pull-subscriptions` mirror command, remote polling, or checkpointed git mirroring.
 
 When a repo declares `exports` in `lettuce.yml`, it is intentionally marking specific `streams/shared/*` paths as shareable. Those export declarations are editorial metadata for agents and runtime checks; they never grant access beyond the underlying GitHub repo permissions.
 
@@ -152,15 +245,21 @@ confidence: medium
 
 If company truth changes or becomes contested, append a new entry with updated metadata rather than silently overwriting the older accepted entry.
 
-## Minimal Maintenance Loop
+## Solo founder vs multi-operator setup
 
-Lettuce v0 does not run its own daemon or own chat/email/OAuth/cron surfaces. The external runtime or cron decides when to check, then calls existing commands such as `lettuce status`, `lettuce ingest-*`, `lettuce run --review`, and `lettuce reviews`. Shared-stream mirroring remains planned follow-up work rather than a shipped CLI command.
+Use the default `solo_founder` onboarding path unless the operator explicitly needs multi-operator coordination later. That keeps first setup simple: personal Lettuce repo, manual/direct signal, one source plan, first handler pass, and optional GitHub remote next.
 
-`lettuce status` now includes repo identity metadata alongside a small `freshness` summary so the agent can tell whether a repo is owned by a `human_operator` or a `role_agent`, whether it is `fresh`, `pending_review`, `blocked_on_setup`, or `idle_manual_only`, and which maintenance modes are configured: `manual`, `after-meeting`, `daily`, `source-check`, and `subscription-pull`. That last mode currently expresses subscription maintenance intent; it does not mean a built-in pull command already exists.
+If the org already has multiple operators or role agents, `lettuce onboard ... --onboarding-path multi_operator` records that branch in `onboarding/setup/handoff.json` together with intent for personal/role-agent/hub repo discovery and future shared-stream coordination. It does not claim that remote mirroring or `pull-subscriptions` already ship.
+
+## Minimal maintenance loop
+
+Lettuce v0 does not run its own daemon. The external runtime or cron decides when to check, then calls existing commands such as `lettuce status`, `lettuce ingest-*`, `lettuce run --review`, and `lettuce reviews`.
+
+`lettuce status` includes repo identity metadata and a small `freshness` summary so the agent can tell whether a repo is owned by a `human_operator` or a `role_agent`, whether it is `fresh`, `pending_review`, `blocked_on_setup`, or `idle_manual_only`, and which maintenance modes are configured: `manual`, `after-meeting`, `daily`, `source-check`, and `subscription-pull`. That last mode currently expresses subscription maintenance intent; it does not mean a built-in pull command already exists.
 
 Role-agent repos are first-class Lettuce repos, not hidden company-hub special cases. Use names such as `lettuce-acme-support-agent`, keep them `private` by default, and set `permission_basis` to the bounded GitHub identity that owns the repo access: `github-app`, `machine-user`, or `github-user`. A role agent should inherit only that identity's permitted scope, not become an all-seeing org brain.
 
-## Handler Execution
+## Handler execution
 
 Handler execution is pluggable through `LETTUCE_HANDLER_COMMAND`. If it is unset, the local protocol loop invokes the bundled default provider adapter with the same stdin/stdout JSON contract, so file, stream, checkpoint, review, and git behavior can be tested without blocking on provider credentials.
 
@@ -174,15 +273,43 @@ lettuce run ./lettuce-demo --commit
 
 The OpenClaw provider is intentionally a thin optional command adapter. It reads the standard handler invocation JSON from stdin, calls `openclaw capability model run --gateway`, extracts the model's JSON handler output, and writes that JSON to stdout for the runtime to validate and publish. During `lettuce run`, handler start/finish progress is printed to stderr while the machine-readable run result stays on stdout; each handler command is capped by `LETTUCE_HANDLER_TIMEOUT_SECONDS`, and the OpenClaw adapter also honors `LETTUCE_OPENCLAW_TIMEOUT_SECONDS` for its nested model call.
 
-## What Lettuce Is Not
+## What Lettuce is not
 
 - not a generic notes app
 - not a vector memory store
 - not a company brain by itself
 - not a dashboard-first product
-- not a first-party chat adapter, inbox provider, or OAuth broker
+- not a first-party chat adapter, inbox provider, OAuth broker, or scheduler
+- not an all-seeing centralized company dump
 
 The core idea is **lenses before routers**: decide what matters and where it should go before downstream agents act.
+
+## Docs map
+
+Start here:
+
+- `TRY_THIS_FIRST.md` — shortest usable smoke path.
+- `docs/company-context-for-agents.md` — product frame and boundaries.
+- `docs/first-run-demo.md` — public-safe first-run walkthrough.
+- `INSTALL_FOR_AGENTS.md` — linear setup guide for agents.
+- `docs/agent-operated-onboarding.md` — full agent-operated onboarding contract.
+
+Protocol and operations:
+
+- `LETTUCE_V0_SPEC.md` — v0 protocol source.
+- `HANDLERS.md` — handler format and execution contract.
+- `QUICKSTART.md` — full local walkthrough.
+- `docs/trust-boundary.md` — local/runtime/shared trust model.
+- `docs/LETTUCE_VERIFY.md` — post-setup verification.
+- `docs/LETTUCE_RESOLVER.md` — ongoing agent use after setup.
+- `docs/source-discovery-recipes.md` and `docs/source-recipes/` — source setup decisions and recipes.
+- `docs/openclaw-runtime-source-setup.md` — OpenClaw source setup contract.
+- `skills/openclaw-lettuce/SKILL.md` — repo-packaged OpenClaw skill.
+
+Launch/reference:
+
+- `docs/public-v0-launch-note.md`
+- `docs/public-v0-release-checklist.md`
 
 ## Tests
 
@@ -191,5 +318,3 @@ python3 -m unittest discover -s tests
 python3 -m py_compile lettuce/*.py
 python3 -m lettuce.runtime --smoke
 ```
-
-## Historical Docs
