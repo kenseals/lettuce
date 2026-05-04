@@ -102,6 +102,7 @@ class RuntimeStatus:
     checkpoints: dict[str, int]
     log_entries: int
     last_log: dict[str, Any] | None = None
+    freshness: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -144,6 +145,32 @@ class SubscriptionConfigResult:
     remote: str
     stream: str
     status: str
+
+
+@dataclass(frozen=True)
+class SourceRecord:
+    id: str
+    source_type: str
+    name: str
+    stream: str
+    access_status: str
+    poll: str
+    sample_policy: str
+    privacy_notes: str
+    setup_next_action: str
+    path: str
+    body: str
+
+
+@dataclass(frozen=True)
+class SubscriptionRecord:
+    id: str
+    remote: str
+    stream: str
+    local_stream: str
+    policy: str
+    path: str
+    body: str
 
 
 @dataclass(frozen=True)
@@ -872,6 +899,153 @@ def _load_checkpoints(repo: Path) -> dict[str, list[str]]:
     return {str(key): [str(item) for item in value] for key, value in raw.items() if isinstance(value, list)}
 
 
+def _read_markdown_record(path: Path) -> tuple[dict[str, Any], str]:
+    text = path.read_text(encoding="utf-8")
+    match = _FRONTMATTER_RE.match(text)
+    if not match:
+        return {}, text.strip()
+    return _parse_simple_frontmatter(match.group(1)), match.group(2).strip()
+
+
+def _list_source_records(repo: Path) -> list[SourceRecord]:
+    records: list[SourceRecord] = []
+    for path in sorted((repo / "sources").glob("*.md")):
+        frontmatter, body = _read_markdown_record(path)
+        records.append(
+            SourceRecord(
+                id=str(frontmatter.get("id") or path.stem),
+                source_type=str(frontmatter.get("type") or ""),
+                name=str(frontmatter.get("name") or path.stem),
+                stream=str(frontmatter.get("stream") or ""),
+                access_status=str(frontmatter.get("access_status") or "unknown"),
+                poll=str(frontmatter.get("poll") or ""),
+                sample_policy=str(frontmatter.get("sample_policy") or ""),
+                privacy_notes=str(frontmatter.get("privacy_notes") or ""),
+                setup_next_action=str(frontmatter.get("setup_next_action") or ""),
+                path=str(path),
+                body=body,
+            )
+        )
+    return records
+
+
+def _list_subscription_records(repo: Path) -> list[SubscriptionRecord]:
+    records: list[SubscriptionRecord] = []
+    for path in sorted((repo / "subscriptions").glob("*.md")):
+        frontmatter, body = _read_markdown_record(path)
+        records.append(
+            SubscriptionRecord(
+                id=str(frontmatter.get("id") or path.stem),
+                remote=str(frontmatter.get("remote") or ""),
+                stream=str(frontmatter.get("stream") or ""),
+                local_stream=str(frontmatter.get("local_stream") or ""),
+                policy=str(frontmatter.get("policy") or ""),
+                path=str(path),
+                body=body,
+            )
+        )
+    return records
+
+
+def _mentions(value: str, *needles: str) -> bool:
+    haystack = value.strip().lower()
+    if not haystack:
+        return False
+    return any(needle in haystack for needle in needles)
+
+
+def _source_modes(record: SourceRecord) -> list[str]:
+    combined = " ".join(
+        item
+        for item in [
+            record.poll,
+            record.sample_policy,
+            record.privacy_notes,
+            record.setup_next_action,
+            record.body,
+        ]
+        if item
+    ).lower()
+    modes: list[str] = []
+    transcript_types = {"fathom", "granola", "transcript", "zoom"}
+    if record.source_type in {"direct", "telegram"} or _mentions(combined, "manual-only", "run lettuce on this", "operator-triggered"):
+        modes.append("manual")
+    if _mentions(combined, "after-meeting", "after meeting"):
+        modes.append("after-meeting")
+    elif record.source_type in transcript_types and _mentions(combined, "meeting", "transcript"):
+        modes.append("after-meeting")
+    if _mentions(combined, "daily", "every morning", "every weekday", "weekday"):
+        modes.append("daily")
+    if record.access_status == "available_now" and "manual" not in modes and "daily" not in modes and "after-meeting" not in modes:
+        modes.append("source-check")
+    return modes
+
+
+def _freshness_summary(
+    repo: Path,
+    *,
+    checkpoints: dict[str, list[str]] | None = None,
+    last_log: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    source_records = _list_source_records(repo)
+    subscription_records = _list_subscription_records(repo)
+    pending_reviews = list_reviews(repo, status="pending")
+    all_checkpoints = checkpoints if checkpoints is not None else _load_checkpoints(repo)
+    checkpoint_entries = sum(len(value) for value in all_checkpoints.values())
+    modes: list[str] = []
+    available_sources: list[str] = []
+    blocked_sources: list[str] = []
+    manual_only_sources: list[str] = []
+    for record in source_records:
+        record_modes = _source_modes(record)
+        if record.access_status == "available_now":
+            available_sources.append(record.name)
+        if record.access_status == "needs_setup":
+            blocked_sources.append(record.name)
+        if "manual" in record_modes:
+            manual_only_sources.append(record.name)
+        for mode in record_modes:
+            if mode not in modes:
+                modes.append(mode)
+    if subscription_records and "subscription-pull" not in modes:
+        modes.append("subscription-pull")
+    ordered_modes = [mode for mode in ["manual", "after-meeting", "daily", "source-check", "subscription-pull"] if mode in modes]
+    active_modes = [mode for mode in ordered_modes if mode != "manual"]
+    if pending_reviews:
+        state = "pending_review"
+        reason = f"{len(pending_reviews)} pending review(s) need operator approval before brain updates land."
+        next_step = "Review pending proposals with `lettuce reviews`, then approve, edit, or decline them."
+    elif not ordered_modes and blocked_sources:
+        state = "blocked_on_setup"
+        reason = "No active freshness loop is runnable yet because the configured sources still need setup."
+        next_step = "Finish the smallest setup step recorded on the blocked sources before expecting recurring maintenance."
+    elif ordered_modes == ["manual"] or (not active_modes and manual_only_sources):
+        state = "idle_manual_only"
+        reason = "Manual/direct capture is ready, but no recurring source check or subscription pull is configured yet."
+        next_step = "Wait for an operator-triggered signal or add a recurring source contract if the runtime should check again later."
+    elif last_log or checkpoint_entries or subscription_records:
+        state = "fresh"
+        reason = "At least one maintenance path is configured and the repo has inspectable runtime state."
+        next_step = "Let the external runtime or cron call the existing Lettuce commands for the next configured cadence."
+    else:
+        state = "fresh"
+        reason = "A maintenance path is configured; the runtime still owns when the next check happens."
+        next_step = "Run the next configured source check through the external runtime when the cadence or trigger fires."
+    return {
+        "state": state,
+        "reason": reason,
+        "modes": ordered_modes,
+        "pending_reviews": len(pending_reviews),
+        "blocked_sources": blocked_sources,
+        "available_sources": available_sources,
+        "manual_only_sources": manual_only_sources,
+        "subscription_count": len(subscription_records),
+        "checkpoint_entries": checkpoint_entries,
+        "last_activity_at": str((last_log or {}).get("timestamp") or ""),
+        "next_step": next_step,
+    }
+
+
 def _save_checkpoints(repo: Path, checkpoints: dict[str, list[str]]) -> None:
     path = repo / ".lettuce" / "checkpoints.json"
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -1319,7 +1493,8 @@ def status(repo_path: str | Path) -> RuntimeStatus:
             count = len(list(stream_dir.glob("*.md")))
             if count:
                 streams[str(stream_dir.relative_to(repo))] = count
-    checkpoints = {key: len(value) for key, value in _load_checkpoints(repo).items()}
+    checkpoint_data = _load_checkpoints(repo)
+    checkpoints = {key: len(value) for key, value in checkpoint_data.items()}
     recent_logs = read_logs(repo, limit=1)
     all_logs = read_logs(repo, limit=0)
     return RuntimeStatus(
@@ -1329,4 +1504,5 @@ def status(repo_path: str | Path) -> RuntimeStatus:
         checkpoints=checkpoints,
         log_entries=len(all_logs),
         last_log=recent_logs[-1] if recent_logs else None,
+        freshness=_freshness_summary(repo, checkpoints=checkpoint_data, last_log=recent_logs[-1] if recent_logs else None),
     )

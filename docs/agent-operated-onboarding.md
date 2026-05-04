@@ -214,6 +214,8 @@ For email/transcripts/work systems:
 
 Do not bulk-ingest during first onboarding unless the operator explicitly asks for it.
 
+After the first run, use `lettuce status` to confirm the maintenance posture matches the real contract: `pending_review` when reviews are waiting, `blocked_on_setup` when access is not ready, `idle_manual_only` when only operator-triggered capture exists, or `fresh` when a runnable maintenance path is configured and inspectable.
+
 ### 6. OpenClaw Skill Wrapper
 
 For OpenClaw, the skill should wrap the CLI rather than expose it as operator work:

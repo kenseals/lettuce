@@ -20,6 +20,7 @@ Expected:
 - `<repo-path>/.git/` exists.
 - `lettuce.yml` or equivalent repo config exists.
 - `streams/`, `handlers/`, `.lettuce/`, and usually `sources/` exist.
+- `lettuce status` includes a `freshness` summary that says whether the repo is `fresh`, `pending_review`, `blocked_on_setup`, or `idle_manual_only`.
 - If setup used `--commit`, git status is clean or only contains intentionally uncommitted operator edits.
 
 If it fails:
@@ -174,6 +175,7 @@ Expected:
 
 - The operator can explain in one sentence what Lettuce will do next.
 - There is no vague promise like “I’ll keep this updated” without a concrete trigger, cron, or manual instruction.
+- `lettuce status` agrees with that handoff by exposing the current freshness mode, pending review count, blocked source names, and next-step hint.
 
 If it fails:
 
@@ -227,4 +229,5 @@ A clean first install should end with:
 - one first signal with provenance;
 - pending/approved/declined review state inspectable;
 - git-backed committed state;
+- a status freshness summary that matches the real trigger/cadence contract;
 - a clear next trigger or cadence.

@@ -94,6 +94,7 @@ During first setup:
 - **Smoke test:** `TRY_THIS_FIRST.md`.
 - **Verify setup:** `docs/LETTUCE_VERIFY.md`.
 - **Operate Lettuce after setup:** `docs/LETTUCE_RESOLVER.md`.
+- **Check maintenance freshness:** `lettuce status <repo>` now reports a `freshness` summary so you can tell whether the repo is fresh, pending review, blocked on setup, or still manual-only.
 - **Trust boundary and mutation rules:** `docs/trust-boundary.md`.
 - **Human/product overview:** `README.md` and `docs/company-context-for-agents.md`.
 - **Source setup:** `docs/source-discovery-recipes.md` and `docs/source-recipes/`.

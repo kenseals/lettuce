@@ -1061,6 +1061,90 @@ print(json.dumps({
             self.assertTrue(all("timed out after 1s" in run.errors[0] for run in result.runs))
             self.assertFalse(any("Traceback" in run.errors[0] for run in result.runs))
 
+    def test_status_freshness_tracks_manual_review_loop_end_to_end(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "lettuce-acme-ken"
+            init_repo(repo, org="acme", operator="ken", initialize_git=False)
+            configure_source(
+                repo,
+                "direct",
+                name="manual-direct",
+                access_status="available_now",
+                sample_policy="manual-only: operator-forwarded-or-pasted-signals via runtime trigger phrase",
+                setup_next_action="operator can say 'run Lettuce on this' when a scoped work signal should become durable",
+            )
+
+            initial = status(repo)
+            self.assertEqual(initial.freshness["state"], "idle_manual_only")
+            self.assertEqual(initial.freshness["modes"], ["manual"])
+
+            add_stream_event(repo, title="Freshness loop signal", body="Customer wants a minimal maintenance loop before autopilot.")
+            run_once(repo, stream="streams/inbox/direct", review=True, commit=False)
+
+            pending = status(repo)
+            self.assertEqual(pending.freshness["state"], "pending_review")
+            self.assertEqual(pending.freshness["pending_reviews"], 3)
+            self.assertGreaterEqual(pending.freshness["checkpoint_entries"], 3)
+            self.assertTrue(pending.freshness["last_activity_at"])
+
+            for review in list_reviews(repo):
+                approve_review(repo, review.id, operator="ken", commit=False)
+
+            completed = status(repo)
+            self.assertEqual(completed.freshness["state"], "idle_manual_only")
+            self.assertEqual(completed.freshness["pending_reviews"], 0)
+
+    def test_status_freshness_reports_blocked_setup_when_no_loop_is_runnable(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "lettuce-acme-ken"
+            init_repo(repo, org="acme", operator="ken", initialize_git=False)
+            configure_source(
+                repo,
+                "email",
+                name="work-email",
+                access_status="needs_setup",
+                setup_next_action="connect mailbox access before sampling",
+            )
+
+            current = status(repo)
+
+            self.assertEqual(current.freshness["state"], "blocked_on_setup")
+            self.assertEqual(current.freshness["blocked_sources"], ["work-email"])
+            self.assertEqual(current.freshness["modes"], [])
+
+    def test_status_freshness_reports_active_modes_for_daily_and_subscription_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "lettuce-acme-ken"
+            init_repo(repo, org="acme", operator="ken", initialize_git=False)
+            configure_source(
+                repo,
+                "granola",
+                name="sales-calls",
+                access_status="available_now",
+                metadata={"poll": "after-meeting"},
+                sample_policy="ingest the first approved transcript after each meeting",
+            )
+            configure_source(
+                repo,
+                "email",
+                name="support-mailbox",
+                access_status="available_now",
+                metadata={"poll": "daily"},
+                sample_policy="check the support label daily after the sample is approved",
+            )
+            configure_subscription(
+                repo,
+                "github.com/acme/lettuce-shared",
+                stream="brain/customers",
+                local_stream="streams/shared/customers",
+            )
+
+            current = status(repo)
+
+            self.assertEqual(current.freshness["state"], "fresh")
+            self.assertEqual(current.freshness["modes"], ["after-meeting", "daily", "subscription-pull"])
+            self.assertEqual(current.freshness["subscription_count"], 1)
+
     def test_status_and_logs_report_runtime_state(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp) / "lettuce-acme-ken"
@@ -1075,6 +1159,7 @@ print(json.dumps({
             self.assertEqual(current.streams["streams/inbox/direct"], 1)
             self.assertGreaterEqual(current.log_entries, 1)
             self.assertTrue(current.last_log)
+            self.assertEqual(current.freshness["state"], "fresh")
             self.assertEqual(len(logs), 2)
 
     def test_openclaw_provider_builds_prompt_and_extracts_fenced_json(self) -> None:

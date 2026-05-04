@@ -707,6 +707,7 @@ def _run(argv: list[str] | None = None) -> int:
                 "checkpoints": result.checkpoints,
                 "log_entries": result.log_entries,
                 "last_log": result.last_log,
+                "freshness": result.freshness,
             }
         )
         return 0
