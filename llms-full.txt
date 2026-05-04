@@ -10,6 +10,7 @@ Companion entrypoints:
 - `INSTALL_FOR_AGENTS.md` is the short linear setup guide.
 - `docs/agent-operated-onboarding.md` is the detailed onboarding contract.
 - `docs/LETTUCE_VERIFY.md` is the post-setup verification runbook.
+- `docs/LETTUCE_RESOLVER.md` is the ongoing-use resolver after setup.
 
 ## What Lettuce is
 
@@ -130,6 +131,8 @@ When the operator gives you `https://github.com/kenseals/lettuce` or this `llms.
 
 ## Ingesting later signals
 
+For the full post-setup decision loop, use `docs/LETTUCE_RESOLVER.md`.
+
 For direct operator/chat input your runtime already received:
 
 ```bash
@@ -228,6 +231,7 @@ A successful first setup should produce:
 - `README.md`: overview and shortest command path.
 - `docs/agent-operated-onboarding.md`: main agent workflow.
 - `docs/first-run-demo.md`: public-safe walkthrough.
+- `docs/LETTUCE_RESOLVER.md`: ongoing-use decision rules after setup.
 - `docs/openclaw-runtime-source-setup.md`: runtime/protocol boundary.
 - `docs/source-discovery-recipes.md`: source setup and sampling.
 - `HANDLERS.md`: handler spec.

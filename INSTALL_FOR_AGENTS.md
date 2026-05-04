@@ -27,6 +27,7 @@ If the operator is talking to you in Telegram, Slack, iMessage, Discord, or anot
 - `docs/agent-operated-onboarding.md` is the detailed setup contract.
 - `docs/source-discovery-recipes.md` covers source intent and safe sampling.
 - `docs/LETTUCE_VERIFY.md` is the post-setup verification runbook.
+- `docs/LETTUCE_RESOLVER.md` is the ongoing-use resolver after setup.
 
 If you fetched this file by URL, companion files live at:
 
@@ -35,6 +36,7 @@ If you fetched this file by URL, companion files live at:
 - `https://raw.githubusercontent.com/kenseals/lettuce/main/docs/agent-operated-onboarding.md`
 - `https://raw.githubusercontent.com/kenseals/lettuce/main/docs/source-discovery-recipes.md`
 - `https://raw.githubusercontent.com/kenseals/lettuce/main/docs/LETTUCE_VERIFY.md`
+- `https://raw.githubusercontent.com/kenseals/lettuce/main/docs/LETTUCE_RESOLVER.md`
 
 ## Step 2: Install Lettuce
 
