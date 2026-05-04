@@ -45,6 +45,7 @@ Review is a safety/control loop for onboarding, calibration, sensitive sources, 
 - [Install guide for agents](https://raw.githubusercontent.com/kenseals/lettuce/main/INSTALL_FOR_AGENTS.md): Linear setup guide for agent-operated installation.
 - [README](https://raw.githubusercontent.com/kenseals/lettuce/main/README.md): Human-facing overview and shortest command path.
 - [Agent-operated onboarding](https://raw.githubusercontent.com/kenseals/lettuce/main/docs/agent-operated-onboarding.md): The primary setup workflow for agents.
+- [Lettuce verification](https://raw.githubusercontent.com/kenseals/lettuce/main/docs/LETTUCE_VERIFY.md): Post-setup checks for repo, provenance, source intent, review gate, and ongoing trigger behavior.
 - [First-run demo](https://raw.githubusercontent.com/kenseals/lettuce/main/docs/first-run-demo.md): Public-safe install-to-first-context walkthrough.
 - [OpenClaw Lettuce skill](https://raw.githubusercontent.com/kenseals/lettuce/main/skills/openclaw-lettuce/SKILL.md): Use this if you are OpenClaw.
 

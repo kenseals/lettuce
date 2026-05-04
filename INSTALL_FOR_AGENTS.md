@@ -26,6 +26,7 @@ If the operator is talking to you in Telegram, Slack, iMessage, Discord, or anot
 - `AGENTS.md` is the public operating protocol for non-Claude agents.
 - `docs/agent-operated-onboarding.md` is the detailed setup contract.
 - `docs/source-discovery-recipes.md` covers source intent and safe sampling.
+- `docs/LETTUCE_VERIFY.md` is the post-setup verification runbook.
 
 If you fetched this file by URL, companion files live at:
 
@@ -33,6 +34,7 @@ If you fetched this file by URL, companion files live at:
 - `https://raw.githubusercontent.com/kenseals/lettuce/main/AGENTS.md`
 - `https://raw.githubusercontent.com/kenseals/lettuce/main/docs/agent-operated-onboarding.md`
 - `https://raw.githubusercontent.com/kenseals/lettuce/main/docs/source-discovery-recipes.md`
+- `https://raw.githubusercontent.com/kenseals/lettuce/main/docs/LETTUCE_VERIFY.md`
 
 ## Step 2: Install Lettuce
 
@@ -102,6 +104,8 @@ lettuce add-source transcript <repo-path> --name calls --access-status defer --s
 ```
 
 ## Step 5: Verify the setup
+
+For the full verification runbook, read `docs/LETTUCE_VERIFY.md`. At minimum, run:
 
 Run:
 

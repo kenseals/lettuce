@@ -9,6 +9,7 @@ Companion entrypoints:
 - `AGENTS.md` is the public operating protocol for agents.
 - `INSTALL_FOR_AGENTS.md` is the short linear setup guide.
 - `docs/agent-operated-onboarding.md` is the detailed onboarding contract.
+- `docs/LETTUCE_VERIFY.md` is the post-setup verification runbook.
 
 ## What Lettuce is
 
