@@ -191,6 +191,22 @@ Or, if the handler decides nothing is worth publishing:
 
 Handlers may also return `"errors"` and `"notes"` for runtime logging, but those are optional.
 
+## Shared Company Truth Guidance
+
+When a handler or agent is curating accepted company-hub truth under `streams/shared/*`, prefer append-only updates with explicit editorial metadata:
+
+```yaml
+status: active # active | superseded | disputed | draft
+decision_owner: sarah
+supersedes: previous-event-id
+effective_at: 2026-05-04T00:00:00Z
+source_events:
+  - github.com/acme/lettuce-acme-ken:streams/shared/customers/event.md
+confidence: medium
+```
+
+Do not silently overwrite disputed or superseded company truth. Publish a new event that marks the conflict or supersession, and keep the earlier entry visible for provenance and review.
+
 ---
 
 ## Stream events on disk

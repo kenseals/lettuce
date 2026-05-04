@@ -647,6 +647,37 @@ Do not use it for:
 
 Shared pulls and mirrors must only write under `streams/shared/*`.
 """,
+        "docs/company-hub/accepted-truth-metadata.md": """# Accepted Truth Metadata
+
+Use explicit metadata on company-hub facts and decisions so agents can reason about what is current, what is disputed, and what replaced an older entry.
+
+## Required metadata for accepted company truth
+
+```yaml
+status: active # active | superseded | disputed | draft
+decision_owner: sarah
+supersedes: previous-event-id
+effective_at: 2026-05-04T00:00:00Z
+source_events:
+  - github.com/acme/lettuce-acme-ken:streams/shared/customers/event.md
+confidence: medium
+```
+
+Field guidance:
+
+- `status`: `active` for accepted current truth, `superseded` when replaced by a newer entry, `disputed` when conflicting evidence exists, `draft` before acceptance.
+- `decision_owner`: the person or role accountable for the accepted company-level statement.
+- `supersedes`: the prior accepted event id when this entry replaces earlier truth.
+- `effective_at`: when the truth or decision became effective, not merely when it was written down.
+- `source_events`: the upstream shared-stream events or evidence used to justify acceptance.
+- `confidence`: lightweight editorial confidence such as `low`, `medium`, or `high`.
+
+Rules:
+
+- Do not silently overwrite disputed or superseded company truth in place.
+- Publish a new event with explicit `status` and `supersedes` metadata instead.
+- Keep disputed entries visible until an owner resolves them.
+""",
         "docs/company-hub/stream-catalog.md": """# Shared Stream Catalog
 
 Use this file to document what the company hub intentionally shares, who curates it, and any extra policy notes.
@@ -660,6 +691,38 @@ Use this file to document what the company hub intentionally shares, who curates
 
 Each stream should stay curated and provenance-preserving. Raw inbox or transcript dumps do not belong here by default.
 """,
+        "docs/company-hub/example-decision.md": """---
+id: 2026-05-04T00-00-00Z-pricing-exception-policy
+timestamp: 2026-05-04T00:00:00Z
+source: company-hub
+title: Enterprise pricing exceptions require CRO approval
+status: active
+decision_owner: sarah
+supersedes: 2026-04-10T15-00-00Z-pricing-exceptions
+effective_at: 2026-05-04T00:00:00Z
+source_events:
+  - github.com/acme/lettuce-acme-ken:streams/shared/projects/2026-05-03T19-10-00Z-enterprise-discount-review.md
+confidence: high
+---
+
+Enterprise pricing exceptions above the published threshold now require CRO approval. The prior discount exception guidance is superseded rather than edited in place so agents can still reason about the older decision trail.
+""",
+        "docs/company-hub/example-customer-fact.md": """---
+id: 2026-05-04T14-30-00Z-acme-renewal-risk
+timestamp: 2026-05-04T14:30:00Z
+source: company-hub
+title: Acme renewal remains at risk pending security review
+status: disputed
+decision_owner: alex
+effective_at: 2026-05-04T14:30:00Z
+source_events:
+  - github.com/acme/lettuce-acme-ken:streams/shared/customers/2026-05-04T12-00-00Z-acme-renewal-call.md
+  - github.com/acme/lettuce-acme-sarah:streams/shared/customers/2026-05-04T13-10-00Z-acme-champion-followup.md
+confidence: medium
+---
+
+Two recent updates disagree on whether procurement or security is the active blocker. Mark the accepted customer fact as `disputed` until the owner resolves the conflict with a new active entry or a superseding clarification.
+""",
         "docs/company-hub/owners-and-policies.md": """# Owners And Policies
 
 Record stream owners, review expectations, and any narrow sharing rules here.
@@ -670,6 +733,7 @@ Suggested reminders:
 - preserve provenance on imported or mirrored events
 - require review for accepted org-level decisions and facts unless the operator explicitly narrows that rule
 - keep remote pulls scoped to `streams/shared/*`
+- do not silently overwrite disputed or superseded company truth; publish a new entry with `status` and `supersedes`
 """,
     }
 
@@ -1752,12 +1816,14 @@ lettuce add-event {repo} \\
         review_policy = """- Treat this repo as curated shared context, not a raw-signal inbox.
 - Default to review before durable `brain/*` writes or accepted org-level facts.
 - Preserve provenance on any imported or mirrored shared event.
-- Shared pulls and mirrors may only write under `streams/shared/*`."""
+- Shared pulls and mirrors may only write under `streams/shared/*`.
+- Do not silently overwrite disputed or superseded company truth; write a new event with explicit `status`, `supersedes`, and `source_events` metadata."""
         privacy_rules = f"""- Keep this repo scoped to accepted `{org}` company context, not personal memory and not unrelated raw signal.
 - The runtime owns chat surfaces, inboxes, browser sessions, OAuth, MCP connectors, API keys, and schedules.
 - Lettuce owns durable repo state such as `lettuce.yml`, `streams/*`, `brain/*`, `sources/*`, `reviews/*`, `subscriptions/*`, and `.lettuce/*`.
 - Do not use this repo as a centralized dump of every operator's inbox, transcripts, or browser history.
-- Keep remote imports and mirrors under `streams/shared/*`; they must not write directly into `brain/*`."""
+- Keep remote imports and mirrors under `streams/shared/*`; they must not write directly into `brain/*`.
+- For accepted company decisions or facts, preserve status/supersession metadata so conflicts remain visible instead of being silently collapsed."""
     else:
         default_trigger = f'Use this repo when the operator refers to `{org}`-scoped work context or says "run Lettuce on this".'
         ingestion_example = f"""```bash

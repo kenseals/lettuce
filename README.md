@@ -136,6 +136,20 @@ When a repo declares `exports` in `lettuce.yml`, it is intentionally marking spe
 - `streams/shared/incidents`
 - `streams/shared/projects`
 
+Hub-level accepted decisions and facts should use explicit metadata for status, supersession, ownership, timing, evidence, and confidence:
+
+```yaml
+status: active # active | superseded | disputed | draft
+decision_owner: sarah
+supersedes: previous-event-id
+effective_at: 2026-05-04T00:00:00Z
+source_events:
+  - github.com/acme/lettuce-acme-ken:streams/shared/customers/event.md
+confidence: medium
+```
+
+If company truth changes or becomes contested, append a new entry with updated metadata rather than silently overwriting the older accepted entry.
+
 ## Minimal Maintenance Loop
 
 Lettuce v0 does not run its own daemon or own chat/email/OAuth/cron surfaces. The external runtime or cron decides when to check, then calls existing commands such as `lettuce status`, `lettuce ingest-*`, `lettuce run --review`, and `lettuce reviews`. Shared-stream mirroring remains planned follow-up work rather than a shipped CLI command.
