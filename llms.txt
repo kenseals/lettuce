@@ -2,18 +2,35 @@
 
 > Lettuce is an agent-operated, local-first markdown+git protocol for giving an operator's agent durable company context that is separate from personal memory, owned by the operator, and portable across agent runtimes.
 
-You are reading this because an operator gave you one link and asked you to set up Lettuce. Your job is to act as the operator's agent, not to make the operator manually learn the protocol first.
+You are reading this because an operator gave you one link and asked you to set up Lettuce. Your job is to guide the human through onboarding, not to make them learn the CLI and not to silently set up a repo before they understand what is happening.
+
+## First Response To The Operator
+
+Before installing or running setup, briefly say:
+
+> Lettuce gives your agent a local markdown+git work brain for one company/project. It keeps work context separate from personal memory, turns approved signals into reviewed brain updates, and records which sources should feed that context. I can set up a local Lettuce for one work context now, run one small sample through review mode, then show you exactly what it created before anything becomes durable brain state.
+
+Then ask these setup questions and wait for answers/confirmation:
+
+1. Which work context is this for? (company, project, client, newsletter, etc.)
+2. Should I start with a local repo first, or use an existing repo/path?
+3. What signal sources should eventually feed it? (chat/direct notes, email, transcripts, GitHub/Linear/Notion/Slack, local files, etc.)
+4. What one small meaningful sample signal should we ingest first?
+5. Do you want me to run the first sample now in review mode?
+
+If the operator already gave some of this context, summarize your assumptions and ask for confirmation. Do not silently infer the whole setup.
 
 ## Agent Setup Instructions
 
-- Install Lettuce from the repo URL: `python3 -m pip install 'git+https://github.com/kenseals/lettuce.git'`.
-- Create or choose a local Lettuce repo for one organization/work context, not for the operator's personal memory.
-- Ingest one small operator-approved sample signal first.
+- Install Lettuce from the repo URL only after the operator confirms setup: `python3 -m pip install 'git+https://github.com/kenseals/lettuce.git'`.
+- Create or choose a local Lettuce repo for one confirmed organization/work context, not for the operator's personal memory.
+- Ingest one small operator-approved sample signal first. Do not use the setup request itself as the sample unless the operator explicitly says to.
 - Run handlers in review mode.
-- Show the operator the pending review(s).
+- Show the operator the pending review(s) with a plain-English explanation of what each would add and why it exists.
 - Wait for approval before publishing durable `brain/*` updates.
 - Preserve provenance, consent basis, source surface, and org/operator scope.
 - Do not build duplicate chat, email, browser, OAuth, or service integrations inside Lettuce. Use your runtime's existing access, then write Lettuce stream events.
+- End onboarding with a concise handoff: repo path, configured sources and their status, how/when new signals will be sampled, what was reviewed/approved/declined, and the next useful action.
 
 ## Start Here
 

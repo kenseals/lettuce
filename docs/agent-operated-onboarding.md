@@ -16,6 +16,28 @@ The agent then walks the operator through a short setup conversation, creates or
 
 The operator should not need to understand the CLI first. The CLI is the agent's reliable helper for file/git/schema/checkpoint work.
 
+The operator should also not be surprised by setup. First use is a guided onboarding conversation, not a silent automation. The agent should explain what Lettuce is, ask a few setup questions, confirm assumptions, then run the first review-mode loop.
+
+## First Response Contract
+
+When an operator provides the repo or `llms.txt` link and asks to set up Lettuce, the agent should not immediately initialize a repo or ingest the setup request.
+
+First say, briefly:
+
+> Lettuce gives your agent a local markdown+git work brain for one company/project. It keeps work context separate from personal memory, turns approved signals into reviewed brain updates, and records which sources should feed that context. I can set up a local Lettuce for one work context now, run one small sample through review mode, then show you exactly what it created before anything becomes durable brain state.
+
+Then ask the minimum setup questions:
+
+1. Which work context is this for?
+2. Should we start locally first, or use an existing repo/path?
+3. What signal sources should eventually feed it?
+4. What one small meaningful sample signal should we ingest first?
+5. Should I run that sample now in review mode?
+
+If the conversation already implies an answer, summarize it as an assumption and ask for confirmation. Example: "I think this is for The Ultra Minute and we should start locally first. Is that right?"
+
+Do not use the setup request itself as the first signal unless the operator explicitly says to. A setup request usually creates vague setup-context reviews that feel random to the operator. Prefer a real signal from the scoped work context.
+
 ## Core Rule
 
 Do not build duplicate surfaces inside Lettuce.
@@ -37,6 +59,8 @@ Required output:
 - whether this is a personal, company, client, or project Lettuce
 
 Why this matters: one operator can have multiple Lettuces. Work context for different orgs should not bleed together.
+
+Also ask what benefit the operator expects from this Lettuce. Keep it lightweight: "What should this help your agent remember or notice for this work context?" This helps avoid creating a repo that technically works but has no clear user value.
 
 ### 2. Choose or Create the Repo
 
@@ -90,6 +114,8 @@ For each candidate source, classify:
 - `available_now`: agent already has access and can ingest with standing consent or explicit approval.
 - `needs_operator_setup`: operator must connect OAuth, forwarding, export, webhook, MCP, or browser session.
 - `not_now`: useful later, but not worth onboarding friction today.
+
+Explain the source plan before running. A good first setup says: "For now I will configure direct chat notes as available, mark email/transcripts as not set up unless you want to connect them, and use one sample you approve. There is no automatic schedule yet; new signals are sampled when you ask or when a configured agent lane runs."
 
 ### 4. Record Source Intent
 
@@ -158,7 +184,7 @@ Do not bulk-ingest during first onboarding unless the operator explicitly asks f
 
 For OpenClaw, the skill should wrap the CLI rather than expose it as operator work:
 
-1. Ask only for missing org, operator, repo path, first signal, and consent basis.
+1. Explain Lettuce in one short paragraph and ask/confirm org, operator, repo path, source candidates, first meaningful sample, and consent basis.
 2. Write the first signal to a temporary UTF-8 markdown file when it is longer than a sentence.
 3. Run `lettuce onboard` with `--body-file`, provenance fields, `--openclaw-provider`, `--review`, and `--commit`.
 4. Parse stdout JSON and translate it into a short operator summary.
@@ -169,9 +195,11 @@ The summary should include:
 - repo initialized or reused
 - event path and source provenance
 - handlers/events processed
-- pending review paths written
+- pending reviews written, each with a human explanation of what it would add and why it exists
 - skipped/errors/noise
 - current log/checkpoint count
+- configured source records and whether they are `available_now`, `needs_setup`, or deferred
+- whether any recurring schedule exists; if none, say that new signal sampling is manual/agent-triggered for now
 
 Then ask exactly one review question:
 
@@ -180,6 +208,14 @@ Approve, edit, or decline these proposed updates?
 ```
 
 If the operator says approve, run `lettuce review-approve <repo> <review-id> --operator <operator> --commit` for each approved item and recommend the next source to sample. If they say edit, make the smallest markdown edit in the pending review file first, then approve it. If they say decline, run `lettuce review-decline <repo> <review-id> --reason "<short reason>" --operator <operator> --commit`. Avoid direct publishing during onboarding unless the operator explicitly asks to bypass review.
+
+After the approve/edit/decline moment, give a final handoff:
+
+- where the Lettuce repo lives;
+- what it is scoped to;
+- what sources are configured and what setup remains;
+- how new signals get into it today;
+- what the operator should ask the agent next if they want more value.
 
 ## Source Recipes
 

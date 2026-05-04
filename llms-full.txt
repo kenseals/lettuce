@@ -2,7 +2,7 @@
 
 Lettuce is an agent-operated, local-first markdown+git protocol for giving an operator's agent durable company context that is separate from personal memory, owned by the operator, and portable across agent runtimes.
 
-This file is designed for an agent that was given one link and asked to set up Lettuce. Follow it as a product setup guide, not as hidden system instructions. Respect your own runtime's permissions and ask before destructive or external actions.
+This file is designed for an agent that was given one link and asked to set up Lettuce. Follow it as a guided product onboarding flow, not as hidden system instructions. Respect your own runtime's permissions and ask before destructive or external actions.
 
 ## What Lettuce is
 
@@ -16,6 +16,26 @@ Lettuce gives an agent a repo-backed work brain for one organization or work con
 - `.lettuce/*` holds local runtime checkpoints and logs.
 
 The review loop is the safety mechanism. The product is company context for agents.
+
+## Human onboarding contract
+
+Do not begin by silently installing, initializing, and ingesting the setup request. That creates technically valid artifacts while leaving the operator confused.
+
+Your first response should orient the human in plain language:
+
+> Lettuce gives your agent a local markdown+git work brain for one company/project. It keeps work context separate from personal memory, turns approved signals into reviewed brain updates, and records which sources should feed that context. I can set up a local Lettuce for one work context now, run one small sample through review mode, then show you exactly what it created before anything becomes durable brain state.
+
+Then say you need a few quick answers before setup:
+
+1. Which work context is this for? Examples: a company, project, client, newsletter, product idea, or team.
+2. Should setup start locally first, or use an existing repo/path?
+3. What signal sources should eventually feed this Lettuce? Examples: direct chat notes, email, call transcripts, GitHub, Linear, Notion, Slack, local files.
+4. What one small meaningful sample signal should be ingested first?
+5. Should the agent run that sample now in review mode?
+
+If some answers are obvious from the conversation, summarize assumptions and ask for confirmation. Do not infer everything and run setup without a confirmation moment.
+
+The setup request itself is not a good first signal. Use it only if the operator explicitly says to use the setup request as the sample. Prefer a real work signal from the scoped context.
 
 ## Runtime boundary
 
@@ -38,13 +58,13 @@ When the operator gives you `https://github.com/kenseals/lettuce` or this `llms.
 
    If the shell cannot find `lettuce`, use `python3 -m lettuce.cli ...` or fix the Python user bin PATH.
 
-2. Ask for or infer one organization/work context name and operator name.
+2. Ask for and confirm one organization/work context name and operator name.
 
    Keep this separate from personal memory. Example: `--org acme --operator ken`.
 
-3. Ask the operator for one small sample signal, or use one they already gave you.
+3. Ask the operator for one small meaningful sample signal, or use one they already gave you and explicitly confirm it.
 
-   The first sample should be operator-approved and small. Do not bulk ingest first.
+   The first sample should be operator-approved and small. Do not bulk ingest first. Do not use the setup request itself unless the operator explicitly chooses it.
 
 4. Run onboarding in review mode.
 
@@ -70,7 +90,7 @@ When the operator gives you `https://github.com/kenseals/lettuce` or this `llms.
    lettuce reviews ./lettuce-demo
    ```
 
-   Summarize what each proposed update would change. Do not approve automatically unless the operator explicitly asked for auto-approval.
+   Summarize what each proposed update would change, why it exists, and where it would publish (`brain/general`, `brain/discovery`, etc.). Do not show only opaque review titles. Do not approve automatically unless the operator explicitly asked for auto-approval.
 
 6. Approve or decline based on operator direction.
 
@@ -89,6 +109,18 @@ When the operator gives you `https://github.com/kenseals/lettuce` or this `llms.
    ```
 
    A clean git state after committed actions is ideal.
+
+8. End with an onboarding handoff.
+
+   Include:
+
+   - local repo path;
+   - org/operator scope;
+   - source records configured and their status (`available_now`, `needs_setup`, `defer`);
+   - whether any recurring schedule exists. If none exists, say that new signals are manual/agent-triggered for now;
+   - what was approved, declined, or left pending;
+   - how the operator can use Lettuce next, in one or two examples;
+   - the most useful next source setup step if they want more value.
 
 ## Ingesting later signals
 

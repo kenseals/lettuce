@@ -35,13 +35,22 @@ Read only the specific file needed for the task.
 
 ## Onboarding Flow
 
-When setting up a new Lettuce, ask only for missing inputs:
+When setting up a new Lettuce, do not silently install/init/ingest. First explain the product in one short paragraph:
+
+```text
+Lettuce gives your agent a local markdown+git work brain for one company/project. It keeps work context separate from personal memory, turns approved signals into reviewed brain updates, and records which sources should feed that context. I can set up a local Lettuce now, run one small sample through review mode, then show you exactly what it created before anything becomes durable brain state.
+```
+
+Then ask/confirm the setup inputs:
 
 - org/project name or slug
 - operator handle/name
 - repo path or whether to start locally first
-- first direct signal to ingest, if not already in the conversation
+- signal sources that should eventually feed this Lettuce
+- first meaningful direct signal to ingest, if not already in the conversation
 - consent basis for ingesting that first signal
+
+If the context seems obvious, state it as an assumption and wait for confirmation. Do not use the setup request itself as the first signal unless the operator explicitly says to; it tends to create vague setup-context reviews.
 
 Then run the helper:
 
@@ -69,9 +78,11 @@ After running, summarize the JSON result in operator language:
 - repo initialized or reused
 - event path and source provenance
 - handlers that ran
-- pending review proposals written
+- pending review proposals written, with a plain-English explanation of what each would add and why it exists
 - skipped handlers/errors/noisy output
 - current checkpoints/log count
+- configured source records and whether each is available now, needs setup, or deferred
+- whether there is any recurring schedule; if none, say new signals are manual/agent-triggered for now
 
 Ask one review question:
 
@@ -80,6 +91,8 @@ Approve, edit, or decline these proposed updates?
 ```
 
 If approved, run `lettuce review-approve <repo-path> <review-id> --operator <operator> --commit`. If edited, edit the pending review markdown first, then approve. If declined, run `lettuce review-decline <repo-path> <review-id> --reason "<short reason>" --operator <operator> --commit`. Do not proceed to bulk ingestion before this first review moment.
+
+After approval/edit/decline, give a final onboarding handoff: repo path, scoped org/project, source plan, current trigger/schedule model, what was approved or left pending, and the next useful source setup step.
 
 ## Direct Signal Ingestion
 
