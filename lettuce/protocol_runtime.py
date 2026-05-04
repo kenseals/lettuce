@@ -103,6 +103,8 @@ class RuntimeStatus:
     checkpoints: dict[str, int]
     log_entries: int
     agent_instructions_path: str | None = None
+    sources: dict[str, Any] = field(default_factory=dict)
+    onboarding: dict[str, Any] = field(default_factory=dict)
     last_log: dict[str, Any] | None = None
     freshness: dict[str, Any] = field(default_factory=dict)
 
@@ -134,6 +136,7 @@ class EmailIngestResult:
 @dataclass(frozen=True)
 class SourceConfigResult:
     source_type: str
+    source_id: str
     config_path: str
     stream: str
     status: str
@@ -273,6 +276,10 @@ def _render_markdown_event(frontmatter: dict[str, Any], body: str) -> str:
         lines.append(f"{key}: {_format_frontmatter_value(value)}")
     lines.extend(["---", "", body.strip(), ""])
     return "\n".join(lines)
+
+
+def _repo_relative_path(repo: Path, path: Path) -> str:
+    return str(path.resolve().relative_to(repo.resolve()))
 
 
 def _timestamp_for_filename(timestamp: datetime) -> str:
@@ -462,6 +469,7 @@ default_model: {default_model}
         "reviews/pending/.gitkeep": "",
         "reviews/approved/.gitkeep": "",
         "reviews/declined/.gitkeep": "",
+        "onboarding/setup/.gitkeep": "",
         "sources/.gitkeep": "",
         "subscriptions/.gitkeep": "",
         "streams/inbox/direct/.gitkeep": "",
@@ -743,6 +751,37 @@ def configure_source(
     setup_next_action: str | None = None,
     commit: bool = False,
 ) -> SourceConfigResult:
+    return _configure_source(
+        repo_path,
+        source_type,
+        name=name,
+        stream=stream,
+        metadata=metadata,
+        access_status=access_status,
+        access_owner=access_owner,
+        sample_policy=sample_policy,
+        privacy_notes=privacy_notes,
+        setup_next_action=setup_next_action,
+        commit=commit,
+        allow_existing=False,
+    )
+
+
+def _configure_source(
+    repo_path: str | Path,
+    source_type: str,
+    *,
+    name: str | None = None,
+    stream: str | None = None,
+    metadata: dict[str, Any] | None = None,
+    access_status: str = "unknown",
+    access_owner: str = "operator-agent",
+    sample_policy: str | None = None,
+    privacy_notes: str | None = None,
+    setup_next_action: str | None = None,
+    commit: bool = False,
+    allow_existing: bool = False,
+) -> SourceConfigResult:
     repo = Path(repo_path).expanduser().resolve()
     _require_lettuce_repo(repo)
     resolved_source_type = source_type.strip().lower()
@@ -801,7 +840,18 @@ def configure_source(
     path = repo / "sources" / f"{source_id}.md"
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists():
-        raise FileExistsError(f"source already exists: {path}")
+        if not allow_existing:
+            raise FileExistsError(f"source already exists: {path}")
+        existing = read_source_record(repo, path.name)
+        return SourceConfigResult(
+            source_type=str(existing.get("type") or resolved_source_type),
+            source_id=str(existing.get("id") or source_id),
+            config_path=str(path),
+            stream=str(existing.get("stream") or resolved_stream),
+            status=str(existing.get("status") or "configured"),
+            access_status=str(existing.get("access_status") or resolved_access_status),
+            access_owner=str(existing.get("access_owner") or resolved_access_owner),
+        )
     path.write_text(_render_markdown_event(frontmatter, body), encoding="utf-8")
     instructions_path = _write_agent_instructions(repo)
     stream_keep = repo / resolved_stream / ".gitkeep"
@@ -812,12 +862,198 @@ def configure_source(
         _git_commit(repo, [path, stream_keep, instructions_path], f"source: {source_id}")
     return SourceConfigResult(
         source_type=resolved_source_type,
+        source_id=source_id,
         config_path=str(path),
         stream=resolved_stream,
         status="configured",
         access_status=resolved_access_status,
         access_owner=resolved_access_owner,
     )
+
+
+def ensure_source_config(
+    repo_path: str | Path,
+    source_type: str,
+    *,
+    name: str | None = None,
+    stream: str | None = None,
+    metadata: dict[str, Any] | None = None,
+    access_status: str = "unknown",
+    access_owner: str = "operator-agent",
+    sample_policy: str | None = None,
+    privacy_notes: str | None = None,
+    setup_next_action: str | None = None,
+    commit: bool = False,
+) -> SourceConfigResult:
+    return _configure_source(
+        repo_path,
+        source_type,
+        name=name,
+        stream=stream,
+        metadata=metadata,
+        access_status=access_status,
+        access_owner=access_owner,
+        sample_policy=sample_policy,
+        privacy_notes=privacy_notes,
+        setup_next_action=setup_next_action,
+        commit=commit,
+        allow_existing=True,
+    )
+
+
+def _parse_markdown_record(path: Path) -> tuple[dict[str, Any], str]:
+    text = path.read_text(encoding="utf-8")
+    match = _FRONTMATTER_RE.match(text)
+    if not match:
+        raise ValueError(f"markdown record is missing frontmatter: {path}")
+    return _parse_simple_frontmatter(match.group(1)), match.group(2).strip()
+
+
+def read_source_record(repo_path: str | Path, source_ref: str) -> dict[str, Any]:
+    repo = Path(repo_path).expanduser().resolve()
+    _require_lettuce_repo(repo)
+    raw_ref = source_ref.strip()
+    if not raw_ref:
+        raise ValueError("source_ref is required")
+    candidate = Path(raw_ref).expanduser()
+    if candidate.is_absolute():
+        path = candidate.resolve()
+    else:
+        path = repo / "sources" / raw_ref
+        if path.suffix != ".md":
+            path = path.with_suffix(".md")
+        if not path.exists():
+            path = (repo / raw_ref).resolve()
+            if path.suffix != ".md":
+                path = path.with_suffix(".md")
+    if not path.exists():
+        raise FileNotFoundError(f"source record not found: {raw_ref}")
+    frontmatter, _ = _parse_markdown_record(path)
+    reserved = {
+        "id",
+        "type",
+        "name",
+        "status",
+        "stream",
+        "created_at",
+        "access_status",
+        "access_owner",
+        "sample_policy",
+        "privacy_notes",
+        "setup_next_action",
+    }
+    return {
+        "id": str(frontmatter.get("id") or path.stem),
+        "type": str(frontmatter.get("type") or ""),
+        "name": str(frontmatter.get("name") or path.stem),
+        "status": str(frontmatter.get("status") or "configured"),
+        "stream": str(frontmatter.get("stream") or ""),
+        "created_at": str(frontmatter.get("created_at") or ""),
+        "access_status": str(frontmatter.get("access_status") or "unknown"),
+        "access_owner": str(frontmatter.get("access_owner") or "operator-agent"),
+        "sample_policy": str(frontmatter.get("sample_policy") or ""),
+        "privacy_notes": str(frontmatter.get("privacy_notes") or ""),
+        "setup_next_action": str(frontmatter.get("setup_next_action") or ""),
+        "details": {
+            key: value
+            for key, value in frontmatter.items()
+            if key not in reserved
+        },
+        "path": _repo_relative_path(repo, path),
+    }
+
+
+def read_source_records(repo_path: str | Path) -> list[dict[str, Any]]:
+    repo = Path(repo_path).expanduser().resolve()
+    _require_lettuce_repo(repo)
+    sources_dir = repo / "sources"
+    if not sources_dir.exists():
+        return []
+    records: list[dict[str, Any]] = []
+    for path in sorted(sources_dir.glob("*.md")):
+        if path.name == ".gitkeep":
+            continue
+        records.append(read_source_record(repo, path.name))
+    return records
+
+
+def _source_status_summary(records: list[dict[str, Any]]) -> dict[str, Any]:
+    by_access_status: dict[str, int] = {}
+    for record in records:
+        access_status = str(record.get("access_status") or "unknown")
+        by_access_status[access_status] = by_access_status.get(access_status, 0) + 1
+    return {
+        "count": len(records),
+        "by_access_status": by_access_status,
+        "records": records,
+    }
+
+
+def _onboarding_handoff_path(repo: Path) -> Path:
+    return repo / "onboarding" / "setup" / "handoff.json"
+
+
+def read_onboarding_handoff(repo_path: str | Path) -> dict[str, Any] | None:
+    repo = Path(repo_path).expanduser().resolve()
+    _require_lettuce_repo(repo)
+    path = _onboarding_handoff_path(repo)
+    if not path.exists():
+        return None
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if isinstance(data, dict):
+        data.setdefault("path", _repo_relative_path(repo, path))
+        return data
+    return None
+
+
+def _default_handoff_summary(source_plan: list[dict[str, Any]], cadence: dict[str, str], first_sample: dict[str, Any]) -> str:
+    source_count = len(source_plan)
+    available = len([entry for entry in source_plan if entry.get("access_status") == "available_now"])
+    needs_setup = len([entry for entry in source_plan if entry.get("access_status") == "needs_setup"])
+    cadence_hint = cadence.get("hint") or "manual"
+    outcome = first_sample.get("outcome") or "ingested_only"
+    return (
+        f"{source_count} source plan entr{'y' if source_count == 1 else 'ies'} "
+        f"({available} available now, {needs_setup} need setup); "
+        f"cadence {cadence_hint}; first sample {outcome}."
+    )
+
+
+def record_onboarding_handoff(
+    repo_path: str | Path,
+    *,
+    source_plan: list[dict[str, Any]],
+    first_sample: dict[str, Any],
+    cadence_hint: str | None = None,
+    cadence_trigger: str | None = None,
+    handoff_summary: str | None = None,
+    commit: bool = False,
+) -> dict[str, Any]:
+    repo = Path(repo_path).expanduser().resolve()
+    _require_lettuce_repo(repo)
+    config = _repo_config(repo)
+    path = _onboarding_handoff_path(repo)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    cadence = {
+        "hint": (cadence_hint or "manual-for-now").strip(),
+        "trigger": (cadence_trigger or "when-asked").strip(),
+    }
+    payload = {
+        "schema_version": 1,
+        "kind": "onboarding_handoff",
+        "recorded_at": now_utc().replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        "org": str(config.get("org") or ""),
+        "operator": str(config.get("operator") or ""),
+        "cadence": cadence,
+        "source_plan": source_plan,
+        "first_sample": first_sample,
+        "summary": (handoff_summary or "").strip() or _default_handoff_summary(source_plan, cadence, first_sample),
+        "path": _repo_relative_path(repo, path),
+    }
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    if commit:
+        _git_commit(repo, [path], "onboarding: source-plan handoff")
+    return payload
 
 
 def configure_subscription(
@@ -1626,6 +1862,14 @@ def status(repo_path: str | Path) -> RuntimeStatus:
     checkpoints = {key: len(value) for key, value in checkpoint_data.items()}
     recent_logs = read_logs(repo, limit=1)
     all_logs = read_logs(repo, limit=0)
+    source_records = read_source_records(repo)
+    onboarding_handoff = read_onboarding_handoff(repo) or {
+        "handoff_recorded": False,
+        "source_plan": [],
+        "cadence": {"hint": "", "trigger": ""},
+        "summary": "",
+    }
+    onboarding_handoff.setdefault("handoff_recorded", "recorded_at" in onboarding_handoff)
     return RuntimeStatus(
         repo=str(repo),
         handlers=len(handlers),
@@ -1633,6 +1877,8 @@ def status(repo_path: str | Path) -> RuntimeStatus:
         checkpoints=checkpoints,
         log_entries=len(all_logs),
         agent_instructions_path=str(_agent_instructions_path(repo)) if _agent_instructions_path(repo).exists() else None,
+        sources=_source_status_summary(source_records),
+        onboarding=onboarding_handoff,
         last_log=recent_logs[-1] if recent_logs else None,
         freshness=_freshness_summary(repo, checkpoints=checkpoint_data, last_log=recent_logs[-1] if recent_logs else None),
     )

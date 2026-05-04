@@ -51,7 +51,25 @@ lettuce logs ./lettuce-demo --limit 5
 
 That scaffolds an org-scoped Lettuce repo, discovers markdown handlers, writes the first event to `streams/inbox/direct`, writes handler outputs to local `brain/*` streams, records checkpoints/logs under `.lettuce/`, and commits handler/event/brain changes to git when `--commit` is set. Add `--review` when you want calibration or human approval before brain updates land; first agent-operated onboarding should usually use review mode.
 
-`onboard` is the first agent-facing setup helper: it scaffolds the repo if needed, writes the first direct event with provenance, runs handlers, and returns a machine-readable status summary. `--openclaw-provider` runs handlers through OpenClaw's model-backed provider for real judgment; omit it only for offline plumbing smoke tests. `--body-file` lets an agent preserve multi-paragraph operator signal without brittle shell quoting; `--body` and stdin remain available for tiny smoke tests.
+`onboard` is the first agent-facing setup helper: it scaffolds the repo if needed, writes the first direct event with provenance, runs handlers, records `onboarding/setup/handoff.json`, and returns a machine-readable status summary. `--openclaw-provider` runs handlers through OpenClaw's model-backed provider for real judgment; omit it only for offline plumbing smoke tests. `--body-file` lets an agent preserve multi-paragraph operator signal without brittle shell quoting; `--body` and stdin remain available for tiny smoke tests.
+
+If the agent already knows the source plan and refresh cadence, record them during onboarding:
+
+```bash
+lettuce onboard ./lettuce-demo \
+  --org demo \
+  --operator you \
+  --title "Demo signal" \
+  --body-file /tmp/lettuce-first-signal.md \
+  --source openclaw.telegram \
+  --surface telegram \
+  --consent operator-direct-request \
+  --source-plan '{"source_type":"email","name":"customer-mailbox","address":"customers@example.com","access_status":"available_now","sample_policy":"first-3-operator-approved"}' \
+  --source-plan '{"source_type":"granola","name":"sales-calls","workspace":"demo-granola","access_status":"needs_setup","setup_next_action":"connect export or MCP before polling"}' \
+  --cadence-hint "after-meetings" \
+  --cadence-trigger "agent-lane" \
+  --handoff-summary "Email is ready now; transcripts need setup before recurring ingest."
+```
 
 ## Signal Sources
 
@@ -86,7 +104,7 @@ lettuce ingest-email ./lettuce-demo \
 
 The first repeatable source connector is deliberately local and boring: `add-source directory --input <dir>` imports a sample of new `.md`/`.txt` files into stream events, preserves file provenance and consent, and checkpoints imported file versions so later runs only pick up new or changed files. `add-source file` imports one local text/markdown file, and `add-source stdin` does the same for piped or supplied text.
 
-`add-source email|fathom|granola|transcript|zoom` records repo-owned source configuration intent under `sources/` and creates the target stream directory. These records can include `access_status`, `sample_policy`, `privacy_notes`, and `setup_next_action`, so the operator's agent can see whether it can sample now or needs to guide setup first. Manual-only behavior should be described in the recipe/source record body rather than invented as a new CLI status. It does not pretend to provision forwarding addresses, OAuth, or webhooks by itself; agent-owned setup can attach to the same source record later.
+`add-source email|fathom|granola|transcript|zoom` records repo-owned source configuration intent under `sources/` and creates the target stream directory. These records can include `access_status`, `sample_policy`, `privacy_notes`, and `setup_next_action`, so the operator's agent can see whether it can sample now or needs to guide setup first. Manual-only behavior should be described in the recipe/source record body rather than invented as a new CLI status. `lettuce onboard` can create or reuse those same records and then reference them from `onboarding/setup/handoff.json` along with cadence/trigger hints and first-sample outcome. It does not pretend to provision forwarding addresses, OAuth, or webhooks by itself; agent-owned setup can attach to the same source record later.
 
 `subscribe` records remote/shared stream subscription intent under `subscriptions/`. For local simulation, `pull-subscriptions` can now import new events from another local Lettuce repo into a scoped `streams/shared/*` mirror with subscription checkpoints and preserved provenance. Optional policy strings such as `allow_streams=streams/shared/*` block subscription writes outside allowed local stream paths. See `docs/trust-boundary.md` for the formal mutation rules around `brain/*`, `sources/*`, `reviews/*`, and shared-stream mirrors. This proves the future org-distributed context path without requiring GitHub federation yet.
 

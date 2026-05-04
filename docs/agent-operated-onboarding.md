@@ -91,12 +91,27 @@ lettuce onboard <repo-path> \
   --source "<agent.surface>" \
   --surface "<surface>" \
   --consent "<basis>" \
+  --source-plan '{"source_type":"email","name":"customer-mailbox","address":"customers@example.com","access_status":"available_now","sample_policy":"first-3-operator-approved"}' \
+  --source-plan '{"source_type":"granola","name":"sales-calls","workspace":"team-granola","access_status":"needs_setup","setup_next_action":"connect existing export or MCP before polling"}' \
+  --cadence-hint "manual-for-now" \
+  --cadence-trigger "when-asked" \
+  --handoff-summary "Direct chat is available now; email is the next ready recurring source; transcripts still need setup." \
   --openclaw-provider \
   --review \
   --commit
 ```
 
 For one-sentence smoke tests, `--body "<first direct signal body>"` is fine. For real operator messages, pasted transcripts, or multi-paragraph signal, prefer `--body-file` so the agent preserves the exact text and avoids shell quoting mistakes. If neither body option is provided, `lettuce onboard` reads stdin. Use `--openclaw-provider` for real OpenClaw dogfood so handlers make judgment calls instead of using the deterministic fallback adapter. Use `--review` for onboarding so first-pass handler output becomes explicit pending review proposals before any durable brain write.
+
+`lettuce onboard` now also writes `onboarding/setup/handoff.json`. That handoff is the repo-owned machine-readable record of:
+
+- source plan entries and access/setup state;
+- cadence/trigger hints for future refresh;
+- the first sample type/source/event path;
+- the first sample outcome; and
+- a concise summary for the next agent handoff.
+
+Use `--source-record <id-or-path>` when the source records already exist under `sources/` and should just be referenced in the handoff.
 
 For manual control, the agent can run the lower-level steps directly:
 
@@ -239,6 +254,9 @@ The summary should include:
 - pending review paths written
 - skipped/errors/noise
 - current log/checkpoint count
+- configured source records and whether they are `available_now`, `needs_setup`, or deferred
+- whether any recurring schedule exists; if none, say that new signal sampling is manual/agent-triggered for now
+- whether `onboarding/setup/handoff.json` was recorded and what cadence/source-plan state it contains
 
 Then ask exactly one review question:
 
