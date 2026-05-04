@@ -1431,6 +1431,7 @@ def read_onboarding_handoff(repo_path: str | Path) -> dict[str, Any] | None:
         return None
     data = json.loads(path.read_text(encoding="utf-8"))
     if isinstance(data, dict):
+        data["onboarding_path"] = _normalize_onboarding_path(str(data.get("onboarding_path") or "solo_founder"))
         data.setdefault("path", _repo_relative_path(repo, path))
         return data
     return None
@@ -1449,11 +1450,61 @@ def _default_handoff_summary(source_plan: list[dict[str, Any]], cadence: dict[st
     )
 
 
+def _normalize_onboarding_path(value: str | None) -> str:
+    onboarding_path = str(value or "solo_founder").strip().lower()
+    if onboarding_path not in {"solo_founder", "multi_operator"}:
+        raise ValueError("onboarding_path must be solo_founder or multi_operator")
+    return onboarding_path
+
+
+def _default_multi_operator_plan(org: str, operator: str) -> dict[str, Any]:
+    org_slug = _slugify(org) or "org"
+    operator_slug = _slugify(operator) or "operator"
+    return {
+        "github_org_scan": {
+            "status": "runtime_owned_discovery_not_run",
+            "notes": (
+                "GitHub org scanning is runtime/operator work. During setup, record likely personal, role-agent, "
+                "and hub candidates instead of pretending CLI discovery already ran."
+            ),
+        },
+        "candidate_repos": [
+            {
+                "kind": "personal",
+                "repo": f"lettuce-{org_slug}-{operator_slug}",
+                "status": "current_repo",
+            },
+            {
+                "kind": "role_agent",
+                "repo": f"lettuce-{org_slug}-<role-agent-id>",
+                "status": "discover_or_create_if_needed",
+            },
+            {
+                "kind": "hub",
+                "repo": f"lettuce-{org_slug}-hub",
+                "status": "offer_if_missing",
+            },
+        ],
+        "hub_repo": {
+            "status": "intent_only",
+            "suggested_name": f"lettuce-{org_slug}-hub",
+        },
+        "shared_streams": {
+            "subscription_scope": "subscribe only to explicit exported streams",
+            "mirror_path": "streams/shared/*",
+            "mirror_status": "planned_runtime_followup",
+            "promotion_rule": "run local handlers on shared signal before any local brain promotion",
+        },
+    }
+
+
 def record_onboarding_handoff(
     repo_path: str | Path,
     *,
     source_plan: list[dict[str, Any]],
     first_sample: dict[str, Any],
+    onboarding_path: str = "solo_founder",
+    multi_operator_plan: dict[str, Any] | None = None,
     cadence_hint: str | None = None,
     cadence_trigger: str | None = None,
     handoff_summary: str | None = None,
@@ -1464,6 +1515,7 @@ def record_onboarding_handoff(
     config = _repo_config(repo)
     path = _onboarding_handoff_path(repo)
     path.parent.mkdir(parents=True, exist_ok=True)
+    normalized_onboarding_path = _normalize_onboarding_path(onboarding_path)
     cadence = {
         "hint": (cadence_hint or "manual-for-now").strip(),
         "trigger": (cadence_trigger or "when-asked").strip(),
@@ -1474,12 +1526,15 @@ def record_onboarding_handoff(
         "recorded_at": now_utc().replace(microsecond=0).isoformat().replace("+00:00", "Z"),
         "org": str(config.get("org") or ""),
         "operator": str(config.get("operator") or ""),
+        "onboarding_path": normalized_onboarding_path,
         "cadence": cadence,
         "source_plan": source_plan,
         "first_sample": first_sample,
         "summary": (handoff_summary or "").strip() or _default_handoff_summary(source_plan, cadence, first_sample),
         "path": _repo_relative_path(repo, path),
     }
+    if normalized_onboarding_path == "multi_operator":
+        payload["multi_operator_plan"] = multi_operator_plan or _default_multi_operator_plan(payload["org"], payload["operator"])
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     if commit:
         _git_commit(repo, [path], "onboarding: source-plan handoff")

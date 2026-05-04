@@ -101,6 +101,42 @@ def _source_summary(source_type: str, result: object) -> str:
     return f"{source_type} -> {getattr(result, 'config_path')} ({getattr(result, 'access_status')})"
 
 
+def _normalize_onboarding_path(value: str | None) -> str:
+    onboarding_path = str(value or "solo_founder").strip().lower()
+    if onboarding_path not in {"solo_founder", "multi_operator"}:
+        raise ValueError("onboarding path must be solo_founder or multi_operator")
+    return onboarding_path
+
+
+def _default_multi_operator_plan(org: str, operator: str) -> dict[str, Any]:
+    def slug(value: str) -> str:
+        return "-".join(part for part in value.lower().replace("_", "-").split() if part) or "demo"
+
+    org_slug = slug(org)
+    operator_slug = slug(operator)
+    return {
+        "github_org_scan": {
+            "status": "runtime_owned_discovery_not_run",
+            "notes": "Record candidate repos and next steps here; actual GitHub org scanning is runtime/operator work.",
+        },
+        "candidate_repos": [
+            {"kind": "personal", "repo": f"lettuce-{org_slug}-{operator_slug}", "status": "current_repo"},
+            {"kind": "role_agent", "repo": f"lettuce-{org_slug}-<role-agent-id>", "status": "discover_or_create_if_needed"},
+            {"kind": "hub", "repo": f"lettuce-{org_slug}-hub", "status": "offer_if_missing"},
+        ],
+        "hub_repo": {
+            "status": "intent_only",
+            "suggested_name": f"lettuce-{org_slug}-hub",
+        },
+        "shared_streams": {
+            "subscription_scope": "subscribe only to explicit exported streams",
+            "mirror_path": "streams/shared/*",
+            "mirror_status": "planned_runtime_followup",
+            "promotion_rule": "run local handlers on shared signal before any local brain promotion",
+        },
+    }
+
+
 def _parse_source_plan(value: str) -> dict[str, Any]:
     try:
         payload = json.loads(value)
@@ -280,6 +316,7 @@ def _run(argv: list[str] | None = None) -> int:
     onboard_parser.add_argument("--cadence-hint", help="Cadence hint for post-onboarding source refresh, e.g. manual-for-now or daily")
     onboard_parser.add_argument("--cadence-trigger", help="Trigger hint for post-onboarding refresh, e.g. when-asked or after-meetings")
     onboard_parser.add_argument("--handoff-summary", help="Concise onboarding handoff summary to record")
+    onboard_parser.add_argument("--onboarding-path", choices=["solo_founder", "multi_operator"], default="solo_founder", help="Onboarding branch to record in the setup handoff")
     onboard_parser.add_argument("--openclaw-provider", action="store_true", help="Run handlers through python3 -m lettuce.openclaw_provider")
     onboard_parser.add_argument("--handler-command", help="Provider command for handler execution")
 
@@ -291,6 +328,7 @@ def _run(argv: list[str] | None = None) -> int:
     setup_parser.add_argument("--role-agent-id", help="Required when --owner-kind=role_agent")
     setup_parser.add_argument("--permission-basis", choices=["github-user", "github-app", "machine-user"], default="github-user", help="Bounded GitHub identity behind this repo")
     setup_parser.add_argument("--visibility", default="private", help="Repo visibility label written to lettuce.yml")
+    setup_parser.add_argument("--onboarding-path", choices=["solo_founder", "multi_operator"], help="Override the interactive onboarding branch")
     setup_parser.add_argument("--commit", action="store_true", help="Commit scaffold, sources, event, and review proposals to git")
     setup_parser.add_argument("--no-review", action="store_true", help="Publish directly instead of writing first-pass review proposals")
     setup_parser.add_argument("--no-run", action="store_true", help="Only initialize, configure sources, and ingest the first direct event")
@@ -474,6 +512,7 @@ def _run(argv: list[str] | None = None) -> int:
     if args.command == "onboard":
         repo_path = Path(args.path).expanduser().resolve()
         body = _read_body(args.body, args.body_file)
+        onboarding_path = _normalize_onboarding_path(args.onboarding_path)
         initialized = not (repo_path / "lettuce.yml").exists()
         files_written = init_repo(
             repo_path,
@@ -522,6 +561,8 @@ def _run(argv: list[str] | None = None) -> int:
                 "consent_basis": direct.consent_basis,
                 "outcome": _first_sample_outcome(run_result, no_run=args.no_run, review=args.review),
             },
+            onboarding_path=onboarding_path,
+            multi_operator_plan=_default_multi_operator_plan(args.org, args.operator) if onboarding_path == "multi_operator" else None,
             cadence_hint=args.cadence_hint,
             cadence_trigger=args.cadence_trigger,
             handoff_summary=args.handoff_summary,
@@ -588,6 +629,10 @@ def _run(argv: list[str] | None = None) -> int:
         operator = _ask("Operator name/handle")
         if not operator:
             raise ValueError("operator is required")
+        if args.onboarding_path:
+            onboarding_path = _normalize_onboarding_path(args.onboarding_path)
+        else:
+            onboarding_path = "multi_operator" if _ask_yes_no("Is this for a multi-operator org that expects shared-stream coordination later?", default=False) else "solo_founder"
         repo_input = _ask(
             "Repo path",
             default=_default_repo_path(
@@ -640,6 +685,7 @@ def _run(argv: list[str] | None = None) -> int:
             initialize_git=args.commit,
         )
         configured_sources: list[str] = []
+        setup_source_plan: list[dict[str, Any]] = []
         manual_source = configure_source(
             repo_path,
             "direct",
@@ -651,6 +697,7 @@ def _run(argv: list[str] | None = None) -> int:
             commit=args.commit,
         )
         configured_sources.append(_source_summary("manual/direct", manual_source))
+        setup_source_plan.append(read_source_record(repo_path, manual_source.source_id))
         if configure_email:
             email_source = configure_source(
                 repo_path,
@@ -664,6 +711,7 @@ def _run(argv: list[str] | None = None) -> int:
                 commit=args.commit,
             )
             configured_sources.append(_source_summary("email", email_source))
+            setup_source_plan.append(read_source_record(repo_path, email_source.source_id))
         if configure_transcript:
             transcript_source = configure_source(
                 repo_path,
@@ -677,6 +725,7 @@ def _run(argv: list[str] | None = None) -> int:
                 commit=args.commit,
             )
             configured_sources.append(_source_summary("transcripts", transcript_source))
+            setup_source_plan.append(read_source_record(repo_path, transcript_source.source_id))
 
         direct = ingest_direct_signal(
             repo_path,
@@ -691,9 +740,32 @@ def _run(argv: list[str] | None = None) -> int:
         handler_command = _resolve_handler_command(args)
         run_result = None if args.no_run else run_once(repo_path, stream="streams/inbox/direct", commit=args.commit, review=not args.no_review, progress=_print_progress, handler_command=handler_command)
         reviews = list_reviews(repo_path, status="pending")
-        current = status(repo_path)
 
         print("\nDone.")
+        multi_operator_plan = _default_multi_operator_plan(org, operator) if onboarding_path == "multi_operator" else None
+        handoff = record_onboarding_handoff(
+            repo_path,
+            source_plan=setup_source_plan,
+            first_sample={
+                "type": "direct",
+                "source": direct.source,
+                "stream": "streams/inbox/direct",
+                "title": direct.title,
+                "event_path": str(Path(direct.event_path).relative_to(repo_path)),
+                "event_id": Path(direct.event_path).stem,
+                "consent_basis": direct.consent_basis,
+                "outcome": _first_sample_outcome(run_result, no_run=args.no_run, review=not args.no_review),
+            },
+            onboarding_path=onboarding_path,
+            multi_operator_plan=multi_operator_plan,
+            handoff_summary=(
+                "Solo founder setup: personal Lettuce, manual/direct signal, one source plan, first handler pass, and optional GitHub remote next."
+                if onboarding_path == "solo_founder"
+                else "Multi-operator setup: local Lettuce is ready; shared-stream discovery, hub selection, and remote mirroring remain recorded intent until the runtime handles them."
+            ),
+            commit=args.commit,
+        )
+        current = status(repo_path)
         print(f"I set up Lettuce for {org} at {repo_path}.")
         print(
             f"Repo identity: type `{current.identity.repo_type}`, owner_kind `{current.identity.owner_kind}`, "
@@ -722,6 +794,13 @@ def _run(argv: list[str] | None = None) -> int:
         else:
             print(f"Handlers run: {run_result.handlers}; events processed: {run_result.events}; pending reviews: {len(reviews)}")
         print(f"Logs/checkpoints: {current.log_entries} log entries, {current.checkpoints} checkpoints")
+        print(f"Onboarding path: `{onboarding_path}`.")
+        if onboarding_path == "solo_founder":
+            print("This stays on the simple path: personal repo now, one source plan now, GitHub remote optional next, and shared streams only as future-ready context if the org grows.")
+            print("Optional next step: connect this local repo to a private GitHub remote when the operator wants backup, sync, or agent access from another machine.")
+        else:
+            print("Multi-operator coordination is recorded as intent only: scan the GitHub org in the runtime, surface personal/role-agent/hub candidates, subscribe only to explicit exports, keep any future mirrors under `streams/shared/*`, and run local handlers before promoting shared signal into local brain context.")
+        print(f"Onboarding handoff: {handoff['path']}")
         print("Going forward, use this Lettuce for org-scoped work context, not personal memory. Ask before bulk ingesting or writing sensitive updates.")
         print("Next: review pending proposals with `lettuce reviews` and approve/edit/decline the useful ones.")
         if initialized:

@@ -26,6 +26,11 @@ Do not bulk-ingest before a small reviewed sample proves the source is useful.
 
 Manual/direct ingestion should be available for every first setup even when no recurring source is ready. It is the default fallback path: the operator forwards or pastes a signal and says “run Lettuce on this.”
 
+For onboarding-path decisions:
+
+- `solo_founder` stays minimal. Record the personal repo, direct/manual source, one next source plan, and the first reviewed sample. Shared streams are future-ready context, not required setup work.
+- `multi_operator` is optional. Record likely personal, role-agent, and hub candidates plus shared-stream intent, but do not block local setup waiting on org-wide discovery. Any future shared import must stay under `streams/shared/*`, use explicit exported streams only, and run through local handlers before local brain promotion.
+
 ## Agent-Readable Recipe Pattern
 
 Every concrete recipe should specify:
