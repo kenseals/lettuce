@@ -7,7 +7,7 @@ import sys
 from typing import Any
 
 from .handlers import discover_handlers
-from .protocol_runtime import add_handler, add_stream_event, approve_review, configure_source, configure_subscription, decline_review, import_directory_source, import_source_event, ingest_direct_signal, ingest_email_signal, init_repo, list_reviews, pull_subscriptions, read_logs, run_once, status
+from .protocol_runtime import add_handler, add_stream_event, approve_review, configure_source, configure_subscription, decline_review, import_source_event, ingest_direct_signal, ingest_email_signal, init_repo, list_reviews, read_logs, run_once, status
 
 
 def _print_json(value: object) -> None:
@@ -46,17 +46,48 @@ def _read_body(body: str | None, body_file: str | None) -> str:
     return sys.stdin.read()
 
 
-def _resolve_review_id(path: str, review_id: str | None, *, first: bool) -> str:
-    if review_id and first:
-        raise ValueError("use either a review id or --first, not both")
-    if review_id:
-        return review_id
-    if not first:
-        raise ValueError("provide a review id or use --first")
-    reviews = list_reviews(path, status="pending")
-    if not reviews:
-        raise ValueError("no pending reviews found")
-    return reviews[0].id
+def _ask(prompt: str, *, default: str | None = None) -> str:
+    suffix = f" [{default}]" if default else ""
+    value = input(f"{prompt}{suffix}: ").strip()
+    return value or (default or "")
+
+
+def _ask_yes_no(prompt: str, *, default: bool = False) -> bool:
+    default_label = "Y/n" if default else "y/N"
+    while True:
+        value = input(f"{prompt} [{default_label}]: ").strip().lower()
+        if not value:
+            return default
+        if value in {"y", "yes"}:
+            return True
+        if value in {"n", "no"}:
+            return False
+        print("Please answer y or n.")
+
+
+def _ask_multiline(prompt: str, *, default: str) -> str:
+    print(prompt)
+    print("End with a single '.' on its own line. Leave blank, then '.', to use the default setup signal.")
+    lines: list[str] = []
+    while True:
+        line = input()
+        if line == ".":
+            break
+        lines.append(line)
+    body = "\n".join(lines).strip()
+    return body or default
+
+
+def _default_repo_path(path: str | None, org: str, operator: str) -> str:
+    if path:
+        return path
+    def slug(value: str) -> str:
+        return "-".join(part for part in value.lower().replace("_", "-").split() if part) or "demo"
+    return f"./lettuce-{slug(org)}-{slug(operator)}"
+
+
+def _source_summary(source_type: str, result: object) -> str:
+    return f"{source_type} -> {getattr(result, 'config_path')} ({getattr(result, 'access_status')})"
 
 
 def _run(argv: list[str] | None = None) -> int:
@@ -134,11 +165,20 @@ def _run(argv: list[str] | None = None) -> int:
     onboard_parser.add_argument("--observed-at", help="Original observation timestamp when available")
     onboard_parser.add_argument("--sender", help="Source sender/operator label when available")
     onboard_parser.add_argument("--consent", required=True, help="Consent or standing-rule basis for ingesting this signal")
-    onboard_parser.add_argument("--commit", action="store_true", help="Commit scaffold, event, and handler publishes to git")
-    onboard_parser.add_argument("--review", action="store_true", help="Optional: write first-pass handler outputs to reviews/pending instead of publishing directly")
+    onboard_parser.add_argument("--commit", action="store_true", help="Commit scaffold, event, and review proposals/publishes to git")
+    onboard_parser.add_argument("--review", action="store_true", help="Write first-pass handler outputs to reviews/pending instead of publishing directly")
     onboard_parser.add_argument("--no-run", action="store_true", help="Only initialize and ingest the first direct event")
     onboard_parser.add_argument("--openclaw-provider", action="store_true", help="Run handlers through python3 -m lettuce.openclaw_provider")
     onboard_parser.add_argument("--handler-command", help="Provider command for handler execution")
+
+    setup_parser = subparsers.add_parser("setup", help="Interactive happy-path onboarding for an operator-owned Lettuce")
+    setup_parser.add_argument("path", nargs="?", help="Lettuce repo path. If omitted, a path is suggested from org/operator")
+    setup_parser.add_argument("--default-model", default="claude-sonnet-4", help="Default handler model for new repos")
+    setup_parser.add_argument("--commit", action="store_true", help="Commit scaffold, sources, event, and review proposals to git")
+    setup_parser.add_argument("--no-review", action="store_true", help="Publish directly instead of writing first-pass review proposals")
+    setup_parser.add_argument("--no-run", action="store_true", help="Only initialize, configure sources, and ingest the first direct event")
+    setup_parser.add_argument("--openclaw-provider", action="store_true", help="Run handlers through python3 -m lettuce.openclaw_provider")
+    setup_parser.add_argument("--handler-command", help="Provider command for handler execution")
 
     add_handler_parser = subparsers.add_parser("add-handler", help="Scaffold a markdown handler")
     add_handler_parser.add_argument("template", choices=["lens", "router", "handler"], help="Handler template to scaffold")
@@ -152,9 +192,9 @@ def _run(argv: list[str] | None = None) -> int:
     add_handler_parser.add_argument("--commit", action="store_true", help="Commit the handler to git")
 
     add_source_parser = subparsers.add_parser("add-source", help="Import or configure a signal source")
-    add_source_parser.add_argument("source_type", choices=["file", "stdin", "directory", "telegram", "email", "fathom", "granola", "transcript", "zoom"], help="Source type to import or configure")
+    add_source_parser.add_argument("source_type", choices=["file", "stdin", "direct", "telegram", "email", "fathom", "granola", "transcript", "zoom"], help="Source type to import or configure")
     add_source_parser.add_argument("path", nargs="?", default=".", help="Lettuce repo path")
-    add_source_parser.add_argument("--input", dest="input_path", help="Input file or directory path for file/directory sources")
+    add_source_parser.add_argument("--input", dest="input_path", help="Input file path for file sources")
     add_source_parser.add_argument("--stream", help="Destination stream. Defaults by source type")
     add_source_parser.add_argument("--title", help="Event title. Defaults to first heading/line or file name")
     add_source_parser.add_argument("--source", help="Source label. Defaults to file:<name> or stdin")
@@ -175,7 +215,6 @@ def _run(argv: list[str] | None = None) -> int:
     add_source_parser.add_argument("--label", help="Email label/folder or source grouping to record")
     add_source_parser.add_argument("--source-url", help="Source URL or app URL to record")
     add_source_parser.add_argument("--redaction-notes", help="Redaction notes to preserve during ingest")
-    add_source_parser.add_argument("--sample-limit", type=int, default=3, help="Maximum new files to ingest from a directory source per run")
     add_source_parser.add_argument("--commit", action="store_true", help="Commit the imported event or source configuration to git")
 
     subscribe_parser = subparsers.add_parser("subscribe", help="Record a remote/shared stream subscription")
@@ -187,16 +226,11 @@ def _run(argv: list[str] | None = None) -> int:
     subscribe_parser.add_argument("--policy", help="Optional policy note or policy id")
     subscribe_parser.add_argument("--commit", action="store_true", help="Commit the subscription record to git")
 
-    pull_subscriptions_parser = subparsers.add_parser("pull-subscriptions", help="Import new events from local shared stream subscriptions")
-    pull_subscriptions_parser.add_argument("path", nargs="?", default=".", help="Lettuce repo path")
-    pull_subscriptions_parser.add_argument("--name", help="Optional subscription id or name to pull")
-    pull_subscriptions_parser.add_argument("--commit", action="store_true", help="Commit imported shared-stream events to git")
-
     run_parser = subparsers.add_parser("run-once", help="Process local stream events once")
     run_parser.add_argument("path", nargs="?", default=".", help="Lettuce repo path")
     run_parser.add_argument("--stream", default="streams/inbox/direct", help="Stream to process")
     run_parser.add_argument("--commit", action="store_true", help="Commit publishes to git")
-    run_parser.add_argument("--review", action="store_true", help="Optional: write handler outputs to reviews/pending instead of publishing directly")
+    run_parser.add_argument("--review", action="store_true", help="Write handler outputs to reviews/pending instead of publishing directly")
     run_parser.add_argument("--openclaw-provider", action="store_true", help="Run handlers through python3 -m lettuce.openclaw_provider")
     run_parser.add_argument("--handler-command", help="Provider command for handler execution")
 
@@ -204,25 +238,23 @@ def _run(argv: list[str] | None = None) -> int:
     run_alias_parser.add_argument("path", nargs="?", default=".", help="Lettuce repo path")
     run_alias_parser.add_argument("--stream", default="streams/inbox/direct", help="Stream to process")
     run_alias_parser.add_argument("--commit", action="store_true", help="Commit publishes to git")
-    run_alias_parser.add_argument("--review", action="store_true", help="Optional: write handler outputs to reviews/pending instead of publishing directly")
+    run_alias_parser.add_argument("--review", action="store_true", help="Write handler outputs to reviews/pending instead of publishing directly")
     run_alias_parser.add_argument("--openclaw-provider", action="store_true", help="Run handlers through python3 -m lettuce.openclaw_provider")
     run_alias_parser.add_argument("--handler-command", help="Provider command for handler execution")
 
-    reviews_parser = subparsers.add_parser("reviews", help="List optional review proposals")
+    reviews_parser = subparsers.add_parser("reviews", help="List review proposals")
     reviews_parser.add_argument("path", nargs="?", default=".", help="Lettuce repo path")
     reviews_parser.add_argument("--status", choices=["pending", "approved", "declined", "all"], default="pending", help="Review status to list")
 
-    approve_parser = subparsers.add_parser("review-approve", help="Approve an optional pending review and publish it to its target stream")
+    approve_parser = subparsers.add_parser("review-approve", help="Approve a pending review and publish it to its target stream")
     approve_parser.add_argument("path", help="Lettuce repo path")
-    approve_parser.add_argument("review_id", nargs="?", help="Pending review id")
-    approve_parser.add_argument("--first", action="store_true", help="Approve the first optional pending review")
+    approve_parser.add_argument("review_id", help="Pending review id")
     approve_parser.add_argument("--operator", default="operator", help="Operator or agent approving the review")
     approve_parser.add_argument("--commit", action="store_true", help="Commit the approval and publish to git")
 
-    decline_parser = subparsers.add_parser("review-decline", help="Decline an optional pending review without publishing it")
+    decline_parser = subparsers.add_parser("review-decline", help="Decline a pending review without publishing it")
     decline_parser.add_argument("path", help="Lettuce repo path")
-    decline_parser.add_argument("review_id", nargs="?", help="Pending review id")
-    decline_parser.add_argument("--first", action="store_true", help="Decline the first optional pending review")
+    decline_parser.add_argument("review_id", help="Pending review id")
     decline_parser.add_argument("--reason", default="", help="Optional decline reason")
     decline_parser.add_argument("--operator", default="operator", help="Operator or agent declining the review")
     decline_parser.add_argument("--commit", action="store_true", help="Commit the declined review to git")
@@ -386,6 +418,129 @@ def _run(argv: list[str] | None = None) -> int:
         )
         return 0
 
+    if args.command == "setup":
+        print("Lettuce is a work-context layer for your agent.")
+        print("It keeps company/org signal in a git-backed repo, separate from personal memory, then uses lenses and review gates to turn messy inputs like emails, calls, chats, and docs into durable company context your agent can use later.\n")
+        print("I’ll ask a few setup questions, create or connect the repo, configure the first signal sources, and leave you with a summary of what I set up and how I’ll use it going forward.\n")
+        if not _ask_yes_no("Want to continue?", default=True):
+            print("Stopped. No Lettuce repo was created or changed.")
+            return 0
+
+        org = _ask("What company, client, or project is this Lettuce for?")
+        if not org:
+            raise ValueError("org/project is required")
+        operator = _ask("Operator name/handle")
+        if not operator:
+            raise ValueError("operator is required")
+        repo_input = _ask("Repo path", default=_default_repo_path(args.path, org, operator))
+        repo_path = Path(repo_input).expanduser().resolve()
+        consent = _ask("Consent basis for the first manual signal", default="operator-direct-request")
+
+        print("\nManual/direct ingestion will be configured by default. Going forward, the operator can say: run Lettuce on this")
+        configure_email = _ask_yes_no("Do you already have an email source to record for this Lettuce?", default=False)
+        email_name = email_address = email_policy = email_privacy = ""
+        if configure_email:
+            email_name = _ask("Email source name", default="operator-selected-email")
+            email_address = _ask("Mailbox/account/label", default="operator-selected")
+            email_policy = _ask("Email sample policy", default="first-5-operator-approved")
+            email_privacy = _ask("Email privacy notes", default="skip personal/legal/medical/unrelated mail")
+
+        configure_transcript = _ask_yes_no("Do you already have a call transcript source to record?", default=False)
+        transcript_type = transcript_name = transcript_workspace = transcript_policy = transcript_privacy = ""
+        if configure_transcript:
+            transcript_type = _ask("Transcript source type: fathom, granola, zoom, or transcript", default="transcript").lower()
+            if transcript_type not in {"fathom", "granola", "zoom", "transcript"}:
+                raise ValueError("transcript source type must be fathom, granola, zoom, or transcript")
+            transcript_name = _ask("Transcript source name", default=f"{transcript_type}-selected-transcripts")
+            transcript_workspace = _ask("Workspace/account/export label", default="operator-selected")
+            transcript_policy = _ask("Transcript sample policy", default="first-3-operator-approved")
+            transcript_privacy = _ask("Transcript privacy notes", default="only org-scoped calls with consent/permission")
+
+        default_signal = f"Operator set up Lettuce for {org}. Manual/direct ingestion should be available, source boundaries should be explicit, and durable updates should go through review before brain writes."
+        title = _ask("First signal title", default="Lettuce setup signal")
+        body = _ask_multiline("Paste the first manual signal for this Lettuce.", default=default_signal)
+
+        initialized = not (repo_path / "lettuce.yml").exists()
+        files_written = init_repo(repo_path, org=org, operator=operator, default_model=args.default_model, initialize_git=args.commit)
+        configured_sources: list[str] = []
+        manual_source = configure_source(
+            repo_path,
+            "direct",
+            name="manual-direct",
+            access_status="available_now",
+            sample_policy="operator-forwarded-or-pasted-signals; review before brain writes",
+            privacy_notes="skip personal-life context and unrelated org signal; preserve provenance and consent",
+            setup_next_action="Operator can say: run Lettuce on this",
+            commit=args.commit,
+        )
+        configured_sources.append(_source_summary("manual/direct", manual_source))
+        if configure_email:
+            email_source = configure_source(
+                repo_path,
+                "email",
+                name=email_name,
+                metadata={"address": email_address},
+                access_status="available_now",
+                sample_policy=email_policy,
+                privacy_notes=email_privacy,
+                setup_next_action="sample operator-approved email threads before bulk ingest",
+                commit=args.commit,
+            )
+            configured_sources.append(_source_summary("email", email_source))
+        if configure_transcript:
+            transcript_source = configure_source(
+                repo_path,
+                transcript_type,
+                name=transcript_name,
+                metadata={"workspace": transcript_workspace},
+                access_status="available_now",
+                sample_policy=transcript_policy,
+                privacy_notes=transcript_privacy,
+                setup_next_action="sample operator-approved transcripts before bulk ingest",
+                commit=args.commit,
+            )
+            configured_sources.append(_source_summary("transcripts", transcript_source))
+
+        direct = ingest_direct_signal(
+            repo_path,
+            title=title,
+            body=body,
+            source="cli.setup",
+            surface="cli",
+            consent_basis=consent,
+            sender=operator,
+            commit=args.commit,
+        )
+        handler_command = _resolve_handler_command(args)
+        run_result = None if args.no_run else run_once(repo_path, stream="streams/inbox/direct", commit=args.commit, review=not args.no_review, progress=_print_progress, handler_command=handler_command)
+        reviews = list_reviews(repo_path, status="pending")
+        current = status(repo_path)
+
+        print("\nDone.")
+        print(f"I set up Lettuce for {org} at {repo_path}.")
+        print("Manual/direct ingestion is ready: say “run Lettuce on this” and the agent should capture the signal with provenance, run lenses, and show review proposals before durable brain updates.")
+        print("Configured sources:")
+        for source in configured_sources:
+            print(f"- {source}")
+        if not configure_email:
+            print("- email not configured yet; forward or select a few org-scoped emails when ready")
+        if not configure_transcript:
+            print("- transcripts not configured yet; export or select 1-3 org-scoped calls when ready")
+        print(f"First signal event: {direct.event_path}")
+        if run_result is None:
+            print("Handlers were not run because --no-run was set.")
+        else:
+            print(f"Handlers run: {run_result.handlers}; events processed: {run_result.events}; pending reviews: {len(reviews)}")
+        print(f"Logs/checkpoints: {current.log_entries} log entries, {current.checkpoints} checkpoints")
+        print("Going forward, use this Lettuce for org-scoped work context, not personal memory. Ask before bulk ingesting or writing sensitive updates.")
+        print("Next: review pending proposals with `lettuce reviews` and approve/edit/decline the useful ones.")
+        if initialized:
+            print("Repo initialized from scratch.")
+        else:
+            print("Existing Lettuce repo reused.")
+        print(f"Files written during init: {len(files_written)}")
+        return 0
+
     if args.command == "add-handler":
         path = add_handler(
             args.path,
@@ -402,30 +557,6 @@ def _run(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "add-source":
-        if args.source_type == "directory":
-            if not args.input_path:
-                raise ValueError("directory source requires --input")
-            result = import_directory_source(
-                args.path,
-                args.input_path,
-                stream=args.stream or "streams/inbox/direct",
-                source=args.source,
-                sample_limit=args.sample_limit,
-                commit=args.commit,
-            )
-            _print_json(
-                {
-                    "source_type": result.source_type,
-                    "source_dir": result.source_dir,
-                    "stream": result.stream,
-                    "imported": result.imported,
-                    "skipped": result.skipped,
-                    "event_paths": result.event_paths,
-                    "checkpoint_key": result.checkpoint_key,
-                    "sample_limit": result.sample_limit,
-                }
-            )
-            return 0
         if args.source_type in {"file", "stdin"}:
             if args.source_type == "file" and (args.body is not None or args.body_file):
                 raise ValueError("--body and --body-file are only valid for stdin sources")
@@ -502,38 +633,9 @@ def _run(argv: list[str] | None = None) -> int:
         _print_json(
             {
                 "subscription_path": result.subscription_path,
-                "subscription_id": result.subscription_id,
-                "name": result.name,
                 "remote": result.remote,
                 "stream": result.stream,
-                "local_stream": result.local_stream,
                 "status": result.status,
-            }
-        )
-        return 0
-
-    if args.command == "pull-subscriptions":
-        result = pull_subscriptions(args.path, name=args.name, commit=args.commit)
-        _print_json(
-            {
-                "repo": result.repo,
-                "subscriptions": result.subscriptions,
-                "imported": result.imported,
-                "committed": result.committed,
-                "pulled": [
-                    {
-                        "subscription_id": item.subscription_id,
-                        "subscription_name": item.subscription_name,
-                        "source_repo": item.source_repo,
-                        "source_stream": item.source_stream,
-                        "source_event_id": item.source_event_id,
-                        "imported_event_path": item.imported_event_path,
-                        "title": item.title,
-                        "committed": item.committed,
-                    }
-                    for item in result.pulled
-                ],
-                "notes": result.notes,
             }
         )
         return 0
@@ -559,14 +661,12 @@ def _run(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "review-approve":
-        review_id = _resolve_review_id(args.path, args.review_id, first=args.first)
-        result = approve_review(args.path, review_id, operator=args.operator, commit=args.commit)
+        result = approve_review(args.path, args.review_id, operator=args.operator, commit=args.commit)
         _print_json({"review_id": result.review_id, "status": result.status, "target_stream": result.stream, "publish_path": result.path, "title": result.title})
         return 0
 
     if args.command == "review-decline":
-        review_id = _resolve_review_id(args.path, args.review_id, first=args.first)
-        result = decline_review(args.path, review_id, reason=args.reason, operator=args.operator, commit=args.commit)
+        result = decline_review(args.path, args.review_id, reason=args.reason, operator=args.operator, commit=args.commit)
         _print_json({"review_id": result.id, "status": result.status, "path": result.path, "target_stream": result.target_stream, "title": result.title})
         return 0
 

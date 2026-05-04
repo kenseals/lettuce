@@ -17,8 +17,11 @@ For every source class:
 4. If available, ingest a small sample first, usually 1-5 items.
 5. Run handlers and review output before bulk backfill.
 6. Record durable source intent under `sources/` when the source will recur.
+7. If the source should be checked regularly, record the owner and cadence/trigger in the source record. The agent runtime owns the actual recurring check; Lettuce records the contract so future runs are inspectable.
 
 Do not bulk-ingest before a small reviewed sample proves the source is useful.
+
+Manual/direct ingestion should be available for every first setup even when no recurring source is ready. It is the default fallback path: the operator forwards or pastes a signal and says “run Lettuce on this.”
 
 ## Email
 
@@ -196,6 +199,7 @@ access_owner: operator-agent
 sample_policy: first-5-operator-approved
 privacy_notes: skip personal/legal/medical unrelated mail
 setup_next_action: sample five messages from label:customers before bulk ingest
+check_policy: manual until first sample approved; then agent checks label daily
 ---
 
 # support-forward
@@ -204,3 +208,5 @@ What this source contains, how the agent has access, what should be ingested, wh
 ```
 
 Use the source record to make the agent's behavior inspectable. Do not let setup knowledge live only in chat memory.
+
+For future shared-stream onboarding, source discovery should also scan for existing Lettuce repos containing `lettuce.yml` in the operator's org/account once shared streams are implemented. Treat discovered streams like sources: summarize what exists, classify access, and ask before subscribing.

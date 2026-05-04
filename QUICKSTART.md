@@ -22,7 +22,16 @@ If you do not want to install the console script, every command below also works
 
 ## Create a personal Lettuce repo
 
-Use the first-pass onboarding helper when the agent already has a direct sample to ingest:
+For the operator-style guided setup, use:
+
+```bash
+lettuce setup --commit
+```
+
+This introduces Lettuce, confirms the operator wants to continue, asks for the org/operator/repo, configures manual/direct ingestion, optionally records email and transcript source intent, ingests a first setup signal, runs handlers behind the review gate, and ends with a summary of how the agent should use Lettuce going forward.
+
+For lower-level scripted setup, use the first-pass onboarding helper when the agent already has a direct sample to ingest:
+
 
 ```bash
 printf 'Customer says agent context is stale.\n' > /tmp/lettuce-first-signal.md
@@ -35,7 +44,8 @@ lettuce onboard ./lettuce-demo \
   --surface telegram \
   --consent operator-direct-request \
   --openclaw-provider \
-    --commit
+  --review \
+  --commit
 ```
 
 `--body "..."` is fine for a one-line smoke test. For real operator messages, use `--body-file` or stdin so pasted formatting survives. Use `--openclaw-provider` for actual OpenClaw dogfood; omit it only when you want an offline deterministic plumbing test.
@@ -51,18 +61,12 @@ This creates a markdown+git repo with `lettuce.yml`, default handlers, inbox str
 
 ## Add signal
 
-Import a local file, or repeatedly sample a local export directory:
+Import a local file:
 
 ```bash
 printf '# Customer signal\n\nCustomer says agent context is stale.' > /tmp/customer-signal.md
 lettuce add-source file ./lettuce-demo --input /tmp/customer-signal.md --commit
-
-mkdir -p /tmp/lettuce-export
-printf '# Sales call\n\nCustomer needs fresher agent context.' > /tmp/lettuce-export/sales-call.md
-lettuce add-source directory ./lettuce-demo --input /tmp/lettuce-export --sample-limit 3 --commit
 ```
-
-Directory imports are checkpointed, so the next run only imports new or changed `.md`/`.txt` files.
 
 Or ingest direct operator input that the agent already received:
 
@@ -122,36 +126,36 @@ lettuce add-handler lens ./lettuce-demo \
 
 ## Record a shared stream subscription
 
-This records subscription intent first. For the local proof, `pull-subscriptions` can then import events from another local Lettuce repo into a shared mirror stream with provenance and checkpoints.
+This records subscription intent only. Remote git polling and policy enforcement are follow-up runtime work.
 
 ```bash
 lettuce subscribe ./lettuce-demo \
-  --remote /tmp/lettuce-upstream \
+  --remote github.com/demo/lettuce-demo \
   --stream brain/decisions \
   --local-stream streams/shared/decisions \
-  --policy 'allow_streams=streams/shared/*' \
   --commit
-lettuce pull-subscriptions ./lettuce-demo --commit
 ```
 
-## Run handlers and update the brain
+## Run handlers and review proposals
 
 ```bash
-lettuce run ./lettuce-demo --commit
+lettuce run ./lettuce-demo --review --commit
+lettuce reviews ./lettuce-demo
+lettuce review-approve ./lettuce-demo <review-id> --operator you --commit
+lettuce review-decline ./lettuce-demo <review-id> --reason "not useful" --operator you --commit
 lettuce status ./lettuce-demo
 lettuce logs ./lettuce-demo --limit 5
-find ./lettuce-demo/brain -type f | sort
 ```
 
-By default, handler outputs publish directly to local `brain/*` streams with provenance and git history. Use `--review` only when you want optional calibration or human approval before a brain update lands; then `lettuce reviews`, `review-approve`, and `review-decline` are available.
+`--review` writes handler outputs to `reviews/pending` instead of publishing directly to `brain/*`. Approving a review publishes it to its target stream and moves the review record to `reviews/approved`; declining moves it to `reviews/declined` without publishing. Omit `--review` only for direct-publish plumbing tests.
 
-Without provider configuration, Lettuce uses the bundled deterministic provider adapter so the file, stream, checkpoint, log, brain, and git loop can be tested without model credentials. `lettuce run` prints handler start/finish progress to stderr and keeps machine-readable run JSON on stdout.
+Without provider configuration, Lettuce uses the bundled deterministic provider adapter so the file, stream, checkpoint, log, review, and git loop can be tested without model credentials. `lettuce run` prints handler start/finish progress to stderr and keeps machine-readable run JSON on stdout.
 
 To use the OpenClaw model-backed provider seam:
 
 ```bash
 LETTUCE_OPENCLAW_MODEL="anthropic/claude-haiku-4-5" \
-lettuce run ./lettuce-demo --openclaw-provider --commit
+lettuce run ./lettuce-demo --openclaw-provider --review --commit
 ```
 
 Use `--handler-command "<command>"` only when testing a custom provider adapter. Use `LETTUCE_HANDLER_TIMEOUT_SECONDS` to cap each handler command invocation. The OpenClaw adapter also honors `LETTUCE_OPENCLAW_TIMEOUT_SECONDS` for the nested model command.

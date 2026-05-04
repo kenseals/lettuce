@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import hashlib
-import fnmatch
 import json
 import os
 from pathlib import Path
@@ -114,18 +113,6 @@ class SourceImportResult:
 
 
 @dataclass(frozen=True)
-class DirectorySourceImportResult:
-    source_type: str
-    source_dir: str
-    stream: str
-    imported: int
-    skipped: int
-    event_paths: list[str]
-    checkpoint_key: str
-    sample_limit: int
-
-
-@dataclass(frozen=True)
 class DirectIngestResult:
     event_path: str
     title: str
@@ -154,11 +141,8 @@ class SourceConfigResult:
 @dataclass(frozen=True)
 class SubscriptionConfigResult:
     subscription_path: str
-    subscription_id: str
-    name: str
     remote: str
     stream: str
-    local_stream: str
     status: str
 
 
@@ -193,42 +177,6 @@ class HandlerInvoker:
         if completed.returncode != 0:
             raise RuntimeError(completed.stderr.strip() or f"handler command exited {completed.returncode}")
         return json.loads(completed.stdout)
-
-
-@dataclass(frozen=True)
-class SubscriptionRecord:
-    id: str
-    name: str
-    remote: str
-    stream: str
-    local_stream: str
-    status: str
-    policy: str | None
-    path: str
-    frontmatter: dict[str, Any]
-    body: str
-
-
-@dataclass(frozen=True)
-class PulledSubscriptionEvent:
-    subscription_id: str
-    subscription_name: str
-    source_repo: str
-    source_stream: str
-    source_event_id: str
-    imported_event_path: str
-    title: str
-    committed: bool = False
-
-
-@dataclass(frozen=True)
-class PullSubscriptionsResult:
-    repo: str
-    subscriptions: int
-    imported: int
-    pulled: list[PulledSubscriptionEvent]
-    notes: list[str]
-    committed: bool = False
 
 
 def _handler_timeout_seconds() -> int:
@@ -499,19 +447,15 @@ def add_stream_event(
     _require_lettuce_repo(repo)
     created_at = (timestamp or now_utc()).replace(microsecond=0)
     event_id = f"{_timestamp_for_filename(created_at)}-{_slugify(title)}"
-    repo_config = _read_simple_yaml(repo / "lettuce.yml")
     frontmatter = {
         "id": event_id,
         "timestamp": created_at.isoformat().replace("+00:00", "Z"),
         "source": source,
         "title": title,
     }
-    for key in ("org", "operator"):
-        if repo_config.get(key):
-            frontmatter[key] = repo_config[key]
     for key, value in (metadata or {}).items():
         clean_key = str(key).strip()
-        if clean_key and clean_key not in {"id", "timestamp", "source", "title", "org", "operator"}:
+        if clean_key and clean_key not in {"id", "timestamp", "source", "title"}:
             frontmatter[clean_key] = value
     path = repo / stream / f"{event_id}.md"
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -579,84 +523,6 @@ def import_source_event(
         event_path=str(event_path),
         title=resolved_title,
         source=resolved_source,
-    )
-
-
-def _directory_source_checkpoint_key(source_dir: Path, stream: str) -> str:
-    return f"source:directory:{source_dir}:{stream}"
-
-
-def _source_file_id(path: Path) -> str:
-    stat = path.stat()
-    return f"{path.resolve()}:{stat.st_mtime_ns}:{stat.st_size}"
-
-
-def import_directory_source(
-    repo_path: str | Path,
-    input_path: str | Path,
-    *,
-    stream: str = "streams/inbox/direct",
-    source: str | None = None,
-    sample_limit: int = 3,
-    commit: bool = False,
-) -> DirectorySourceImportResult:
-    repo = Path(repo_path).expanduser().resolve()
-    _require_lettuce_repo(repo)
-    source_dir = Path(input_path).expanduser().resolve()
-    if not source_dir.exists() or not source_dir.is_dir():
-        raise ValueError(f"directory source requires an existing directory: {source_dir}")
-    if sample_limit < 1:
-        raise ValueError("sample_limit must be at least 1")
-    candidates = [path for path in sorted(source_dir.iterdir()) if path.is_file() and path.suffix.lower() in {".md", ".markdown", ".txt"}]
-    checkpoint_key = _directory_source_checkpoint_key(source_dir, stream)
-    checkpoints = _load_checkpoints(repo)
-    processed = set(checkpoints.get(checkpoint_key, []))
-    imported_paths: list[Path] = []
-    imported_ids: list[str] = []
-    for path in candidates:
-        file_id = _source_file_id(path)
-        if file_id in processed:
-            continue
-        body = path.read_text(encoding="utf-8")
-        if not body.strip():
-            processed.add(file_id)
-            checkpoints.setdefault(checkpoint_key, []).append(file_id)
-            continue
-        event_path = add_stream_event(
-            repo,
-            stream=stream,
-            title=_infer_title_from_text(body, path.stem),
-            body=body,
-            source=source or f"directory:{source_dir.name}",
-            metadata={
-                "source_type": "directory",
-                "source_path": str(path),
-                "source_file_id": file_id,
-                "provenance": "operator-selected-directory",
-                "consent_basis": "operator-selected-directory",
-                "ingestion_boundary": "local-directory-sample",
-                "external_action": False,
-            },
-            commit=False,
-        )
-        imported_paths.append(event_path)
-        imported_ids.append(file_id)
-        processed.add(file_id)
-        checkpoints.setdefault(checkpoint_key, []).append(file_id)
-        if len(imported_paths) >= sample_limit:
-            break
-    _save_checkpoints(repo, checkpoints)
-    if commit and imported_paths:
-        _git_commit(repo, imported_paths, "source: import directory sample")
-    return DirectorySourceImportResult(
-        source_type="directory",
-        source_dir=str(source_dir),
-        stream=stream,
-        imported=len(imported_paths),
-        skipped=len([item for item in candidates if _source_file_id(item) in processed]) - len(imported_ids),
-        event_paths=[str(path) for path in imported_paths],
-        checkpoint_key=checkpoint_key,
-        sample_limit=sample_limit,
     )
 
 
@@ -817,6 +683,7 @@ def configure_source(
     _require_lettuce_repo(repo)
     resolved_source_type = source_type.strip().lower()
     default_streams = {
+        "direct": "streams/inbox/direct",
         "telegram": "streams/inbox/direct",
         "email": "streams/inbox/email",
         "fathom": "streams/inbox/transcripts",
@@ -825,7 +692,7 @@ def configure_source(
         "zoom": "streams/inbox/transcripts",
     }
     if resolved_source_type not in default_streams:
-        raise ValueError("source_type must be one of: telegram, email, fathom, granola, transcript, zoom")
+        raise ValueError("source_type must be one of: direct, telegram, email, fathom, granola, transcript, zoom")
     resolved_access_status = access_status.strip().lower()
     valid_access_statuses = {"available_now", "needs_setup", "defer", "unknown"}
     if resolved_access_status not in valid_access_statuses:
@@ -862,7 +729,7 @@ def configure_source(
         f"This source records `{resolved_source_type}` signal intent for `{resolved_stream}`.\n\n"
         "Access and setup are agent-owned. The record exists so an operator or agent can inspect what is available, what still needs setup, what sample policy applies, and what should be skipped before any bulk ingestion.\n\n"
         "## Agent Instructions\n\n"
-        "- If `access_status` is `available_now`, ingest only a small inspected sample first.\n"
+        "- If `access_status` is `available_now`, ingest only a small reviewed sample first.\n"
         "- If `access_status` is `needs_setup`, guide the operator through the smallest setup step listed in `setup_next_action`.\n"
         "- If `access_status` is `defer`, do not ingest until the operator reopens this source.\n"
         "- Preserve source ids, timestamps, URLs, and privacy/redaction notes on every event derived from this source.\n"
@@ -907,25 +774,22 @@ def configure_subscription(
     if not resolved_stream:
         raise ValueError("subscription stream is required")
     source_id = _slugify(name or f"{resolved_remote}-{resolved_stream}")
-    resolved_name = name or source_id
-    resolved_local_stream = local_stream or f"streams/shared/{resolved_stream}"
     created_at = now_utc().replace(microsecond=0).isoformat().replace("+00:00", "Z")
     frontmatter = {
         "id": source_id,
-        "name": resolved_name,
         "remote": resolved_remote,
         "stream": resolved_stream,
-        "local_stream": resolved_local_stream,
         "status": "configured",
         "created_at": created_at,
     }
+    if local_stream:
+        frontmatter["local_stream"] = local_stream
     if policy:
         frontmatter["policy"] = policy
     body = (
-        f"# {resolved_name}\n\n"
+        f"# {name or source_id}\n\n"
         f"Subscribe this Lettuce to `{resolved_remote}:{resolved_stream}`.\n\n"
-        "Remote git fetch, policy checks, and checkpointed polling are intentionally follow-up runtime work. "
-        "For now, this record can also drive a local-only shared-stream pull between two personal Lettuce repos as a proof of scoped agent context exchange.\n"
+        "Remote git fetch, policy checks, and checkpointed polling are intentionally follow-up runtime work. This record keeps the operator-owned subscription intent in markdown first.\n"
     )
     path = repo / "subscriptions" / f"{source_id}.md"
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -936,49 +800,10 @@ def configure_subscription(
         _git_commit(repo, [path], f"subscribe: {source_id}")
     return SubscriptionConfigResult(
         subscription_path=str(path),
-        subscription_id=source_id,
-        name=resolved_name,
         remote=resolved_remote,
         stream=resolved_stream,
-        local_stream=resolved_local_stream,
         status="configured",
     )
-
-
-def _parse_subscription(path: Path) -> SubscriptionRecord:
-    text = path.read_text(encoding="utf-8")
-    match = _FRONTMATTER_RE.match(text)
-    if not match:
-        raise ValueError(f"subscription file is missing frontmatter: {path}")
-    frontmatter = _parse_simple_frontmatter(match.group(1))
-    subscription_id = str(frontmatter.get("id") or path.stem)
-    stream = str(frontmatter.get("stream") or "").strip()
-    local_stream = str(frontmatter.get("local_stream") or f"streams/shared/{stream}").strip()
-    return SubscriptionRecord(
-        id=subscription_id,
-        name=str(frontmatter.get("name") or subscription_id),
-        remote=str(frontmatter.get("remote") or "").strip(),
-        stream=stream,
-        local_stream=local_stream,
-        status=str(frontmatter.get("status") or "configured"),
-        policy=str(frontmatter.get("policy")).strip() if frontmatter.get("policy") is not None else None,
-        path=str(path),
-        frontmatter=frontmatter,
-        body=match.group(2).strip(),
-    )
-
-
-def _read_subscriptions(repo: Path) -> list[SubscriptionRecord]:
-    _require_lettuce_repo(repo)
-    subscriptions_dir = repo / "subscriptions"
-    if not subscriptions_dir.exists():
-        return []
-    records: list[SubscriptionRecord] = []
-    for path in sorted(subscriptions_dir.glob("*.md")):
-        if path.name == ".gitkeep":
-            continue
-        records.append(_parse_subscription(path))
-    return records
 
 
 def read_stream_events(repo_path: str | Path, stream: str) -> list[StreamEvent]:
@@ -1024,198 +849,11 @@ def _checkpoint_key(handler: HandlerDefinition, stream: str) -> str:
     return f"{handler.id}:{stream}"
 
 
-def _subscription_checkpoint_key(subscription: SubscriptionRecord) -> str:
-    return f"subscription:{subscription.id}"
-
-
-def _policy_allows_local_stream(policy: str | None, local_stream: str) -> bool:
-    if not policy:
-        return True
-    allowed: list[str] = []
-    for raw_part in re.split(r"[;\n]", policy):
-        part = raw_part.strip()
-        if not part:
-            continue
-        if part.startswith("allow_local_stream="):
-            allowed.extend(item.strip() for item in part.split("=", 1)[1].split(",") if item.strip())
-        elif part.startswith("allow_streams="):
-            allowed.extend(item.strip() for item in part.split("=", 1)[1].split(",") if item.strip())
-    if not allowed:
-        return True
-    return any(fnmatch.fnmatch(local_stream, pattern) for pattern in allowed)
-
-
 def _append_log(repo: Path, entry: dict[str, Any]) -> None:
     path = repo / ".lettuce" / "runtime.log"
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(entry, sort_keys=True) + "\n")
-
-
-def _find_existing_subscription_import(repo: Path, subscription: SubscriptionRecord, event: StreamEvent) -> Path | None:
-    stream_dir = repo / subscription.local_stream
-    if not stream_dir.exists():
-        return None
-    for path in sorted(stream_dir.glob("*.md")):
-        text = path.read_text(encoding="utf-8")
-        match = _FRONTMATTER_RE.match(text)
-        if not match:
-            continue
-        frontmatter = _parse_simple_frontmatter(match.group(1))
-        if (
-            str(frontmatter.get("subscription_id") or "") == subscription.id
-            and str(frontmatter.get("source_event") or "") == event.id
-            and str(frontmatter.get("source_stream") or "") == subscription.stream
-            and str(frontmatter.get("source_repo") or "") == subscription.remote
-        ):
-            return path
-    return None
-
-
-def _subscription_import_event_id(subscription: SubscriptionRecord, event: StreamEvent) -> str:
-    short_hash = hashlib.sha1(f"{subscription.id}:{subscription.remote}:{subscription.stream}:{event.id}".encode("utf-8")).hexdigest()[:10]
-    return f"shared-{_slugify(subscription.name)}-{short_hash}"
-
-
-def _render_subscription_import_body(subscription: SubscriptionRecord, event: StreamEvent, imported_at: str) -> str:
-    source_frontmatter = json.dumps(event.frontmatter, indent=2, sort_keys=True)
-    return (
-        f"# Shared stream import: {event.frontmatter.get('title') or event.id}\n\n"
-        "This event was imported from another local Lettuce repo as a local shared-stream simulation.\n\n"
-        "## Provenance\n\n"
-        f"- subscription_id: {subscription.id}\n"
-        f"- subscription_name: {subscription.name}\n"
-        f"- source_repo: {subscription.remote}\n"
-        f"- source_stream: {subscription.stream}\n"
-        f"- source_event_id: {event.id}\n"
-        f"- source_event_path: {event.path}\n"
-        f"- imported_at: {imported_at}\n"
-        "- provenance: shared-stream-local-simulation\n\n"
-        "## Source Frontmatter\n\n"
-        f"```json\n{source_frontmatter}\n```\n\n"
-        "## Source Body\n\n"
-        f"{event.body.strip()}\n"
-    )
-
-
-def _write_subscription_import(repo: Path, subscription: SubscriptionRecord, event: StreamEvent, imported_at: datetime) -> Path:
-    existing = _find_existing_subscription_import(repo, subscription, event)
-    if existing is not None:
-        return existing
-    timestamp = imported_at.replace(microsecond=0).isoformat().replace("+00:00", "Z")
-    frontmatter = {
-        "id": _subscription_import_event_id(subscription, event),
-        "timestamp": timestamp,
-        "source": "shared-stream-import",
-        "source_type": "shared_stream",
-        "title": str(event.frontmatter.get("title") or f"Shared import from {subscription.name}"),
-        "subscription_id": subscription.id,
-        "subscription_name": subscription.name,
-        "source_repo": subscription.remote,
-        "source_stream": subscription.stream,
-        "source_event": event.id,
-        "source_event_timestamp": event.timestamp,
-        "source_event_source": str(event.frontmatter.get("source") or ""),
-        "provenance": "shared-stream-local-simulation",
-    }
-    output_path = repo / subscription.local_stream / f"{frontmatter['id']}.md"
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(_render_markdown_event(frontmatter, _render_subscription_import_body(subscription, event, timestamp)), encoding="utf-8")
-    return output_path
-
-
-def pull_subscriptions(
-    repo_path: str | Path,
-    *,
-    name: str | None = None,
-    commit: bool = False,
-) -> PullSubscriptionsResult:
-    repo = Path(repo_path).expanduser().resolve()
-    _require_lettuce_repo(repo)
-    subscriptions = _read_subscriptions(repo)
-    if name:
-        requested = name.strip()
-        subscriptions = [subscription for subscription in subscriptions if subscription.id == requested or subscription.name == requested]
-        if not subscriptions:
-            raise FileNotFoundError(f"subscription not found: {requested}")
-    checkpoints = _load_checkpoints(repo)
-    pulled: list[PulledSubscriptionEvent] = []
-    notes: list[str] = []
-    imported_paths: list[Path] = []
-    for subscription in subscriptions:
-        if not _policy_allows_local_stream(subscription.policy, subscription.local_stream):
-            notes.append(f"skip {subscription.id}: policy blocks local stream {subscription.local_stream}")
-            _append_log(
-                repo,
-                {
-                    "action": "pull-subscriptions",
-                    "subscription_id": subscription.id,
-                    "subscription_name": subscription.name,
-                    "local_stream": subscription.local_stream,
-                    "policy": subscription.policy,
-                    "blocked": True,
-                    "reason": "policy blocks local stream",
-                    "timestamp": now_utc().replace(microsecond=0).isoformat().replace("+00:00", "Z"),
-                },
-            )
-            continue
-        remote_repo = Path(subscription.remote).expanduser()
-        if not remote_repo.is_absolute():
-            remote_repo = (repo / remote_repo).resolve()
-        else:
-            remote_repo = remote_repo.resolve()
-        if not (remote_repo / "lettuce.yml").exists():
-            notes.append(f"skip {subscription.id}: remote is not a local Lettuce repo: {remote_repo}")
-            continue
-        key = _subscription_checkpoint_key(subscription)
-        processed = set(checkpoints.get(key, []))
-        for event in read_stream_events(remote_repo, subscription.stream):
-            if event.id in processed:
-                continue
-            imported_at = now_utc()
-            imported_path = _write_subscription_import(repo, subscription, event, imported_at)
-            processed.add(event.id)
-            checkpoints.setdefault(key, []).append(event.id)
-            pulled.append(
-                PulledSubscriptionEvent(
-                    subscription_id=subscription.id,
-                    subscription_name=subscription.name,
-                    source_repo=str(remote_repo),
-                    source_stream=subscription.stream,
-                    source_event_id=event.id,
-                    imported_event_path=str(imported_path),
-                    title=str(event.frontmatter.get("title") or event.id),
-                )
-            )
-            imported_paths.append(imported_path)
-            _append_log(
-                repo,
-                {
-                    "action": "pull-subscriptions",
-                    "subscription_id": subscription.id,
-                    "subscription_name": subscription.name,
-                    "source_repo": str(remote_repo),
-                    "source_stream": subscription.stream,
-                    "source_event": event.id,
-                    "imported_event_path": str(imported_path),
-                    "timestamp": imported_at.replace(microsecond=0).isoformat().replace("+00:00", "Z"),
-                },
-            )
-        checkpoints[key] = checkpoints.get(key, [])
-    _save_checkpoints(repo, checkpoints)
-    committed = False
-    if commit and imported_paths:
-        committed = _git_commit(repo, imported_paths, "pull subscriptions")
-    if committed:
-        pulled = [PulledSubscriptionEvent(**{**item.__dict__, "committed": True}) for item in pulled]
-    return PullSubscriptionsResult(
-        repo=str(repo),
-        subscriptions=len(subscriptions),
-        imported=len(pulled),
-        pulled=pulled,
-        notes=notes,
-        committed=committed,
-    )
 
 
 def _repo_config(repo: Path) -> dict[str, Any]:

@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import patch
 
 from lettuce.openclaw_provider import build_prompt, extract_json_object, run_openclaw
-from lettuce.protocol_runtime import add_handler, add_stream_event, approve_review, configure_source, configure_subscription, decline_review, import_source_event, ingest_email_signal, init_repo, list_reviews, pull_subscriptions, read_logs, read_stream_events, run_once, status
+from lettuce.protocol_runtime import add_handler, add_stream_event, approve_review, configure_source, configure_subscription, decline_review, import_source_event, ingest_email_signal, init_repo, list_reviews, read_logs, read_stream_events, run_once, status
 
 
 class ProtocolRuntimeTests(unittest.TestCase):
@@ -85,44 +85,7 @@ class ProtocolRuntimeTests(unittest.TestCase):
             self.assertIn("provenance: agent-observed", text)
             self.assertIn("ingestion_boundary: operator-provided", text)
             self.assertIn("external_action: false", text)
-            self.assertIn("org: acme", text)
-            self.assertIn("operator: ken", text)
             self.assertIn("Focus Lettuce", text)
-
-    def test_stream_events_include_org_and_operator_scope(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            repo = Path(tmp) / "lettuce-acme-ken"
-            init_repo(repo, org="acme", operator="ken", initialize_git=False)
-
-            event_path = add_stream_event(
-                repo,
-                title="Scoped work signal",
-                body="This belongs to Acme work context, not personal memory.",
-                source="manual",
-            )
-
-            event_text = Path(event_path).read_text(encoding="utf-8")
-            self.assertIn("org: acme", event_text)
-            self.assertIn("operator: ken", event_text)
-
-    def test_stream_event_scope_cannot_be_overwritten_by_metadata(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            repo = Path(tmp) / "lettuce-acme-ken"
-            init_repo(repo, org="acme", operator="ken", initialize_git=False)
-
-            event_path = add_stream_event(
-                repo,
-                title="Scoped work signal",
-                body="Metadata should not silently move this signal to another org.",
-                source="manual",
-                metadata={"org": "personal", "operator": "other"},
-            )
-
-            event_text = Path(event_path).read_text(encoding="utf-8")
-            self.assertIn("org: acme", event_text)
-            self.assertIn("operator: ken", event_text)
-            self.assertNotIn("org: personal", event_text)
-            self.assertNotIn("operator: other", event_text)
 
     def test_ingest_email_cli_writes_email_provenance(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -372,6 +335,48 @@ else:
             self.assertIn("First file-backed signal", event_text)
             self.assertIn("It spans lines.", event_text)
             self.assertIsNone(output["run"])
+
+    def test_setup_cli_runs_interactive_happy_path_with_manual_and_email_sources(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "lettuce-walm-e-ken"
+            setup_input = "\n".join(
+                [
+                    "y",
+                    "WALM-E",
+                    "ken",
+                    str(repo),
+                    "operator-direct-request",
+                    "y",
+                    "walm-e-email",
+                    "walm-e@example.com",
+                    "first-5-operator-approved",
+                    "skip personal mail",
+                    "n",
+                    "Setup signal",
+                    "WALM-E needs Lettuce onboarding to configure manual ingestion and email source intent.",
+                    ".",
+                    "",
+                ]
+            )
+
+            completed = subprocess.run(
+                ["python3", "-m", "lettuce.cli", "setup", "--commit"],
+                input=setup_input,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            git_status = subprocess.run(["git", "status", "--short"], cwd=repo, check=True, capture_output=True, text=True).stdout
+
+            self.assertIn("Lettuce is a work-context layer", completed.stdout)
+            self.assertIn("Manual/direct ingestion is ready", completed.stdout)
+            self.assertIn("pending reviews", completed.stdout)
+            self.assertTrue((repo / "lettuce.yml").exists())
+            self.assertTrue((repo / "sources" / "direct-manual-direct.md").exists())
+            self.assertTrue((repo / "sources" / "email-walm-e-email.md").exists())
+            self.assertTrue(any((repo / "reviews" / "pending").glob("*.md")))
+            self.assertEqual(git_status.strip(), "")
 
     def test_cli_rejects_body_and_body_file_together(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -624,39 +629,6 @@ print(json.dumps({
             self.assertEqual(json.loads(list_completed.stdout)["reviews"][0]["id"], review_id)
             self.assertEqual(json.loads(approve_completed.stdout)["review_id"], review_id)
 
-    def test_review_cli_can_approve_first_pending_review(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            repo = Path(tmp) / "lettuce-acme-ken"
-            init_repo(repo, org="acme", operator="ken", initialize_git=False)
-            add_stream_event(repo, title="First review signal", body="Operator wants the easiest approval path.", source="manual")
-            run_once(repo, stream="streams/inbox/direct", review=True, commit=False)
-            first_review = list_reviews(repo)[0]
-
-            completed = subprocess.run(
-                ["python3", "-m", "lettuce.cli", "review-approve", str(repo), "--first", "--operator", "ken"],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-
-            self.assertEqual(json.loads(completed.stdout)["review_id"], first_review.id)
-            self.assertTrue(list_reviews(repo, status="approved"))
-
-    def test_review_cli_requires_id_or_first(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            repo = Path(tmp) / "lettuce-acme-ken"
-            init_repo(repo, org="acme", operator="ken", initialize_git=False)
-
-            completed = subprocess.run(
-                ["python3", "-m", "lettuce.cli", "review-approve", str(repo), "--operator", "ken"],
-                capture_output=True,
-                text=True,
-            )
-
-            self.assertEqual(completed.returncode, 2)
-            self.assertIn("provide a review id or use --first", completed.stderr)
-            self.assertNotIn("Traceback", completed.stderr)
-
     def test_import_source_file_writes_event_with_provenance(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
@@ -675,83 +647,6 @@ print(json.dumps({
             self.assertEqual(events[0].frontmatter["source_type"], "file")
             self.assertEqual(events[0].frontmatter["source_path"], str(source_file.resolve()))
             self.assertIn("Anna asked", events[0].body)
-
-    def test_add_source_directory_cli_ingests_sample_once_with_provenance(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            tmp_path = Path(tmp)
-            repo = tmp_path / "lettuce-acme-ken"
-            source_dir = tmp_path / "exports"
-            source_dir.mkdir()
-            (source_dir / "one.md").write_text("# First note\n\nAgent context should stay org-scoped.", encoding="utf-8")
-            (source_dir / "two.txt").write_text("Second note\n\nForwarded source exports should be sample-first.", encoding="utf-8")
-            init_repo(repo, org="acme", operator="ken", initialize_git=False)
-
-            first = subprocess.run(
-                [
-                    "python3",
-                    "-m",
-                    "lettuce.cli",
-                    "add-source",
-                    "directory",
-                    str(repo),
-                    "--input",
-                    str(source_dir),
-                    "--sample-limit",
-                    "1",
-                ],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-            second = subprocess.run(
-                [
-                    "python3",
-                    "-m",
-                    "lettuce.cli",
-                    "add-source",
-                    "directory",
-                    str(repo),
-                    "--input",
-                    str(source_dir),
-                    "--sample-limit",
-                    "3",
-                ],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-            third = subprocess.run(
-                [
-                    "python3",
-                    "-m",
-                    "lettuce.cli",
-                    "add-source",
-                    "directory",
-                    str(repo),
-                    "--input",
-                    str(source_dir),
-                ],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-
-            first_output = json.loads(first.stdout)
-            second_output = json.loads(second.stdout)
-            third_output = json.loads(third.stdout)
-            events = read_stream_events(repo, "streams/inbox/direct")
-            first_event_text = Path(first_output["event_paths"][0]).read_text(encoding="utf-8")
-
-            self.assertEqual(first_output["imported"], 1)
-            self.assertEqual(first_output["sample_limit"], 1)
-            self.assertEqual(second_output["imported"], 1)
-            self.assertEqual(third_output["imported"], 0)
-            self.assertEqual(len(events), 2)
-            self.assertIn("source_type: directory", first_event_text)
-            self.assertIn("provenance: operator-selected-directory", first_event_text)
-            self.assertIn("consent_basis: operator-selected-directory", first_event_text)
-            self.assertIn("ingestion_boundary: local-directory-sample", first_event_text)
-            self.assertIn("external_action: false", first_event_text)
 
     def test_configure_source_writes_markdown_source_record_and_stream(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -916,149 +811,8 @@ print(json.dumps({
 
             self.assertEqual(output["remote"], "github.com/acme/lettuce-acme")
             self.assertEqual(output["stream"], "brain/customers")
-            self.assertEqual(output["local_stream"], "streams/shared/customers")
             self.assertEqual(output["status"], "configured")
-            self.assertEqual(output["name"], "github-com-acme-lettuce-acme-brain-customers")
             self.assertIn("local_stream: streams/shared/customers", text)
-            self.assertIn("name: github-com-acme-lettuce-acme-brain-customers", text)
-
-    def test_pull_subscriptions_imports_local_shared_stream_once_with_provenance(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            tmp_path = Path(tmp)
-            publisher = tmp_path / "lettuce-publisher"
-            subscriber = tmp_path / "lettuce-subscriber"
-            init_repo(publisher, org="acme", operator="ken", initialize_git=False)
-            init_repo(subscriber, org="acme", operator="soren", initialize_git=False)
-            source_event = add_stream_event(
-                publisher,
-                stream="brain/decisions",
-                title="Pricing default updated",
-                body="Decision: agents should use the current annual pricing sheet by default.",
-                source="publisher.brain",
-            )
-            configure_subscription(
-                subscriber,
-                str(publisher),
-                stream="brain/decisions",
-                name="publisher-decisions",
-                local_stream="streams/shared/decisions",
-                commit=True,
-            )
-
-            first = pull_subscriptions(subscriber)
-            second = pull_subscriptions(subscriber)
-            imported = read_stream_events(subscriber, "streams/shared/decisions")
-            imported_text = Path(first.pulled[0].imported_event_path).read_text(encoding="utf-8")
-            checkpoints = json.loads((subscriber / ".lettuce/checkpoints.json").read_text(encoding="utf-8"))
-
-            self.assertEqual(first.imported, 1)
-            self.assertEqual(second.imported, 0)
-            self.assertEqual(len(imported), 1)
-            self.assertEqual(imported[0].frontmatter["subscription_id"], "publisher-decisions")
-            self.assertEqual(imported[0].frontmatter["subscription_name"], "publisher-decisions")
-            self.assertEqual(imported[0].frontmatter["source_repo"], str(publisher))
-            self.assertEqual(imported[0].frontmatter["source_stream"], "brain/decisions")
-            self.assertEqual(imported[0].frontmatter["source_event"], source_event.stem)
-            self.assertEqual(imported[0].frontmatter["provenance"], "shared-stream-local-simulation")
-            self.assertIn("source_event_id: " + source_event.stem, imported_text)
-            self.assertIn("source_repo: " + str(publisher), imported_text)
-            self.assertIn("Decision: agents should use the current annual pricing sheet by default.", imported_text)
-            self.assertEqual(checkpoints["subscription:publisher-decisions"], [source_event.stem])
-
-    def test_pull_subscriptions_policy_allows_matching_local_stream(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            tmp_path = Path(tmp)
-            publisher = tmp_path / "lettuce-publisher"
-            subscriber = tmp_path / "lettuce-subscriber"
-            init_repo(publisher, org="acme", operator="ken", initialize_git=False)
-            init_repo(subscriber, org="acme", operator="soren", initialize_git=False)
-            add_stream_event(publisher, stream="brain/decisions", title="Allowed", body="Allowed shared decision.", source="publisher.brain")
-            configure_subscription(
-                subscriber,
-                str(publisher),
-                stream="brain/decisions",
-                name="publisher-decisions",
-                local_stream="streams/shared/decisions",
-                policy="allow_streams=streams/shared/*",
-            )
-
-            result = pull_subscriptions(subscriber)
-
-            self.assertEqual(result.imported, 1)
-            self.assertEqual(result.notes, [])
-
-    def test_pull_subscriptions_policy_blocks_non_matching_local_stream(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            tmp_path = Path(tmp)
-            publisher = tmp_path / "lettuce-publisher"
-            subscriber = tmp_path / "lettuce-subscriber"
-            init_repo(publisher, org="acme", operator="ken", initialize_git=False)
-            init_repo(subscriber, org="acme", operator="soren", initialize_git=False)
-            add_stream_event(publisher, stream="brain/decisions", title="Blocked", body="Blocked shared decision.", source="publisher.brain")
-            configure_subscription(
-                subscriber,
-                str(publisher),
-                stream="brain/decisions",
-                name="publisher-decisions",
-                local_stream="brain/decisions",
-                policy="allow_streams=streams/shared/*",
-            )
-
-            result = pull_subscriptions(subscriber)
-            imported = read_stream_events(subscriber, "brain/decisions")
-            logs = read_logs(subscriber)
-
-            self.assertEqual(result.imported, 0)
-            self.assertIn("policy blocks local stream brain/decisions", result.notes[0])
-            self.assertEqual(imported, [])
-            self.assertTrue(logs[-1]["blocked"])
-
-    def test_pull_subscriptions_cli_can_commit_imports(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            tmp_path = Path(tmp)
-            publisher = tmp_path / "lettuce-publisher"
-            subscriber = tmp_path / "lettuce-subscriber"
-            init_repo(publisher, org="acme", operator="ken", initialize_git=False)
-            init_repo(subscriber, org="acme", operator="soren", initialize_git=True)
-            add_stream_event(
-                publisher,
-                stream="brain/decisions",
-                title="Shared context update",
-                body="Decision: preserve source repo and source event provenance on shared imports.",
-                source="publisher.brain",
-            )
-            configure_subscription(
-                subscriber,
-                str(publisher),
-                stream="brain/decisions",
-                name="publisher-decisions",
-                local_stream="streams/shared/decisions",
-                commit=True,
-            )
-
-            completed = subprocess.run(
-                [
-                    "python3",
-                    "-m",
-                    "lettuce.cli",
-                    "pull-subscriptions",
-                    str(subscriber),
-                    "--commit",
-                ],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-
-            output = json.loads(completed.stdout)
-            log = subprocess.run(["git", "log", "--oneline"], cwd=subscriber, check=True, capture_output=True, text=True).stdout
-            status_output = subprocess.run(["git", "status", "--short"], cwd=subscriber, check=True, capture_output=True, text=True).stdout
-
-            self.assertEqual(output["imported"], 1)
-            self.assertTrue(output["committed"])
-            self.assertTrue(output["pulled"][0]["committed"])
-            self.assertIn("pull subscriptions", log)
-            self.assertEqual(status_output.strip(), "")
 
     def test_add_source_cli_imports_stdin_and_can_run_handlers(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
