@@ -579,6 +579,101 @@ def _render_lettuce_config(
     return "\n".join(lines) + "\n"
 
 
+def _default_exports_for_repo_type(repo_type: str) -> list[dict[str, Any]]:
+    if repo_type != "company_hub":
+        return []
+    return [
+        {
+            "stream": "streams/shared/decisions",
+            "description": "Accepted company decisions and policy updates curated for shared reuse.",
+            "sensitivity": "internal",
+            "owner": "company-hub",
+            "allowed_readers": [],
+            "allowed_writers": [],
+            "review_required": True,
+        },
+        {
+            "stream": "streams/shared/customers",
+            "description": "Curated customer and account summaries safe to share across operators and agents.",
+            "sensitivity": "internal",
+            "owner": "company-hub",
+            "allowed_readers": [],
+            "allowed_writers": [],
+            "review_required": True,
+        },
+        {
+            "stream": "streams/shared/incidents",
+            "description": "Accepted incident summaries, impact notes, and follow-up status.",
+            "sensitivity": "internal",
+            "owner": "company-hub",
+            "allowed_readers": [],
+            "allowed_writers": [],
+            "review_required": True,
+        },
+        {
+            "stream": "streams/shared/projects",
+            "description": "Curated project updates, milestones, and cross-team status worth sharing.",
+            "sensitivity": "internal",
+            "owner": "company-hub",
+            "allowed_readers": [],
+            "allowed_writers": [],
+            "review_required": True,
+        },
+    ]
+
+
+def _hub_scaffold_files() -> dict[str, str]:
+    return {
+        "streams/shared/decisions/.gitkeep": "",
+        "streams/shared/customers/.gitkeep": "",
+        "streams/shared/incidents/.gitkeep": "",
+        "streams/shared/projects/.gitkeep": "",
+        "docs/company-hub/README.md": """# Company Hub Convention
+
+This optional repo is the org-level coordination point for curated shared context.
+
+Use it for:
+
+- exported shared streams under `streams/shared/*`
+- accepted company decisions and durable facts
+- stream discovery metadata and ownership/policy notes
+- approved summaries that help multiple operators or role agents
+
+Do not use it for:
+
+- every operator's raw inbox or transcripts
+- direct mirrors into `brain/*`
+- a centralized all-seeing company dump
+
+Shared pulls and mirrors must only write under `streams/shared/*`.
+""",
+        "docs/company-hub/stream-catalog.md": """# Shared Stream Catalog
+
+Use this file to document what the company hub intentionally shares, who curates it, and any extra policy notes.
+
+## Shared Streams
+
+- `streams/shared/decisions`: accepted company decisions, policy changes, and durable org-level facts
+- `streams/shared/customers`: curated customer/account summaries and cross-functional relationship context
+- `streams/shared/incidents`: accepted incident summaries, impact, mitigation, and follow-up status
+- `streams/shared/projects`: curated project updates, milestones, risks, and owner-visible status
+
+Each stream should stay curated and provenance-preserving. Raw inbox or transcript dumps do not belong here by default.
+""",
+        "docs/company-hub/owners-and-policies.md": """# Owners And Policies
+
+Record stream owners, review expectations, and any narrow sharing rules here.
+
+Suggested reminders:
+
+- keep hub streams curated rather than exhaustive
+- preserve provenance on imported or mirrored events
+- require review for accepted org-level decisions and facts unless the operator explicitly narrows that rule
+- keep remote pulls scoped to `streams/shared/*`
+""",
+    }
+
+
 def _default_handler_md(handler_id: str, name: str, handler_type: str, subscribes: str, publishes: str, body: str) -> str:
     return f"""---
 id: {handler_id}
@@ -659,6 +754,7 @@ def init_repo(
     repo = Path(repo_path).expanduser().resolve()
     repo.mkdir(parents=True, exist_ok=True)
     created_at = now_utc().replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    resolved_exports = exports if exports is not None else _default_exports_for_repo_type(repo_type)
     files: dict[str, str] = {
         "lettuce.yml": _render_lettuce_config(
             org=org,
@@ -670,7 +766,7 @@ def init_repo(
             role_agent_id=role_agent_id,
             permission_basis=permission_basis,
             visibility=visibility,
-            exports=exports,
+            exports=resolved_exports,
         ),
         ".gitignore": ".lettuce/\n",
         "handlers/lenses/default-lens.md": _default_handler_md(
@@ -746,6 +842,8 @@ def init_repo(
         "streams/inbox/transcripts/.gitkeep": "",
         "streams/outbox/linear/.gitkeep": "",
     }
+    if repo_type == "company_hub":
+        files.update(_hub_scaffold_files())
     written: list[Path] = []
     for relative_path, content in files.items():
         path = repo / relative_path
@@ -1617,6 +1715,7 @@ def _render_agent_instructions(repo: Path) -> str:
     config = _repo_config(repo)
     org = str(config.get("org") or "unknown-org")
     operator = str(config.get("operator") or "operator")
+    repo_type = str(config.get("type") or "personal").strip() or "personal"
     records = _source_records(repo)
     if records:
         source_lines = [
@@ -1637,6 +1736,49 @@ def _render_agent_instructions(repo: Path) -> str:
             "- No source records yet. Configure at least a manual/direct source and inspect `sources/*.md` before sampling anything else."
         ]
     source_summary = "\n".join(source_lines)
+    if repo_type == "company_hub":
+        default_trigger = (
+            f"Use this repo when the operator refers to accepted `{org}` company context, shared stream curation, "
+            "or asks to update the company hub."
+        )
+        ingestion_example = f"""```bash
+lettuce add-event {repo} \\
+  --stream streams/shared/decisions \\
+  --title "<accepted decision>" \\
+  --body-file <tmp-decision.md> \\
+  --source <approved-source> \\
+  --commit
+```"""
+        review_policy = """- Treat this repo as curated shared context, not a raw-signal inbox.
+- Default to review before durable `brain/*` writes or accepted org-level facts.
+- Preserve provenance on any imported or mirrored shared event.
+- Shared pulls and mirrors may only write under `streams/shared/*`."""
+        privacy_rules = f"""- Keep this repo scoped to accepted `{org}` company context, not personal memory and not unrelated raw signal.
+- The runtime owns chat surfaces, inboxes, browser sessions, OAuth, MCP connectors, API keys, and schedules.
+- Lettuce owns durable repo state such as `lettuce.yml`, `streams/*`, `brain/*`, `sources/*`, `reviews/*`, `subscriptions/*`, and `.lettuce/*`.
+- Do not use this repo as a centralized dump of every operator's inbox, transcripts, or browser history.
+- Keep remote imports and mirrors under `streams/shared/*`; they must not write directly into `brain/*`."""
+    else:
+        default_trigger = f'Use this repo when the operator refers to `{org}`-scoped work context or says "run Lettuce on this".'
+        ingestion_example = f"""```bash
+lettuce ingest-direct {repo} \\
+  --title "<short title>" \\
+  --body-file <tmp-signal.md> \\
+  --source <agent.surface> \\
+  --surface <surface> \\
+  --consent operator-direct-request \\
+  --commit
+lettuce run {repo} --review --commit
+lettuce reviews {repo}
+```"""
+        review_policy = """- Default to `--review` before durable `brain/*` writes.
+- Only bypass review if the operator explicitly asks.
+- Preserve provenance, consent basis, source ids, timestamps, URLs, and redaction notes on every ingested event."""
+        privacy_rules = f"""- Keep this repo scoped to `{org}` work context, not personal memory and not other orgs.
+- The runtime owns chat surfaces, inboxes, browser sessions, OAuth, MCP connectors, API keys, and schedules.
+- Lettuce owns durable repo state such as `lettuce.yml`, `streams/*`, `brain/*`, `sources/*`, `reviews/*`, `subscriptions/*`, and `.lettuce/*`.
+- Do not bulk ingest during onboarding or source setup unless the operator explicitly asks.
+- Skip personal-life context and unrelated org/project signal unless the operator wants a separate Lettuce for that scope."""
     return f"""# Lettuce Repo Agent Instructions
 
 This file is repo-local behavior for agents using this Lettuce repo. It is scoped to `{org}` and must not overwrite global agent identity, system prompts, or personal memory.
@@ -1649,27 +1791,15 @@ This file is repo-local behavior for agents using this Lettuce repo. It is scope
 
 ## Default Trigger
 
-Use this repo when the operator refers to `{org}`-scoped work context or says "run Lettuce on this".
+{default_trigger}
 
 ## Manual/Direct Ingestion Command Shape
 
-```bash
-lettuce ingest-direct {repo} \\
-  --title "<short title>" \\
-  --body-file <tmp-signal.md> \\
-  --source <agent.surface> \\
-  --surface <surface> \\
-  --consent operator-direct-request \\
-  --commit
-lettuce run {repo} --review --commit
-lettuce reviews {repo}
-```
+{ingestion_example}
 
 ## Review Policy
 
-- Default to `--review` before durable `brain/*` writes.
-- Only bypass review if the operator explicitly asks.
-- Preserve provenance, consent basis, source ids, timestamps, URLs, and redaction notes on every ingested event.
+{review_policy}
 
 ## Source Records
 
@@ -1679,11 +1809,7 @@ Inspect `sources/*.md` before connecting or sampling a source. These records car
 
 ## Privacy And Boundary Rules
 
-- Keep this repo scoped to `{org}` work context, not personal memory and not other orgs.
-- The runtime owns chat surfaces, inboxes, browser sessions, OAuth, MCP connectors, API keys, and schedules.
-- Lettuce owns durable repo state such as `lettuce.yml`, `streams/*`, `brain/*`, `sources/*`, `reviews/*`, `subscriptions/*`, and `.lettuce/*`.
-- Do not bulk ingest during onboarding or source setup unless the operator explicitly asks.
-- Skip personal-life context and unrelated org/project signal unless the operator wants a separate Lettuce for that scope.
+{privacy_rules}
 
 ## Cadence
 

@@ -83,6 +83,7 @@ def _default_repo_path(
     org: str,
     operator: str,
     *,
+    repo_type: str = "personal",
     owner_kind: str = "human_operator",
     role_agent_id: str | None = None,
 ) -> str:
@@ -90,6 +91,8 @@ def _default_repo_path(
         return path
     def slug(value: str) -> str:
         return "-".join(part for part in value.lower().replace("_", "-").split() if part) or "demo"
+    if repo_type == "company_hub":
+        return f"./lettuce-{slug(org)}-hub"
     owner_slug = slug(role_agent_id or operator) if owner_kind == "role_agent" else slug(operator)
     return f"./lettuce-{slug(org)}-{owner_slug}"
 
@@ -186,7 +189,7 @@ def _run(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="lettuce", description="Lettuce v0 protocol CLI")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    init_parser = subparsers.add_parser("init", help="Bootstrap a personal Lettuce repo")
+    init_parser = subparsers.add_parser("init", help="Bootstrap a Lettuce repo")
     init_parser.add_argument("path", nargs="?", default=".", help="Repo path to scaffold")
     init_parser.add_argument("--org", required=True, help="Organization slug/name for this Lettuce")
     init_parser.add_argument("--operator", required=True, help="Operator handle/name")
@@ -280,9 +283,10 @@ def _run(argv: list[str] | None = None) -> int:
     onboard_parser.add_argument("--openclaw-provider", action="store_true", help="Run handlers through python3 -m lettuce.openclaw_provider")
     onboard_parser.add_argument("--handler-command", help="Provider command for handler execution")
 
-    setup_parser = subparsers.add_parser("setup", help="Interactive happy-path onboarding for an operator-owned or role-agent Lettuce")
+    setup_parser = subparsers.add_parser("setup", help="Interactive happy-path onboarding for a personal, role-agent, or company-hub Lettuce")
     setup_parser.add_argument("path", nargs="?", help="Lettuce repo path. If omitted, a path is suggested from org/operator")
     setup_parser.add_argument("--default-model", default="claude-sonnet-4", help="Default handler model for new repos")
+    setup_parser.add_argument("--repo-type", choices=["personal", "company_hub"], default="personal", help="Repo identity type for newly initialized repos")
     setup_parser.add_argument("--owner-kind", choices=["human_operator", "role_agent"], default="human_operator", help="Identity owner kind for newly initialized repos")
     setup_parser.add_argument("--role-agent-id", help="Required when --owner-kind=role_agent")
     setup_parser.add_argument("--permission-basis", choices=["github-user", "github-app", "machine-user"], default="github-user", help="Bounded GitHub identity behind this repo")
@@ -392,7 +396,7 @@ def _run(argv: list[str] | None = None) -> int:
             role_agent_id=args.role_agent_id,
             permission_basis=args.permission_basis,
             visibility=args.visibility,
-            exports=[_parse_export(value) for value in args.export],
+            exports=[_parse_export(value) for value in args.export] if args.export else None,
             initialize_git=not args.no_git,
         )
         _print_json({"repo": str(Path(args.path).expanduser().resolve()), "files_written": [str(path) for path in written]})
@@ -481,7 +485,7 @@ def _run(argv: list[str] | None = None) -> int:
             role_agent_id=args.role_agent_id,
             permission_basis=args.permission_basis,
             visibility=args.visibility,
-            exports=[_parse_export(value) for value in args.export],
+            exports=[_parse_export(value) for value in args.export] if args.export else None,
             initialize_git=args.commit,
         )
         source_plan_records = [read_source_record(repo_path, source_ref) for source_ref in args.source_record]
@@ -590,6 +594,7 @@ def _run(argv: list[str] | None = None) -> int:
                 args.path,
                 org,
                 operator,
+                repo_type=args.repo_type,
                 owner_kind=args.owner_kind,
                 role_agent_id=args.role_agent_id,
             ),
@@ -627,6 +632,7 @@ def _run(argv: list[str] | None = None) -> int:
             org=org,
             operator=operator,
             default_model=args.default_model,
+            repo_type=args.repo_type,
             owner_kind=args.owner_kind,
             role_agent_id=args.role_agent_id,
             permission_basis=args.permission_basis,
@@ -690,7 +696,7 @@ def _run(argv: list[str] | None = None) -> int:
         print("\nDone.")
         print(f"I set up Lettuce for {org} at {repo_path}.")
         print(
-            f"Repo identity: type `personal`, owner_kind `{current.identity.owner_kind}`, "
+            f"Repo identity: type `{current.identity.repo_type}`, owner_kind `{current.identity.owner_kind}`, "
             f"permission_basis `{current.identity.permission_basis}`, visibility `{current.identity.visibility}`."
         )
         if current.identity.role_agent_id:
@@ -698,7 +704,10 @@ def _run(argv: list[str] | None = None) -> int:
                 f"Role agent id: `{current.identity.role_agent_id}`. "
                 "Keep this repo bounded to that GitHub identity's permitted scope."
             )
-        print("Manual/direct ingestion is ready: say “run Lettuce on this” and the agent should capture the signal with provenance, run lenses, and show review proposals before durable brain updates.")
+        if current.identity.repo_type == "company_hub":
+            print("This repo is the optional company hub: keep it curated, write shared context under `streams/shared/*`, and do not turn it into a raw-signal dump.")
+        else:
+            print("Manual/direct ingestion is ready: say “run Lettuce on this” and the agent should capture the signal with provenance, run lenses, and show review proposals before durable brain updates.")
         print(f"Repo-local agent instructions: {current.agent_instructions_path}")
         print("Configured sources:")
         for source in configured_sources:

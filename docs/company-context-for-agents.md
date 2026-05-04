@@ -101,6 +101,8 @@ operator A's agent + Lettuce ──shared stream──▶ operator B's agent + L
 
 GitHub permissions and runtime access remain the outer boundary. Lettuce policies, provenance, git history, and optional review modes add narrower control.
 
+An org may also keep an optional `company_hub` repo as a coordination point for curated shared streams and accepted org-level truth. The hub is not a replacement for operator-owned repos. It should hold exported shared context, discovery metadata, and owner/policy notes, while avoiding raw inbox/transcript dumps by default.
+
 ## What v0 is honest about
 
 Working now:
