@@ -51,7 +51,7 @@ class LettuceRuntimeTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     runtime.record_feedback({"action": "ship-it"})
 
-    def test_demo_signal_writes_runtime_packet_and_waits_for_review(self) -> None:
+    def test_demo_signal_writes_runtime_packet_and_updates_company_brain(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             state_dir = Path(tmp) / "runtime"
             with (
@@ -73,14 +73,14 @@ class LettuceRuntimeTests(unittest.TestCase):
             self.assertEqual(detail["route_proposals"][0]["id"], "company_brain:reviewed-context-update")
             self.assertEqual(detail["route_proposals"][0]["destination"], "company_brain")
             self.assertEqual(detail["route_proposals"][0]["apply_scope"], "local_only")
-            self.assertEqual(detail["context_update"]["status"], "review_pending")
-            self.assertIn("Company Brain is unchanged", detail["context_update"]["result"])
-            self.assertEqual(detail["context_update"]["company_changes"], [])
-            self.assertEqual(detail["context_update"]["update_logs"], [])
+            self.assertEqual(detail["context_update"]["status"], "company_brain_updated")
+            self.assertIn("applied the local Company Brain update", detail["context_update"]["result"])
+            self.assertTrue(detail["context_update"]["company_changes"])
+            self.assertTrue(detail["context_update"]["update_logs"])
             self.assertIn("raw_signal_path", detail["context_update"]["provenance_chain"])
-            self.assertEqual(detail["context_update"]["provenance_chain"]["updated_objects"], [])
-            self.assertNotEqual(state["organization"]["status"], "signal processed")
-            self.assertEqual(state["signals"][0]["feedback"], "Review pending; company brain unchanged")
+            self.assertIn("company_profile:company_profile", detail["context_update"]["provenance_chain"]["updated_objects"])
+            self.assertEqual(state["organization"]["status"], "signal processed")
+            self.assertEqual(state["signals"][0]["feedback"], "Company brain updated directly")
 
     def test_approve_feedback_applies_company_brain_update_with_diff(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -99,7 +99,7 @@ class LettuceRuntimeTests(unittest.TestCase):
             self.assertEqual(detail["context_update"]["status"], "company_brain_updated")
             self.assertTrue(detail["context_update"]["company_changes"])
             self.assertTrue(detail["context_update"]["update_logs"])
-            self.assertTrue(detail["context_update"]["review_diff"]["diff"])
+            self.assertIn("diff", detail["context_update"]["review_diff"])
             self.assertEqual(detail["review_decision"]["action"], "approve")
             self.assertEqual(detail["review_decision"]["route_id"], "company_brain:reviewed-context-update")
             self.assertIn("company_profile:company_profile", detail["context_update"]["provenance_chain"]["updated_objects"])
@@ -108,7 +108,7 @@ class LettuceRuntimeTests(unittest.TestCase):
             self.assertIn("company-brain integration", state["company_brain"]["projects_products"][0]["status"])
             self.assertEqual(state["company_brain"]["company_profile"]["update_log"][0]["provenance"]["signal_id"], "company-brain-control-problem")
 
-    def test_manual_signal_processes_into_packet_detail_and_then_applies_on_edit_review(self) -> None:
+    def test_manual_signal_processes_into_packet_detail_and_allows_optional_edit_feedback(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             state_dir = Path(tmp) / "runtime"
             with (
@@ -132,13 +132,13 @@ class LettuceRuntimeTests(unittest.TestCase):
             self.assertTrue(entry["signal_id"].startswith("manual-"))
             self.assertEqual(pending_state["signals"][0]["source_name"], "Manual Paste")
             self.assertIn("Manual customer pain", pending_detail["input"]["body"])
-            self.assertEqual(pending_detail["context_update"]["status"], "review_pending")
+            self.assertEqual(pending_detail["context_update"]["status"], "company_brain_updated")
             self.assertEqual(detail["context_update"]["status"], "company_brain_updated")
             self.assertEqual(detail["review_decision"]["action"], "edit")
             self.assertIn("current pricing context", detail["review_decision"]["edited_update"])
             self.assertTrue(detail["context_update"]["company_changes"])
             self.assertTrue(detail["context_update"]["update_logs"])
-            self.assertTrue(detail["context_update"]["review_diff"]["diff"])
+            self.assertIn("diff", detail["context_update"]["review_diff"])
             self.assertEqual(state["company_brain"]["projects_products"][0]["update_log"][0]["provenance"]["source_name"], "Manual Paste")
             self.assertIn("Manual customer pain", state["company_brain"]["projects_products"][0]["update_log"][0]["provenance"]["signal_title"])
             self.assertIn("dogfood", state["company_brain"]["projects_products"][0]["status"])
@@ -164,7 +164,7 @@ class LettuceRuntimeTests(unittest.TestCase):
 
             self.assertEqual(detail["context_update"]["status"], "review_pending")
             self.assertEqual(detail["context_update"]["company_changes"], [])
-            self.assertEqual(detail["context_update"]["update_logs"], [])
+            self.assertTrue(detail["context_update"]["update_logs"])
             self.assertEqual(detail["review_decision"]["route_id"], "company-brain/followups.md")
             self.assertEqual(detail["context_update"]["review_diff"]["diff"], [])
 
@@ -187,7 +187,7 @@ print(json.dumps({
             "confidence": "medium",
             "finding": f"AI runner reviewed {lens['name']}.",
             "evidence": [payload["signal"]["body"].splitlines()[0]],
-            "operator_implication": "Keep this as a reviewed preview before any durable write.",
+            "operator_implication": "Keep this as a provenance-backed update before any external write.",
             "route_hints": lens.get("route_hints", []),
             "proposed_updates": [{"surface": "none", "action": "none", "reason": "preview only"}],
             "anti_actions": ["Do not write externally."],
@@ -217,7 +217,7 @@ print(json.dumps({
             self.assertTrue(detail["lens_findings"])
             self.assertTrue(all(lens["runner"] == "ai" for lens in detail["lens_findings"]))
             self.assertEqual(detail["context_update"]["lens_runner_sources"], ["ai"])
-            self.assertIn("Company Brain is unchanged", detail["context_update"]["result"])
+            self.assertIn("applied the local Company Brain update", detail["context_update"]["result"])
             packet_markdown = Path(detail["summary"]["packet_markdown_path"]).read_text(encoding="utf-8")
             self.assertIn("Preview mode only", packet_markdown)
 
@@ -241,7 +241,7 @@ print(json.dumps({
             self.assertIn("deterministic-fallback", detail["lens_runner_sources"])
             self.assertTrue(any(lens["runner"] == "deterministic-fallback" for lens in detail["lens_findings"]))
             self.assertEqual(detail["summary"]["lens_runner_sources"], detail["lens_runner_sources"])
-            self.assertIn("Company Brain is unchanged", detail["context_update"]["result"])
+            self.assertIn("applied the local Company Brain update", detail["context_update"]["result"])
 
     def test_first_user_org_brain_lens_and_destination_state_persist(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -252,7 +252,7 @@ print(json.dumps({
                 profile = runtime.update_brain_setup(
                     {
                         "summary": "DemoCo is dogfooding Lettuce for agent context control.",
-                        "positioning": "Reviewed memory updates for agent-first operators.",
+                        "positioning": "Durable company context for agent-first operators.",
                         "stage": "first-user dogfood",
                     }
                 )
@@ -265,7 +265,7 @@ print(json.dumps({
                 )
                 source = runtime.save_source({"name": "Founder inbox", "kind": "email", "detail": "Customer and founder signal."})
                 destination = runtime.request_destination({"id": "linear", "name": "Linear"})
-                active_destination = runtime.save_destination({"name": "Founder brief", "kind": "email", "detail": "Send reviewed weekly brief."})
+                active_destination = runtime.save_destination({"name": "Founder brief", "kind": "email", "detail": "Send company-context weekly brief."})
                 state = runtime.load_state()
 
             self.assertEqual(user["role"], "Founder")
@@ -414,7 +414,7 @@ print(json.dumps({
             external_changes = external_detail["route_proposals"][0]["proposed_changes"]
             market_changes = market_detail["route_proposals"][0]["proposed_changes"]
             self.assertNotEqual(external_changes[0]["detail"], market_changes[0]["detail"])
-            self.assertIn("context-control", external_changes[0]["detail"])
+            self.assertIn("durable company context", external_changes[0]["detail"])
             self.assertIn("customer pain", market_changes[0]["detail"].lower())
             self.assertEqual(external_changes[0]["owner"], "Product/positioning owner")
             self.assertEqual(market_changes[0]["owner"], "Discovery/revenue owner")

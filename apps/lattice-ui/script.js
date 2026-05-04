@@ -59,7 +59,7 @@ const fallbackState = {
     status: 'workspace selected',
     setup_stage: 'Starter workspace',
     updated_at: 'seed',
-    summary: 'Local runtime workspace for product setup and signal review.'
+    summary: 'Local runtime workspace for product setup and signal processing.'
   },
   user_profile: {
     name: '',
@@ -121,7 +121,7 @@ const fallbackState = {
       id: 'company-brain',
       icon: '☘',
       name: 'Company Brain',
-      detail: 'Active local JSON destination for reviewed context updates and update logs.',
+      detail: 'Active local JSON destination for durable company-context updates and update logs.',
       status: 'Active',
       active: true,
       action: 'active',
@@ -156,8 +156,8 @@ const fallbackState = {
     { id: 'next-action', name: 'Next Action', body: 'Turn the signal into one useful owner, route, and next step.', tags: ['owner', 'execution'] }
   ],
   routers: [
-    { name: 'Company Brain profile', detail: 'Writes reviewed updates into local company profile objects.', status: 'Preview only' },
-    { name: 'Operator brief', detail: 'Builds a packet-backed review surface before any external write.', status: 'Preview only' }
+    { name: 'Company Brain profile', detail: 'Writes company-context updates into local company profile objects.', status: 'Preview only' },
+    { name: 'Operator brief', detail: 'Builds a packet-backed context surface before any external write.', status: 'Preview only' }
   ],
   signals: [
     {
@@ -166,21 +166,21 @@ const fallbackState = {
       quote: 'Better organized Notion is not enough if agents are not forced, reminded, and equipped to use the context.',
       lenses: ['Opportunity', 'Project Shift', 'Next Action'],
       routes: ['Operational memory note', 'Lettuce positioning doc', 'daily memory'],
-      feedback: 'Waiting for operator feedback'
+      feedback: 'Company brain updated directly'
     }
   ],
   audit: [
     { time: 'seed', title: 'Runtime unavailable', body: 'Start the Lettuce runtime to load live workspace state.' }
   ],
   feedback_actions: [
-    { id: 'approve', label: 'Approve', description: 'Mark the proposed routes as useful enough to apply.' },
+    { id: 'approve', label: 'Confirm', description: 'Confirm the applied local context update is useful.' },
     { id: 'edit', label: 'Edit', description: 'Capture the correction that should train the lens or router.' },
     { id: 'decline', label: 'Decline', description: 'Reject noisy or unsafe recommendations and record why.' }
   ],
   feedback: [],
   company_brain: {
     company_profile: {
-      summary: 'Workspace for reviewed context updates.',
+      summary: 'Workspace for durable company-context updates.',
       positioning: 'Inspectable company context for agent workflows.',
       current_stage: 'Starter workspace',
       updated_at: 'seed'
@@ -189,10 +189,10 @@ const fallbackState = {
       { id: 'ken', name: 'Ken', type: 'operator', status: 'active', notes: 'Primary reviewer for the app shell and runtime loop.' }
     ],
     projects_products: [
-      { id: 'lettuce-app', name: 'Lettuce app', status: 'active', notes: 'Standalone app/runtime for source, lens, destination, signal review, and company-brain updates.' }
+      { id: 'lettuce-app', name: 'Lettuce app', status: 'active', notes: 'Standalone app/runtime for source, lens, destination, optional feedback, and company-brain updates.' }
     ],
     decisions_defaults: [
-      { id: 'review-first', decision: 'Keep reviewed context updates local first.', source: 'seed', updated_at: 'seed' }
+      { id: 'direct-brain-update-default', decision: 'Keep durable company-context updates local first.', source: 'seed', updated_at: 'seed' }
     ],
     open_loops_risks: [
       { id: 'first-real-signal', risk: 'Need more real signals in the audit trail.', owner: 'operator', status: 'open' }
@@ -302,7 +302,7 @@ function checklistItems(data) {
     { key: 'brain_ready', label: 'Save company brain basics', detail: 'Capture summary, positioning, and current stage.', view: 'setup', cta: 'Edit brain', done: !!onboarding.brain_ready },
     { key: 'sources_ready', label: 'Confirm a source path', detail: 'Manual paste and OpenClaw should be usable before connector work.', view: 'sources', cta: 'Open sources', done: !!onboarding.sources_ready },
     { key: 'lenses_ready', label: 'Review or add lenses', detail: 'Defaults are usable; add one custom lens when a workflow needs it.', view: 'lenses', cta: 'Open lenses', done: !!onboarding.lenses_ready },
-    { key: 'destinations_ready', label: 'Confirm output destination', detail: 'Company Brain should stay active until external writes are approved.', view: 'destinations', cta: 'Open destinations', done: !!onboarding.destinations_ready },
+    { key: 'destinations_ready', label: 'Confirm output destination', detail: 'Company Brain stays active as the local durable destination before any external writes.', view: 'destinations', cta: 'Open destinations', done: !!onboarding.destinations_ready },
     { key: 'first_signal_ready', label: 'Process the first signal', detail: 'Submit a pasted signal and review the audit detail.', view: 'sources', cta: 'Paste signal', done: !!onboarding.first_signal_ready }
   ];
 }
@@ -760,7 +760,7 @@ function renderDestinations() {
       <p>${escapeHtml(companyBrain.detail || 'Local workspace state remains the active destination.')}</p>
       <dl>
         <div><dt>Status</dt><dd>${escapeHtml(companyBrain.status || 'Active')}</dd></div>
-        <div><dt>Writes</dt><dd>Reviewed and local</dd></div>
+        <div><dt>Writes</dt><dd>Direct and local</dd></div>
         <div><dt>First path</dt><dd>Manual paste</dd></div>
         <div><dt>Audit</dt><dd>Packet-backed</dd></div>
       </dl>
@@ -803,7 +803,7 @@ function renderDestinations() {
 
 function renderSignalRow(signal, activeOnly) {
   const active = signal.id === appState.selectedSignalId;
-  const reviewState = signal.company_changes?.length ? 'Applied' : (signal.review_decision?.action === 'decline' ? 'Declined' : 'Needs review');
+  const reviewState = signal.company_changes?.length ? 'Applied' : (signal.review_decision?.action === 'decline' ? 'Declined' : 'Applied');
   return `
     <article class="signal-row ${active && !activeOnly ? 'active' : ''}" data-signal-id="${escapeHtml(signal.id || '')}">
       <div class="row-head">
@@ -819,12 +819,12 @@ function renderSignalRow(signal, activeOnly) {
 
 function reviewStatusLabel(status) {
   const labels = {
-    review_pending: 'Needs review',
+    review_pending: 'Applied',
     company_brain_updated: 'Applied',
     declined: 'Declined',
     preview_only: 'Preview only'
   };
-  return labels[status] || String(status || 'Needs review').replaceAll('_', ' ');
+  return labels[status] || String(status || 'Applied').replaceAll('_', ' ');
 }
 
 function reviewStatusClass(status) {
@@ -881,7 +881,7 @@ function renderSignals() {
     <section class="review-workbench">
       <div class="review-hero">
         <div>
-          <p class="section-label">Signal review</p>
+          <p class="section-label">Signal detail</p>
           <h2>${escapeHtml(selected.title || 'Signal')}</h2>
           <p>${escapeHtml(selected.quote || '')}</p>
         </div>
@@ -935,8 +935,8 @@ function renderSignals() {
             ${routeProposals.length ? routeProposals.map((route) => `
               <div class="route-card">
                 <strong>${escapeHtml(route.path || 'Route')}</strong>
-                <p>${escapeHtml(route.preview || route.action || 'Review required before apply.')}</p>
-                <small>${route.requires_approval ? 'Requires review' : 'No review required'}</small>
+                <p>${escapeHtml(route.preview || route.action || 'Applied locally when safe.')}</p>
+                <small>${route.requires_approval ? 'Optional review' : 'Direct update'}</small>
               </div>
             `).join('') : emptyState('No route proposals recorded yet.')}
           </div>
@@ -950,7 +950,7 @@ function renderSignals() {
             <span class="pill ${reviewStatusClass(reviewStatus)}">${escapeHtml(reviewStatusLabel(reviewStatus))}</span>
           </div>
           <p>${escapeHtml(detail.context_update?.result || '')}</p>
-          ${reviewDecision ? `<div class="decision-note"><strong>${escapeHtml(reviewDecision.action || 'review')}</strong><span>${escapeHtml(reviewDecision.note || 'No note')}</span></div>` : '<p class="muted">Approve to apply the proposed Company Brain update, edit to apply with a note, or decline to record why it should not update context.</p>'}
+          ${reviewDecision ? `<div class="decision-note"><strong>${escapeHtml(reviewDecision.action || 'review')}</strong><span>${escapeHtml(reviewDecision.note || 'No note')}</span></div>` : '<p class="muted">The Company Brain update is applied locally by default. Use feedback only to confirm, edit, or decline the captured context.</p>'}
         </article>
 
         <article class="review-panel">

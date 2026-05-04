@@ -129,7 +129,7 @@
       "body": "Catch unresolved asks, contradictions, stale assumptions, and risky routes.",
       "tags": [
         "risk",
-        "review"
+        "safety"
       ]
     },
     {
@@ -147,12 +147,12 @@
       "id": "customer-pain-linear",
       "name": "Customer pain → Linear + account note",
       "detail": "Create/update issue, attach source quote, route to product owner.",
-      "status": "approval required"
+      "status": "operator approval required"
     },
     {
       "id": "strategy-shift-docs",
       "name": "Strategy shift → product context",
-      "detail": "Patch reviewed product context and daily signal logs after human approval.",
+      "detail": "Patch product context and daily signal logs only after explicit operator approval.",
       "status": "learning enabled"
     },
     {
@@ -165,7 +165,7 @@
       "id": "session-runbook",
       "name": "Agent session summary → runbook",
       "detail": "Propose changes to instructions, tests, or guardrails.",
-      "status": "approval required"
+      "status": "operator approval required"
     }
   ],
   "signals": [
@@ -183,7 +183,7 @@
         "Product positioning doc",
         "daily signal log"
       ],
-      "feedback": "Imported signal awaiting review"
+      "feedback": "Imported signal applied to local company brain"
     }
   ],
   "audit": [
@@ -196,8 +196,8 @@
   "feedback_actions": [
     {
       "id": "approve",
-      "label": "Approve",
-      "description": "Mark the proposed routes as useful enough to apply."
+      "label": "Confirm",
+      "description": "Confirm the applied local context update is useful."
     },
     {
       "id": "edit",
@@ -217,12 +217,12 @@
     "status": "workspace ready",
     "setup_stage": "Starter workspace",
     "updated_at": "seed",
-    "summary": "Workspace for managing company signals, lenses, routing, and reviewed company-brain updates.",
+    "summary": "Workspace for managing company signals, lenses, routing, and direct company-brain updates.",
     "id": "lettuce-labs"
   },
   "company_brain": {
     "company_profile": {
-      "summary": "Lettuce turns company signal into reviewed context updates for AI agents and human operators.",
+      "summary": "Lettuce turns company signal into durable company-context updates for AI agents and human operators.",
       "positioning": "Open-core context infrastructure for AI-first teams.",
       "current_stage": "First-user dogfood",
       "updated_at": "seed"
@@ -248,13 +248,13 @@
         "id": "lettuce-runtime",
         "name": "Standalone Lettuce runtime",
         "status": "active sprint",
-        "notes": "Standalone app/runtime for source, lens, destination, signal review, and company-brain updates."
+        "notes": "Standalone app/runtime for sources, lenses, destinations, optional feedback, and company-brain updates."
       }
     ],
     "decisions_defaults": [
       {
-        "id": "approval-gates",
-        "decision": "Default to reviewed context updates before external writes.",
+        "id": "direct-brain-update-default",
+        "decision": "Default to durable company-context updates before external writes.",
         "source": "seed",
         "updated_at": "seed"
       }
@@ -300,7 +300,7 @@
       "id": "company-brain",
       "icon": "☘",
       "name": "Company Brain",
-      "detail": "Active local JSON destination for reviewed context updates and packet-backed changelog entries.",
+      "detail": "Active local JSON destination for durable company-context updates and packet-backed changelog entries.",
       "status": "Active",
       "active": true,
       "action": "active",

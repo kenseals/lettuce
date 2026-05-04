@@ -92,11 +92,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     subparsers.add_parser("brain", help="Fetch the current company brain from the Lettuce runtime")
 
-    review = subparsers.add_parser("review", help="Approve, edit, or decline one route proposal for a signal")
+    review = subparsers.add_parser("review", help="Optionally approve, edit, or decline one route proposal for a signal")
     review.add_argument("--signal-id", required=True, help="Signal id from submit output or /api/signals")
-    review.add_argument("--action", choices=["approve", "edit", "decline"], required=True, help="Review decision")
-    review.add_argument("--route-id", default="company_brain:reviewed-context-update", help="Route proposal to review. Only company_brain routes apply local state.")
-    review.add_argument("--note", default="", help="Reviewer note")
+    review.add_argument("--action", choices=["approve", "edit", "decline"], required=True, help="Optional feedback decision")
+    review.add_argument("--route-id", default="company_brain:reviewed-context-update", help="Route proposal to target. Only company_brain routes apply local state.")
+    review.add_argument("--note", default="", help="Feedback note")
     review.add_argument("--edited-update", default="", help="Optional edited wording for an edit decision")
     return parser
 

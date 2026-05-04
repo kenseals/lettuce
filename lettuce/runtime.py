@@ -37,13 +37,13 @@ DEMO_SIGNAL_MARKDOWN = """# Baschez: company brain control problem
 
 Better organized Notion is not enough if agents are not forced, reminded, and equipped to use the context.
 
-Decision: Lettuce should prove the source → lens → router → reviewed context-update loop with inspectable packet artifacts before promising broad company-brain automation.
+Decision: Lettuce should prove the source → lens → handler → direct company-context update loop with inspectable packet artifacts and git-friendly provenance.
 
-Opportunity: teams with AI agents now have a new context-control problem. They need a lightweight lattice that catches painful workflow signal, proposes exact updates to durable operating surfaces, and learns from approve/edit/decline feedback.
+Opportunity: teams with AI agents now have a context-control problem. They need a lightweight protocol that catches painful workflow signal, updates durable company context, and preserves optional feedback for calibration.
 
 Risk: if the demo only increments mock metrics, it looks like a shell instead of a working operator loop.
 
-Next action: process this sample signal into a real local packet, show fired lenses and route proposals, capture feedback, and keep the resulting context update preview under .lettuce/runtime/runs.
+Next action: process this sample signal into a real local packet, show fired lenses and route proposals, apply the local Company Brain update, and keep provenance under .lettuce/runtime/runs.
 """
 
 
@@ -457,11 +457,11 @@ def _company_changes(packet: dict[str, Any], packet_json: Path, *, source_name: 
     edited_suffix = f" Reviewer edit: {review_note}" if review_note else ""
 
     profile_detail = {
-        "saved_external_category": "Position Lettuce around reviewed context-control for agents, not generic knowledge-base storage.",
+        "saved_external_category": "Position Lettuce around durable company context for agents, not generic knowledge-base storage.",
         "customer_market_pain": "Keep the product promise tied to concrete customer pain, validation gates, and willingness-to-pay evidence.",
-        "company_building_note": "Treat Lettuce as first-user company-building infrastructure: reviewed context updates must change future agent behavior.",
+        "company_building_note": "Treat Lettuce as first-user company-building infrastructure: direct context updates must change future agent behavior.",
         "operator_note": "Preserve only the context future agents need; avoid generic memory theater.",
-    }.get(context["kind"], "Preserve reviewed context updates with provenance.")
+    }.get(context["kind"], "Preserve durable context updates with provenance.")
 
     segment_detail = _short(
         opportunity,
@@ -469,13 +469,13 @@ def _company_changes(packet: dict[str, Any], packet_json: Path, *, source_name: 
             "saved_external_category": f"External category evidence from {source_name} should sharpen positioning before it creates new work.",
             "customer_market_pain": f"Customer/market pain in `{title}` should be routed to a validation owner, not buried as a summary.",
             "company_building_note": f"Company-building signal `{title}` affects how the first-user sprint should be judged.",
-            "operator_note": f"Operator note `{title}` was preserved as reviewed context only.",
+            "operator_note": f"Operator note `{title}` was preserved as scoped company context.",
         }.get(context["kind"], f"Signal `{title}` updated local company context."),
     )
-    project_detail = _short(decision or open_loop, f"Processed {source_kind} signal `{title}` through review before write.")
+    project_detail = _short(decision or open_loop, f"Processed {source_kind} signal `{title}` into local company context with provenance.")
     default_detail = _short(
         risk or decision,
-        "Saved external posts, validation gates, and fresh instructions require different destinations and review owners.",
+        "Saved external posts, validation gates, and fresh instructions require scoped destinations and explicit owners.",
     )
     risk_detail = _short(
         risk or open_loop,
@@ -512,7 +512,7 @@ def _company_changes(packet: dict[str, Any], packet_json: Path, *, source_name: 
         },
         {
             "area": "decisions_defaults",
-            "object_id": "review-before-write",
+            "object_id": "direct-brain-update-default",
             "label": "Routing default reinforced",
             "detail": default_detail,
             "owner": "Context steward",
@@ -543,10 +543,10 @@ def _company_brain_route_proposal(packet: dict[str, Any], packet_json: Path, *, 
     return {
         "id": "company_brain:reviewed-context-update",
         "path": "company_brain/local-json",
-        "action": "approve_or_edit_apply",
+        "action": "optional_feedback_apply",
         "reason": "The only apply-capable v0 destination is the local Company Brain object store.",
-        "preview": "Apply the reviewed context update to local Company Brain JSON and append provenance-backed update logs. Other route proposals remain preview-only.",
-        "requires_approval": True,
+        "preview": "Apply the local Company Brain JSON update and append provenance-backed update logs. Optional feedback can correct or decline later.",
+        "requires_approval": False,
         "destination": "company_brain",
         "apply_scope": "local_only",
         "safety": "No external workspace, GitHub, Linear, Slack, email, or memory writes.",
@@ -615,7 +615,7 @@ def _demo_company_changes(packet: dict[str, Any], packet_json: Path) -> list[dic
 
 
 def apply_company_brain_update(state: dict[str, Any], packet: dict[str, Any], packet_json: Path, *, signal_id: str = DEMO_SIGNAL_ID, source_name: str = "Demo/OpenClaw", review_note: str = "") -> list[dict[str, str]]:
-    """Apply a reviewed signal to local org/company brain state and return a human-readable diff."""
+    """Apply a processed signal to local org/company brain state and return a human-readable diff."""
     now = _now()
     run_id = str(packet.get("run_id") or DEMO_SIGNAL_ID)
     changes = _company_changes(packet, packet_json, source_name=source_name, review_note=review_note)
@@ -648,8 +648,8 @@ def apply_company_brain_update(state: dict[str, Any], packet: dict[str, Any], pa
     profile = brain.setdefault("company_profile", {})
     profile.update(
         {
-            "summary": profile_change.get("detail") or "Lettuce turns company signal into reviewed, inspectable context updates for humans and AI agents.",
-            "positioning": "A reviewed context-control layer that routes signal-specific updates into the surfaces agents actually use.",
+            "summary": profile_change.get("detail") or "Lettuce turns company signal into durable, inspectable company context for agents and operators.",
+            "positioning": "A markdown+git context-control protocol that routes signal-specific updates into the durable brain agents actually use.",
             "current_stage": "YC sprint first-user app",
             "updated_at": now,
         }
@@ -687,15 +687,15 @@ def apply_company_brain_update(state: dict[str, Any], packet: dict[str, Any], pa
 
     existing_decisions = {item.get("id"): item for item in brain.get("decisions_defaults", []) if isinstance(item, dict)}
     decision_entry = {
-        **existing_decisions.get("review-before-write", {}),
-        "id": "review-before-write",
-        "decision": _find_change(changes, "decisions_defaults", "review-before-write").get("detail") or "Demo and product posture should show reviewed company-brain updates before any external write automation.",
+        **existing_decisions.get("direct-brain-update-default", {}),
+        "id": "direct-brain-update-default",
+        "decision": _find_change(changes, "decisions_defaults", "direct-brain-update-default").get("detail") or "Default product posture should apply scoped local company-brain updates before any external write automation.",
         "source": run_id,
         "updated_at": now,
     }
     brain["decisions_defaults"] = _upsert_by_id(
         list(brain.get("decisions_defaults", [])),
-        _with_update_log(decision_entry, log_for("decisions_defaults", "review-before-write")),
+        _with_update_log(decision_entry, log_for("decisions_defaults", "direct-brain-update-default")),
     )
 
     existing_risks = {item.get("id"): item for item in brain.get("open_loops_risks", []) if isinstance(item, dict)}
@@ -778,7 +778,7 @@ def _packet_signal_summary(packet: dict[str, Any], packet_json: Path, *, signal_
         "lenses": fired,
         "routes": routes,
         "lens_runner_sources": lens_runner_sources,
-        "feedback": "Waiting for operator feedback" if not packet.get("feedback") else "Feedback captured",
+        "feedback": "Company brain updated directly" if not packet.get("feedback") else "Feedback captured",
         "run_id": packet.get("run_id"),
         "packet_path": str(packet_json),
         "packet_markdown_path": str(run_dir / "packet.md"),
@@ -841,9 +841,9 @@ def _brain_review_snapshot(state: dict[str, Any]) -> dict[str, Any]:
             "status": find_item("projects_products", "lettuce-runtime").get("status"),
             "notes": find_item("projects_products", "lettuce-runtime").get("notes"),
         },
-        "decisions_defaults:review-before-write": {
-            "decision": find_item("decisions_defaults", "review-before-write").get("decision"),
-            "source": find_item("decisions_defaults", "review-before-write").get("source"),
+        "decisions_defaults:direct-brain-update-default": {
+            "decision": find_item("decisions_defaults", "direct-brain-update-default").get("decision"),
+            "source": find_item("decisions_defaults", "direct-brain-update-default").get("source"),
         },
         "open_loops_risks:prove-real-state-change": {
             "risk": find_item("open_loops_risks", "prove-real-state-change").get("risk"),
@@ -867,7 +867,7 @@ def _snapshot_diff(before: dict[str, Any], after: dict[str, Any]) -> list[dict[s
 
 
 def apply_signal_review_decision(state: dict[str, Any], feedback_entry: dict[str, Any]) -> bool:
-    """Apply an approve/edit review decision for a pending signal into local Company Brain state."""
+    """Apply optional feedback for an already processed signal into local Company Brain state."""
     signal_id = str(feedback_entry.get("signal_id") or "").strip()
     action = str(feedback_entry.get("action") or "").strip()
     signal = next((item for item in state.get("signals", []) if item.get("id") == signal_id), None)
@@ -892,11 +892,11 @@ def apply_signal_review_decision(state: dict[str, Any], feedback_entry: dict[str
 
     packet_path = Path(str(signal.get("packet_path") or "")) if signal.get("packet_path") else None
     if not packet_path or not packet_path.exists():
-        signal["feedback"] = "Review captured; packet artifact missing, no apply performed"
+        signal["feedback"] = "Feedback captured; packet artifact missing, no apply performed"
         return False
 
     if not str(decision.get("route_id") or "").startswith("company_brain:"):
-        signal["feedback"] = "Review captured for preview-only route; company brain unchanged"
+        signal["feedback"] = "Feedback captured for preview-only route; company brain unchanged"
         signal["company_changes"] = []
         signal["review_diff"] = {"before": _brain_review_snapshot(state), "after": _brain_review_snapshot(state), "diff": []}
         return False
@@ -914,7 +914,7 @@ def apply_signal_review_decision(state: dict[str, Any], feedback_entry: dict[str
     )
     after = _brain_review_snapshot(state)
     signal["company_changes"] = company_changes
-    signal["feedback"] = f"Company brain updated via {action} review"
+    signal["feedback"] = f"Company brain updated via optional {action} feedback"
     signal["review_diff"] = {"before": before, "after": after, "diff": _snapshot_diff(before, after)}
     return True
 
@@ -957,10 +957,19 @@ def _process_runtime_signal(
     state.setdefault("audit", []).insert(0, entry)
     signals = [signal for signal in state.get("signals", []) if signal.get("id") != signal_id]
     signal_summary = _packet_signal_summary(packet_data, packet_json, signal_id=signal_id, source_name=source_name)
-    signal_summary["company_changes"] = []
-    signal_summary["feedback"] = "Review pending; company brain unchanged"
+    before = _brain_review_snapshot(state)
+    company_changes = apply_company_brain_update(
+        state,
+        packet_data,
+        packet_json,
+        signal_id=signal_id,
+        source_name=source_name,
+    )
+    after = _brain_review_snapshot(state)
+    signal_summary["company_changes"] = company_changes
+    signal_summary["feedback"] = "Company brain updated directly"
     signal_summary["review_decision"] = None
-    signal_summary["review_diff"] = {"before": _brain_review_snapshot(state), "after": None, "diff": []}
+    signal_summary["review_diff"] = {"before": before, "after": after, "diff": _snapshot_diff(before, after)}
     signals.insert(0, signal_summary)
     state["signals"] = signals
     onboarding = state.setdefault("onboarding", {})
@@ -1076,11 +1085,11 @@ def signal_detail(signal_id: str) -> dict[str, Any]:
     status = "company_brain_updated" if company_changes else "review_pending"
     if isinstance(review_decision, dict) and review_decision.get("action") == "decline":
         status = "declined"
-    result = "Stored a packet artifact and proposed routes. Company Brain is unchanged until an operator approves or edits a proposal."
+    result = "Stored a packet artifact, proposed routes, applied the local Company Brain update, and appended provenance-backed update_log entries. Optional review remains available for correction or decline."
     if status == "company_brain_updated":
-        result = "Stored a packet artifact, proposed routes, applied the reviewed local Company Brain update, and appended provenance-backed update_log entries. No external workspace files were changed."
+        result = "Stored a packet artifact, proposed routes, applied the local Company Brain update, and appended provenance-backed update_log entries. No external workspace files were changed."
     elif status == "declined":
-        result = "Stored a packet artifact and recorded the decline decision. Company Brain was not changed."
+        result = "Stored a packet artifact and recorded the decline decision. Existing Company Brain state was not further changed."
     return {
         "id": signal_id,
         "summary": signal,
@@ -1274,7 +1283,7 @@ def smoke() -> dict[str, Any]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Run standalone Lettuce Lattice UI and local JSON API.")
+    parser = argparse.ArgumentParser(description="Run the legacy Lettuce preview UI and local JSON API.")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8787)
     parser.add_argument("--smoke", action="store_true", help="Validate local runtime data and exit.")
@@ -1288,7 +1297,7 @@ def main(argv: list[str] | None = None) -> int:
 
     server = make_server(args.host, args.port, quiet=args.quiet)
     url = f"http://{args.host}:{args.port}/"
-    print(f"Lettuce standalone runtime serving {url}")
+    print(f"Lettuce legacy preview runtime serving {url}")
     print(f"Local JSON state: {STATE_PATH}")
     if not args.quiet:
         print(f"Preview write token: {server.preview_token}")  # type: ignore[attr-defined]
