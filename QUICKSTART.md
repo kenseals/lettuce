@@ -59,6 +59,14 @@ lettuce discover ./lettuce-demo
 
 This creates a markdown+git repo with `lettuce.yml`, default handlers, inbox streams, brain streams, local checkpoints, and logs.
 
+To scaffold the optional company hub convention instead:
+
+```bash
+lettuce init ./lettuce-demo-hub --org demo --operator you --repo-type company_hub
+```
+
+That adds a curated `streams/shared/*` layout plus starter hub docs for shared stream catalog and ownership/policy notes. It is for accepted shared context, not for dumping every operator inbox or transcript.
+
 ## Add signal
 
 Import a local file:

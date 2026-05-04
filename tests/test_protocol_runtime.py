@@ -96,6 +96,35 @@ default_model: claude-sonnet-4
             self.assertEqual(exports[0].allowed_readers, ["github:team:acme/customer-facing"])
             self.assertTrue(exports[0].review_required)
 
+    def test_init_scaffolds_company_hub_repo_convention(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "lettuce-acme-hub"
+            init_repo(repo, org="acme", operator="ken", repo_type="company_hub", initialize_git=False)
+
+            config_text = (repo / "lettuce.yml").read_text(encoding="utf-8")
+            agent_text = (repo / "LETTUCE_AGENT.md").read_text(encoding="utf-8")
+            exports = read_exported_streams(repo)
+
+            self.assertTrue((repo / "streams/shared/decisions/.gitkeep").exists())
+            self.assertTrue((repo / "streams/shared/customers/.gitkeep").exists())
+            self.assertTrue((repo / "streams/shared/incidents/.gitkeep").exists())
+            self.assertTrue((repo / "streams/shared/projects/.gitkeep").exists())
+            self.assertTrue((repo / "docs/company-hub/README.md").exists())
+            self.assertTrue((repo / "docs/company-hub/stream-catalog.md").exists())
+            self.assertTrue((repo / "docs/company-hub/owners-and-policies.md").exists())
+            self.assertIn("type: company_hub", config_text)
+            self.assertEqual(
+                [export.stream for export in exports],
+                [
+                    "streams/shared/decisions",
+                    "streams/shared/customers",
+                    "streams/shared/incidents",
+                    "streams/shared/projects",
+                ],
+            )
+            self.assertIn("shared stream curation", agent_text)
+            self.assertIn("may only write under `streams/shared/*`", agent_text)
+
     def test_read_repo_identity_supports_role_agent_repo(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp) / "lettuce-acme-support-agent"
@@ -126,6 +155,11 @@ default_model: claude-sonnet-4
         )
 
         self.assertEqual(default_path, "./lettuce-acme-corp-support-agent")
+
+    def test_default_repo_path_uses_hub_suffix_for_company_hub_repos(self) -> None:
+        default_path = _default_repo_path(None, "Acme Corp", "ken", repo_type="company_hub")
+
+        self.assertEqual(default_path, "./lettuce-acme-corp-hub")
 
     def test_read_exported_streams_rejects_unsafe_export_path(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

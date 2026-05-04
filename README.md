@@ -8,6 +8,25 @@ Current status: **first v0 protocol loop**. The installable `lettuce` CLI scaffo
 
 The protocol does not own chat surfaces, inboxes, OAuth grants, or service integrations. The agent runtime owns those. Lettuce teaches the agent how to connect the right signal sources, preserve provenance, write stream events, run handlers, maintain brain updates, and eventually subscribe to other Lettuces in an organization so company context can become distributed instead of centralized.
 
+## Optional Company Hub
+
+An org can also keep an optional `company_hub` Lettuce repo as a lightweight coordination point for curated shared context.
+
+Use the hub for:
+
+- exported shared streams under `streams/shared/*`
+- accepted company decisions and durable facts
+- discovery metadata for shared streams
+- stream owners and policy notes
+
+Do not use the hub for:
+
+- every operator's raw inbox or transcripts
+- direct remote writes into `brain/*`
+- a centralized all-seeing company dump
+
+Shared pulls and mirrors may only write under `streams/shared/*`. GitHub access remains the outer boundary; Lettuce export and path policy narrows what gets shared inside that boundary.
+
 ## Give This To Your Agent
 
 Give your agent this one link:
@@ -109,6 +128,13 @@ The first repeatable source connector is deliberately local and boring: `add-sou
 `subscribe` records remote/shared stream subscription intent under `subscriptions/`. For local simulation, `pull-subscriptions` can now import new events from another local Lettuce repo into a scoped `streams/shared/*` mirror with subscription checkpoints and preserved provenance. Optional policy strings such as `allow_streams=streams/shared/*` block subscription writes outside allowed local stream paths. See `docs/trust-boundary.md` for the formal mutation rules around `brain/*`, `sources/*`, `reviews/*`, and shared-stream mirrors. This proves the future org-distributed context path without requiring GitHub federation yet.
 
 When a repo declares `exports` in `lettuce.yml`, it is intentionally marking specific `streams/shared/*` paths as shareable. Those export declarations are editorial metadata for agents and runtime checks; they never grant access beyond the underlying GitHub repo permissions.
+
+`lettuce init --repo-type company_hub` scaffolds the optional hub convention with default shared exports and starter directories for:
+
+- `streams/shared/decisions`
+- `streams/shared/customers`
+- `streams/shared/incidents`
+- `streams/shared/projects`
 
 ## Minimal Maintenance Loop
 

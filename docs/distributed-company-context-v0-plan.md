@@ -233,6 +233,15 @@ Flow:
 6. Mirror into `streams/shared/*`.
 7. Run local handlers to decide what enters local brain.
 
+If a hub is created, treat it as curated shared company context only. The initial shared stream convention is:
+
+- `streams/shared/decisions`
+- `streams/shared/customers`
+- `streams/shared/incidents`
+- `streams/shared/projects`
+
+The hub is not the place for every operator's raw inbox, transcript archive, or browser history.
+
 ## Failure modes to guard against
 
 ### Permission laundering

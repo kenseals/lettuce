@@ -34,6 +34,8 @@ Lettuce should not create duplicate chat, inbox, browser, OAuth, or connector su
 
 Role-agent repos follow the same boundary. They are first-class Lettuce repos with a bounded GitHub identity behind them, typically recorded as `permission_basis: github-app`, `machine-user`, or `github-user`. They should stay private by default and scoped to that identity's permitted sources and repos; they must not become all-seeing org brains simply because they are automated.
 
+Optional `company_hub` repos follow the same outer GitHub boundary. They narrow behavior further: shared pulls and mirrors may only write under `streams/shared/*`, and the hub should store curated shared context rather than every operator's raw inbox or transcripts.
+
 ## Trust Modes
 
 ### 1. Local CLI
