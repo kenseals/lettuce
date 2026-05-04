@@ -30,7 +30,7 @@ This is agent-operated onboarding. If you are interacting with the operator in T
 - If you cannot run an interactive helper, follow `docs/agent-operated-onboarding.md` and use lower-level commands such as `lettuce onboard`, `lettuce add-source`, `lettuce ingest-direct`, `lettuce run --review`, and `lettuce reviews` yourself.
 - Create or choose a local Lettuce repo for one confirmed organization/work context, not for the operator's personal memory.
 - Configure manual/direct ingestion in every normal setup so the operator can later say “run Lettuce on this.”
-- Record source intent for sources discussed with the operator, including whether each is `available_now`, `needs_setup`, `defer`, or manual-only. Common early sources are email and call transcripts.
+- Record source intent for sources discussed with the operator, including whether each is `available_now`, `needs_setup`, `defer`, or manual-only. `manual-only` is a recipe posture for operator-forwarded/runtime-triggered sources, not a separate CLI `access_status`. Common early sources are email and call transcripts.
 - Ingest one small operator-approved sample signal first. Do not use the setup request itself as the sample unless the operator explicitly says to.
 - Run handlers behind a review gate during onboarding unless the operator explicitly asks to bypass review. The first run should create pending review proposals or a clear skip reason before durable `brain/*` writes.
 - Preserve provenance, consent basis, source surface, and org/operator scope.
@@ -48,6 +48,7 @@ Review is a safety/control loop for onboarding, calibration, sensitive sources, 
 - [Agent-operated onboarding](https://raw.githubusercontent.com/kenseals/lettuce/main/docs/agent-operated-onboarding.md): The primary setup workflow for agents.
 - [Lettuce verification](https://raw.githubusercontent.com/kenseals/lettuce/main/docs/LETTUCE_VERIFY.md): Post-setup checks for repo, provenance, source intent, review gate, and ongoing trigger behavior.
 - [Lettuce ongoing-use resolver](https://raw.githubusercontent.com/kenseals/lettuce/main/docs/LETTUCE_RESOLVER.md): How to decide when to look up context, ingest signal, update sources, handle reviews, manage shared streams, or skip Lettuce.
+- [Source recipe library](https://raw.githubusercontent.com/kenseals/lettuce/main/docs/source-recipes/README.md): Agent-readable source recipe pattern plus concrete direct/manual and email recipes.
 - [First-run demo](https://raw.githubusercontent.com/kenseals/lettuce/main/docs/first-run-demo.md): Public-safe install-to-first-context walkthrough.
 - [OpenClaw Lettuce skill](https://raw.githubusercontent.com/kenseals/lettuce/main/skills/openclaw-lettuce/SKILL.md): Use this if you are OpenClaw.
 
@@ -56,6 +57,8 @@ Review is a safety/control loop for onboarding, calibration, sensitive sources, 
 - [Handler format](https://raw.githubusercontent.com/kenseals/lettuce/main/HANDLERS.md): How markdown handlers subscribe, publish, and return JSON.
 - [OpenClaw runtime source setup](https://raw.githubusercontent.com/kenseals/lettuce/main/docs/openclaw-runtime-source-setup.md): Boundary between OpenClaw-owned runtime access and Lettuce-owned protocol state.
 - [Source discovery recipes](https://raw.githubusercontent.com/kenseals/lettuce/main/docs/source-discovery-recipes.md): How to record source intent and sample safely.
+- [Direct/manual source recipe](https://raw.githubusercontent.com/kenseals/lettuce/main/docs/source-recipes/direct-manual.md): Baseline operator-triggered source recipe every first setup should support.
+- [Email source recipe](https://raw.githubusercontent.com/kenseals/lettuce/main/docs/source-recipes/email-recurring.md): Sample-first recurring-ish email recipe that keeps mailbox access in the runtime.
 - [Company context for agents](https://raw.githubusercontent.com/kenseals/lettuce/main/docs/company-context-for-agents.md): Product framing and why this exists.
 
 ## Optional

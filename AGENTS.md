@@ -82,7 +82,7 @@ During first setup:
 3. Ask which company/client/project this Lettuce is for.
 4. Choose or create one org-scoped repo.
 5. Configure manual/direct ingestion so the operator can later say “run Lettuce on this.”
-6. Record source intent for email/transcripts/work systems as `available_now`, `needs_setup`, `defer`, or manual-only.
+6. Record source intent for email/transcripts/work systems as `available_now`, `needs_setup`, `defer`, or manual-only. `manual-only` is a recipe posture for operator-forwarded/runtime-triggered sources; keep persisted `access_status` values aligned with the CLI.
 7. Ingest one small operator-approved sample signal.
 8. Run handlers behind the review gate unless the operator explicitly asks to bypass review.
 9. End with a concise handoff: repo path, sources, first run result, future trigger/cadence, and next setup step.
@@ -94,7 +94,7 @@ During first setup:
 - **Verify setup:** `docs/LETTUCE_VERIFY.md`.
 - **Operate Lettuce after setup:** `docs/LETTUCE_RESOLVER.md`.
 - **Human/product overview:** `README.md` and `docs/company-context-for-agents.md`.
-- **Source setup:** `docs/source-discovery-recipes.md`.
+- **Source setup:** `docs/source-discovery-recipes.md` and `docs/source-recipes/`.
 - **OpenClaw-specific usage:** `skills/openclaw-lettuce/SKILL.md`.
 - **Protocol changes:** `LETTUCE_V0_SPEC.md`, `HANDLERS.md`, tests under `tests/`.
 

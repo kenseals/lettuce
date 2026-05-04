@@ -4,6 +4,8 @@ These recipes tell an operator's agent how to decide whether and how to connect 
 
 Lettuce does not own service auth, inboxes, chat surfaces, OAuth, browser sessions, or MCP connectors. The agent owns access and setup. Lettuce owns source records and stream events.
 
+For concrete agent-readable recipe files, use `docs/source-recipes/README.md` and the recipes under `docs/source-recipes/`.
+
 ## General Source Discovery Loop
 
 For every source class:
@@ -14,6 +16,7 @@ For every source class:
    - `available_now`: agent can inspect and ingest a small sample now.
    - `needs_setup`: operator must connect, export, forward, grant OAuth, or provide a file/API token.
    - `defer`: useful later but not needed for the first working Lettuce.
+   - `manual-only`: the runtime can ingest only when the operator forwards, pastes, exports, or explicitly points to the source. This is an agent recipe posture, not a CLI `access_status` enum; persist the closest truthful `access_status` and state manual-only behavior in the source record.
 4. If available, ingest a small sample first, usually 1-5 items.
 5. Run handlers and review output before bulk backfill.
 6. Record durable source intent under `sources/` when the source will recur.
@@ -23,7 +26,26 @@ Do not bulk-ingest before a small reviewed sample proves the source is useful.
 
 Manual/direct ingestion should be available for every first setup even when no recurring source is ready. It is the default fallback path: the operator forwards or pastes a signal and says “run Lettuce on this.”
 
+## Agent-Readable Recipe Pattern
+
+Every concrete recipe should specify:
+
+1. required runtime access;
+2. operator questions;
+3. source record command;
+4. privacy/sample defaults;
+5. first tiny sample path;
+6. verification checks;
+7. operator handoff.
+
+Recipe library:
+
+- `docs/source-recipes/direct-manual.md`
+- `docs/source-recipes/email-recurring.md`
+
 ## Email
+
+For the full recipe, see `docs/source-recipes/email-recurring.md`.
 
 ### Discovery Questions
 
@@ -95,6 +117,8 @@ Prefer the lowest-friction route:
 4. Defer provider-specific webhook infrastructure until repeated usage proves it.
 
 ## Call Transcripts
+
+Use the email recipe as the pattern baseline, but adapt runtime access and privacy boundaries to transcript tools and exports.
 
 ### Discovery Questions
 

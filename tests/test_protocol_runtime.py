@@ -738,6 +738,56 @@ print(json.dumps({
             self.assertEqual(output["status"], "configured")
             self.assertIn("bot: @lettuce_ken_bot", text)
 
+    def test_source_recipe_smoke_direct_and_email_sample_first(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "lettuce-acme-ken"
+            init_repo(repo, org="acme", operator="ken", initialize_git=False)
+
+            direct = configure_source(
+                repo,
+                "direct",
+                name="manual-direct",
+                access_status="available_now",
+                sample_policy="manual-only: operator-forwarded-or-pasted-signals via runtime trigger phrase",
+                privacy_notes="skip personal, legal, medical, recruiting, and unrelated org content",
+                setup_next_action="operator can say 'run Lettuce on this' when a scoped work signal should become durable",
+            )
+            email = configure_source(
+                repo,
+                "email",
+                name="work-email",
+                metadata={"address": "work@example.com", "query": "label:lettuce"},
+                access_status="needs_setup",
+                sample_policy="operator-forward one safe example before connector-based polling",
+                privacy_notes="skip personal and other out-of-scope mail",
+                setup_next_action="connect mailbox access, export one message, or forward one sample thread",
+            )
+            email_sample = ingest_email_signal(
+                repo,
+                subject="Customer asks for fresher agent context",
+                body="Anna asked whether the agent could keep account context fresh after calls.",
+                message_id="msg-123",
+                thread_id="thread-456",
+                email_from="Anna <anna@example.com>",
+                forwarded_by="ken",
+                consent_basis="operator-forwarded-email",
+                stream="streams/inbox/email",
+            )
+
+            direct_text = Path(direct.config_path).read_text(encoding="utf-8")
+            email_text = Path(email.config_path).read_text(encoding="utf-8")
+            email_events = read_stream_events(repo, "streams/inbox/email")
+
+            self.assertIn("access_status: available_now", direct_text)
+            self.assertIn("manual-only", direct_text)
+            self.assertIn("access_status: needs_setup", email_text)
+            self.assertIn("operator-forward one safe example", email_text)
+            self.assertTrue(Path(email_sample.event_path).exists())
+            self.assertEqual(len(email_events), 1)
+            self.assertEqual(email_events[0].frontmatter["source_type"], "email")
+            self.assertEqual(email_events[0].frontmatter["message_id"], "msg-123")
+            self.assertEqual(email_events[0].frontmatter["consent_basis"], "operator-forwarded-email")
+
     def test_configure_subscription_requires_initialized_repo(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp) / "lettuce-acme-ken"

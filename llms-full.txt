@@ -9,6 +9,7 @@ Companion entrypoints:
 - `AGENTS.md` is the public operating protocol for agents.
 - `INSTALL_FOR_AGENTS.md` is the short linear setup guide.
 - `docs/agent-operated-onboarding.md` is the detailed onboarding contract.
+- `docs/source-recipes/README.md` is the concrete source recipe library.
 - `docs/LETTUCE_VERIFY.md` is the post-setup verification runbook.
 - `docs/LETTUCE_RESOLVER.md` is the ongoing-use resolver after setup.
 
@@ -84,7 +85,7 @@ When the operator gives you `https://github.com/kenseals/lettuce` or this `llms.
 
    Keep this separate from personal memory. Example: `--org acme --operator ken`.
 
-   For each source the operator named, record whether it is available now, needs setup, deferred, or manual-only. Do not pretend external OAuth/polling exists if it does not.
+   For each source the operator named, record whether it is available now, needs setup, deferred, or manual-only. `manual-only` is a recipe posture for operator-forwarded/runtime-triggered sources, not a separate CLI `access_status`. Do not pretend external OAuth/polling exists if it does not.
 
    ```bash
    lettuce onboard ./lettuce-demo \
@@ -103,6 +104,7 @@ When the operator gives you `https://github.com/kenseals/lettuce` or this `llms.
    ```
 
    Direct chat/current conversation input does not need a source adapter to ingest, but manual/direct source intent should still be recorded so future agent behavior is inspectable.
+   Treat that direct/manual source as manual-only in the recipe sense: operator-triggered and runtime-ingested, not polled.
 
    If you are OpenClaw and model-backed judgment is available, add `--openclaw-provider` to `onboard` or `run`.
 
@@ -234,6 +236,7 @@ A successful first setup should produce:
 - `docs/LETTUCE_RESOLVER.md`: ongoing-use decision rules after setup.
 - `docs/openclaw-runtime-source-setup.md`: runtime/protocol boundary.
 - `docs/source-discovery-recipes.md`: source setup and sampling.
+- `docs/source-recipes/README.md`: agent-readable recipe pattern and concrete source recipes.
 - `HANDLERS.md`: handler spec.
 - `QUICKSTART.md`: longer CLI walkthrough.
 - `TRY_THIS_FIRST.md`: smoke-test path.

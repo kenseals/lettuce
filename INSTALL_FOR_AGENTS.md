@@ -26,6 +26,7 @@ If the operator is talking to you in Telegram, Slack, iMessage, Discord, or anot
 - `AGENTS.md` is the public operating protocol for non-Claude agents.
 - `docs/agent-operated-onboarding.md` is the detailed setup contract.
 - `docs/source-discovery-recipes.md` covers source intent and safe sampling.
+- `docs/source-recipes/` contains concrete agent-readable recipes for direct/manual and recurring-ish sources.
 - `docs/LETTUCE_VERIFY.md` is the post-setup verification runbook.
 - `docs/LETTUCE_RESOLVER.md` is the ongoing-use resolver after setup.
 
@@ -35,6 +36,9 @@ If you fetched this file by URL, companion files live at:
 - `https://raw.githubusercontent.com/kenseals/lettuce/main/AGENTS.md`
 - `https://raw.githubusercontent.com/kenseals/lettuce/main/docs/agent-operated-onboarding.md`
 - `https://raw.githubusercontent.com/kenseals/lettuce/main/docs/source-discovery-recipes.md`
+- `https://raw.githubusercontent.com/kenseals/lettuce/main/docs/source-recipes/README.md`
+- `https://raw.githubusercontent.com/kenseals/lettuce/main/docs/source-recipes/direct-manual.md`
+- `https://raw.githubusercontent.com/kenseals/lettuce/main/docs/source-recipes/email-recurring.md`
 - `https://raw.githubusercontent.com/kenseals/lettuce/main/docs/LETTUCE_VERIFY.md`
 - `https://raw.githubusercontent.com/kenseals/lettuce/main/docs/LETTUCE_RESOLVER.md`
 
@@ -97,6 +101,8 @@ lettuce add-source direct <repo-path> \
   --sample-policy "operator-forwarded-or-pasted-signals" \
   --commit
 ```
+
+Treat that direct/manual source as `manual-only` in the recipe sense: operator-triggered, runtime-ingested, not polled. Keep the persisted CLI status truthful, usually `available_now`.
 
 Record other sources as intent, not fake integrations:
 
