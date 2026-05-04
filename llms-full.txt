@@ -10,6 +10,7 @@ Companion entrypoints:
 - `INSTALL_FOR_AGENTS.md` is the short linear setup guide.
 - `docs/agent-operated-onboarding.md` is the detailed onboarding contract.
 - `docs/source-recipes/README.md` is the concrete source recipe library.
+- `docs/trust-boundary.md` is the formal trust-mode and path-mutation contract.
 - `docs/LETTUCE_VERIFY.md` is the post-setup verification runbook.
 - `docs/LETTUCE_RESOLVER.md` is the ongoing-use resolver after setup.
 
@@ -34,6 +35,8 @@ The agent runtime owns chat surfaces, inboxes, browser sessions, OAuth grants, c
 Lettuce owns the durable protocol state: repo, streams, handlers, source records, subscriptions, brain updates, checkpoints, provenance, and git commits.
 
 Do not create a new Telegram bot, Gmail integration, Discord adapter, browser automation layer, or OAuth service inside Lettuce just because a source is mentioned. If your runtime can access a signal with operator permission, write it into Lettuce with provenance.
+
+For exact mutation rules by path and trust mode, read `docs/trust-boundary.md`.
 
 ## Human onboarding contract
 

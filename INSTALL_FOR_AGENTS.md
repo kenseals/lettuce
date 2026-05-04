@@ -27,6 +27,7 @@ If the operator is talking to you in Telegram, Slack, iMessage, Discord, or anot
 - `docs/agent-operated-onboarding.md` is the detailed setup contract.
 - `docs/source-discovery-recipes.md` covers source intent and safe sampling.
 - `docs/source-recipes/` contains concrete agent-readable recipes for direct/manual and recurring-ish sources.
+- `docs/trust-boundary.md` formalizes trust modes, operation classes, and path mutation rules.
 - `docs/LETTUCE_VERIFY.md` is the post-setup verification runbook.
 - `docs/LETTUCE_RESOLVER.md` is the ongoing-use resolver after setup.
 
@@ -39,6 +40,7 @@ If you fetched this file by URL, companion files live at:
 - `https://raw.githubusercontent.com/kenseals/lettuce/main/docs/source-recipes/README.md`
 - `https://raw.githubusercontent.com/kenseals/lettuce/main/docs/source-recipes/direct-manual.md`
 - `https://raw.githubusercontent.com/kenseals/lettuce/main/docs/source-recipes/email-recurring.md`
+- `https://raw.githubusercontent.com/kenseals/lettuce/main/docs/trust-boundary.md`
 - `https://raw.githubusercontent.com/kenseals/lettuce/main/docs/LETTUCE_VERIFY.md`
 - `https://raw.githubusercontent.com/kenseals/lettuce/main/docs/LETTUCE_RESOLVER.md`
 
@@ -152,6 +154,7 @@ Recommended wording:
 ## Core boundaries
 
 - Lettuce does not own chat, email, OAuth, browser sessions, or external integrations. Your runtime owns access; Lettuce owns durable protocol state.
+- Shared-stream imports belong in scoped mirror paths such as `streams/shared/*`, not directly in `brain/*`.
 - Do not bulk ingest during onboarding unless the operator explicitly asks.
 - Preserve source provenance, consent basis, source surface, org scope, and operator scope.
 - Use review mode during onboarding unless the operator explicitly asks to bypass it.

@@ -4,6 +4,8 @@ Use this after setup when an operator already has an org-scoped Lettuce and want
 
 This resolver is for ongoing company/project context, not first-time onboarding. For setup, start with `AGENTS.md`, `INSTALL_FOR_AGENTS.md`, and `docs/agent-operated-onboarding.md`.
 
+For the formal trust model across local CLI, runtime wrapper, and shared-stream mirrors, read `docs/trust-boundary.md`.
+
 ## What This Resolver Decides
 
 When the operator asks for work help, decide whether to:

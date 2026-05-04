@@ -2,6 +2,8 @@
 
 Lettuce does not own chat, inboxes, OAuth, browser sessions, MCP servers, or polling infrastructure. OpenClaw, or whatever agent runtime is operating Lettuce, owns those surfaces.
 
+For the formal mutation rules across `brain/*`, `sources/*`, `reviews/*`, `subscriptions/*`, and shared mirrors, read `docs/trust-boundary.md`.
+
 Lettuce's job is to give the runtime a durable protocol for turning agent-observed work signal into org-scoped context:
 
 1. discover what signal source is available;

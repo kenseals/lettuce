@@ -49,6 +49,7 @@ Review is a safety/control loop for onboarding, calibration, sensitive sources, 
 - [Lettuce verification](https://raw.githubusercontent.com/kenseals/lettuce/main/docs/LETTUCE_VERIFY.md): Post-setup checks for repo, provenance, source intent, review gate, and ongoing trigger behavior.
 - [Lettuce ongoing-use resolver](https://raw.githubusercontent.com/kenseals/lettuce/main/docs/LETTUCE_RESOLVER.md): How to decide when to look up context, ingest signal, update sources, handle reviews, manage shared streams, or skip Lettuce.
 - [Source recipe library](https://raw.githubusercontent.com/kenseals/lettuce/main/docs/source-recipes/README.md): Agent-readable source recipe pattern plus concrete direct/manual and email recipes.
+- [Trust boundary](https://raw.githubusercontent.com/kenseals/lettuce/main/docs/trust-boundary.md): Formal trust modes, operation classes, and mutation rules for local, runtime, and shared-stream use.
 - [First-run demo](https://raw.githubusercontent.com/kenseals/lettuce/main/docs/first-run-demo.md): Public-safe install-to-first-context walkthrough.
 - [OpenClaw Lettuce skill](https://raw.githubusercontent.com/kenseals/lettuce/main/skills/openclaw-lettuce/SKILL.md): Use this if you are OpenClaw.
 
@@ -56,6 +57,7 @@ Review is a safety/control loop for onboarding, calibration, sensitive sources, 
 
 - [Handler format](https://raw.githubusercontent.com/kenseals/lettuce/main/HANDLERS.md): How markdown handlers subscribe, publish, and return JSON.
 - [OpenClaw runtime source setup](https://raw.githubusercontent.com/kenseals/lettuce/main/docs/openclaw-runtime-source-setup.md): Boundary between OpenClaw-owned runtime access and Lettuce-owned protocol state.
+- [Trust boundary](https://raw.githubusercontent.com/kenseals/lettuce/main/docs/trust-boundary.md): Exact write rules for `brain/*`, `sources/*`, `reviews/*`, `subscriptions/*`, and shared mirrors.
 - [Source discovery recipes](https://raw.githubusercontent.com/kenseals/lettuce/main/docs/source-discovery-recipes.md): How to record source intent and sample safely.
 - [Direct/manual source recipe](https://raw.githubusercontent.com/kenseals/lettuce/main/docs/source-recipes/direct-manual.md): Baseline operator-triggered source recipe every first setup should support.
 - [Email source recipe](https://raw.githubusercontent.com/kenseals/lettuce/main/docs/source-recipes/email-recurring.md): Sample-first recurring-ish email recipe that keeps mailbox access in the runtime.
