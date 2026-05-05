@@ -1,6 +1,13 @@
 # Try This First
 
-This is the shortest path to test the current Lettuce v0 install/onboarding loop. Run this before testing ongoing usage.
+This is the shortest path to test Lettuce v0, but there are two different tests. Do not confuse them.
+
+- **Agent-operated onboarding test:** validates the product experience from `llms.txt`. Start with `lettuce setup --commit` and the operator conversation.
+- **CLI plumbing smoke test:** validates package/install/review mechanics. Use `lettuce onboard ...`, fixtures, or quick demos only after the onboarding path is proven or blocked.
+
+If an operator says “test a clean install” or hands you `llms.txt`, default to the agent-operated onboarding test, not the lower-level CLI plumbing smoke test.
+
+Run this before testing ongoing usage, but choose the right branch for what you are trying to prove.
 
 ## 0. What this proves
 
@@ -16,6 +23,8 @@ If any step fails, stop there and fix that before testing source discovery or on
 
 ## Interactive onboarding happy path
 
+Use this first for a clean install/onboarding test from the public agent docs.
+
 For the conversational operator-style setup, use:
 
 ```bash
@@ -25,6 +34,8 @@ lettuce setup --commit
 This introduces Lettuce, asks whether to continue, asks for org/operator/repo/source details, configures manual/direct ingestion, optionally records email and transcript source intent, ingests a first setup signal, runs handlers behind the review gate, and ends with a plain-English summary.
 
 Use this when testing whether onboarding feels right for a real operator. Use the raw `lettuce onboard ...` command below when testing lower-level CLI plumbing.
+
+If this fails, capture the failure as the onboarding result. Do not hide the failure by immediately switching to `lettuce onboard` unless you clearly label the fallback as diagnostic.
 
 ## 1. Install
 
@@ -45,6 +56,8 @@ python3 -m pip install -e .
 ```
 
 ## 2. Create a fresh demo repo from one signal
+
+This is the lower-level CLI plumbing path. It proves packaging and review-gate mechanics, but it does **not** prove the public onboarding experience.
 
 Use a new throwaway path so old state cannot hide setup bugs:
 
