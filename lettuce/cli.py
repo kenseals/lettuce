@@ -28,6 +28,35 @@ def _print_progress(event: dict[str, Any]) -> None:
     )
 
 
+def _print_human_status(result: Any) -> None:
+    print(f"Lettuce status for {result.identity.org} ({result.repo})")
+    print(f"Freshness: {result.freshness.get('state')} — {result.freshness.get('reason')}")
+    sources = result.sources or {}
+    readiness = sources.get("readiness") or {}
+    labels = [
+        ("live_proven", "Live / proven"),
+        ("ready_to_validate", "Ready to validate"),
+        ("needs_setup", "Needs setup"),
+        ("manual_only", "Manual-only"),
+        ("deferred", "Deferred"),
+        ("unknown", "Unknown"),
+    ]
+    print("\nSources")
+    for key, label in labels:
+        items = readiness.get(key) or []
+        names = ", ".join(f"{item.get('name')} ({item.get('type')})" for item in items) or "none"
+        print(f"- {label}: {names}")
+    next_steps = sources.get("next_proof_steps") or []
+    if next_steps:
+        print("\nRecommended next proof steps:")
+        for step in next_steps:
+            print(f"- {step}")
+    print("\nHandlers")
+    print(f"- Count: {result.handlers}")
+    print(f"- Checkpoints: {result.checkpoints or {}}")
+    print(f"\nNext: {result.freshness.get('next_step')}")
+
+
 def _resolve_handler_command(args: argparse.Namespace) -> str | None:
     if getattr(args, "openclaw_provider", False) and getattr(args, "handler_command", None):
         raise ValueError("use either --openclaw-provider or --handler-command, not both")
@@ -454,6 +483,7 @@ def _run(argv: list[str] | None = None) -> int:
 
     status_parser = subparsers.add_parser("status", help="Show local runtime status")
     status_parser.add_argument("path", nargs="?", default=".", help="Lettuce repo path")
+    status_parser.add_argument("--human", action="store_true", help="Print a concise operator-facing status overview")
 
     logs_parser = subparsers.add_parser("logs", help="Show recent runtime logs")
     logs_parser.add_argument("path", nargs="?", default=".", help="Lettuce repo path")
@@ -870,7 +900,12 @@ def _run(argv: list[str] | None = None) -> int:
             repo_path,
             "direct",
             name="manual-direct",
-            metadata={"recipe": "docs/source-recipes/direct-manual.md", "trigger_policy": "manual: operator says 'run Lettuce on this'"},
+            metadata={
+                "recipe": "docs/source-recipes/direct-manual.md",
+                "connection_mode": "manual-only",
+                "routing_status": "proven",
+                "trigger_policy": "manual: operator says 'run Lettuce on this'",
+            },
             access_status="available_now",
             sample_policy="operator-forwarded-or-pasted-signals; review before brain writes",
             privacy_notes="skip personal-life context and unrelated org signal; preserve provenance and consent",
@@ -1203,6 +1238,9 @@ def _run(argv: list[str] | None = None) -> int:
 
     if args.command == "status":
         result = status(args.path)
+        if args.human:
+            _print_human_status(result)
+            return 0
         _print_json(
             {
                 "repo": result.repo,

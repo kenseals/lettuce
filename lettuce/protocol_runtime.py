@@ -1415,12 +1415,53 @@ def read_source_records(repo_path: str | Path) -> list[dict[str, Any]]:
 
 def _source_status_summary(records: list[dict[str, Any]]) -> dict[str, Any]:
     by_access_status: dict[str, int] = {}
+    readiness: dict[str, list[dict[str, str]]] = {
+        "live_proven": [],
+        "ready_to_validate": [],
+        "needs_setup": [],
+        "manual_only": [],
+        "deferred": [],
+        "unknown": [],
+    }
     for record in records:
         access_status = str(record.get("access_status") or "unknown")
         by_access_status[access_status] = by_access_status.get(access_status, 0) + 1
+        details = record.get("details") if isinstance(record.get("details"), dict) else {}
+        routing_status = str(details.get("routing_status") or "unknown")
+        connection_mode = str(details.get("connection_mode") or "unknown")
+        entry = {
+            "id": str(record.get("id") or ""),
+            "name": str(record.get("name") or ""),
+            "type": str(record.get("type") or ""),
+            "access_status": access_status,
+            "routing_status": routing_status,
+            "connection_mode": connection_mode,
+            "next_step": str(record.get("setup_next_action") or ""),
+        }
+        if access_status == "defer" or routing_status == "defer":
+            bucket = "deferred"
+        elif access_status == "needs_setup" or routing_status == "needs_setup":
+            bucket = "needs_setup"
+        elif connection_mode == "manual-only" and access_status == "available_now" and routing_status in {"unknown", "proven"}:
+            bucket = "manual_only"
+        elif routing_status == "proven":
+            bucket = "live_proven"
+        elif access_status == "available_now" and routing_status in {"needs_validation", "unknown"}:
+            bucket = "ready_to_validate"
+        else:
+            bucket = "unknown"
+        readiness[bucket].append(entry)
+    next_proof_steps = [
+        item["next_step"]
+        for bucket in ("ready_to_validate", "needs_setup", "manual_only")
+        for item in readiness[bucket]
+        if item.get("next_step")
+    ][:3]
     return {
         "count": len(records),
         "by_access_status": by_access_status,
+        "readiness": readiness,
+        "next_proof_steps": next_proof_steps,
         "records": records,
     }
 
