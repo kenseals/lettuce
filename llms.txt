@@ -25,7 +25,7 @@ Before installing or running setup, briefly say:
 
 > Lettuce gives your agent a local markdown+git work brain for one company/project. It keeps that work context separate from personal memory, records which sources should feed it, and lets the agent keep the context fresh from signals it can access. The point is not to make you review every signal. The point is to give your agent durable company context it can use later.
 
-Then ask these setup questions and wait for answers/confirmation:
+Then ask these setup questions **one at a time** and wait for each answer. Do not dump the whole questionnaire into chat. Show progress, for example `Question 1/6`, and give 1-2 sentences of context before each question so a first-time operator understands why it matters.
 
 1. Which work context is this for? (company, project, client, newsletter, etc.)
 2. Should I start with a local repo first, or use an existing repo/path?
@@ -35,6 +35,10 @@ Then ask these setup questions and wait for answers/confirmation:
 6. What one small meaningful sample signal should I use to calibrate the first run?
 
 If the operator already gave some of this context, summarize your assumptions and ask for confirmation. Do not silently infer the whole setup.
+
+Treat onboarding as a teaching moment. The operator may not yet understand what a repo, source, cadence, or sample means in Lettuce terms. Explain each choice in operator language before asking for the answer.
+
+Also narrate meaningful setup actions as you do them. Do not silently create files, skills/instructions, source records, handlers, reviews, or handoffs. Briefly tell the operator what you are doing and why. Example: “I’m writing repo-local agent instructions now; this tells future agents which Lettuce repo to use and how to handle sources/reviews.”
 
 ## Agent Setup Instructions
 
@@ -46,6 +50,8 @@ This is agent-operated onboarding. If you are interacting with the operator in T
 - Create or choose a local Lettuce repo for one confirmed organization/work context, not for the operator's personal memory.
 - Configure manual/direct ingestion in every normal setup so the operator can later say “run Lettuce on this.”
 - Record source intent for sources discussed with the operator, including whether each is `available_now`, `needs_setup`, `defer`, or manual-only. `manual-only` is a recipe posture for operator-forwarded/runtime-triggered sources, not a separate CLI `access_status`. Common early sources are email and call transcripts.
+- Offer to inspect/scan available runtime sources before asking the operator to enumerate everything from memory. The agent runtime owns that inspection. For each source, tell the operator: what access exists now, what still needs setup, what sample policy applies, when ingestion would happen, and what the next setup step is.
+- When writing a Lettuce skill, `LETTUCE_AGENT.md`, source record, review proposal, or handoff file, say what it is for in operator language. The operator should never wonder what the agent changed behind the scenes.
 - Ingest one small operator-approved sample signal first. Do not use the setup request itself as the sample unless the operator explicitly says to.
 - Run handlers behind a review gate during onboarding unless the operator explicitly asks to bypass review. The first run should create pending review proposals or a clear skip reason before durable `brain/*` writes.
 - Preserve provenance, consent basis, source surface, and org/operator scope.

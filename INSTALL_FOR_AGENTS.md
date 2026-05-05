@@ -23,7 +23,7 @@ Briefly explain:
 
 > Lettuce gives your agent a local markdown+git work brain for one company/project. It keeps that work context separate from personal memory, records which sources should feed it, and lets the agent keep the context fresh from signals it can access.
 
-Then ask for confirmation and the minimum setup details:
+Then ask for confirmation and the minimum setup details **one question at a time**. Show progress, such as `Question 1/5`, and include a short teaching note before each question. First-time operators do not yet know Lettuce's mental model, so every setup question should explain why the answer matters.
 
 1. Which company, client, or project is this Lettuce for?
 2. Should we start local first, or use an existing repo/path?
@@ -32,6 +32,16 @@ Then ask for confirmation and the minimum setup details:
 5. What one small meaningful sample signal should calibrate the first run?
 
 If the operator is talking to you in Telegram, Slack, iMessage, Discord, or another chat surface, do **not** ask them to run CLI commands. If your runtime has shell/tool access, run the commands yourself. If you do not have shell/file access, say so plainly and guide the setup as far as your runtime allows.
+
+Before asking the operator to enumerate sources cold, offer to scan or inspect the sources your runtime can already access. Then walk the operator through source setup one source at a time. For each selected source, explain:
+
+- current access status: `available_now`, `needs_setup`, `defer`, or manual-only posture;
+- how/when signal will ingest, such as manual trigger, daily email check, after meetings, or operator-selected samples;
+- privacy/sample boundary;
+- smallest next setup action;
+- whether the source was actually configured or merely recorded for later.
+
+As you perform setup actions, narrate the material ones with a short “what and why.” This includes creating/reusing the repo, writing `LETTUCE_AGENT.md` or runtime skill instructions, configuring each source record, ingesting the first sample, running handlers/review gate, and writing the final handoff. Keep it concise, but do not make the operator infer what changed.
 
 ## Step 1: Read the primary docs
 
@@ -81,6 +91,10 @@ lettuce setup --commit
 ```
 
 This helper introduces Lettuce, confirms the operator wants to continue, asks for org/operator/repo/source details, configures manual/direct ingestion, optionally records email and transcript source intent, ingests one first setup signal, runs handlers behind the review gate, and prints a concise final summary.
+
+The helper should feel like a guided first-run product flow, not a form. It should ask one question at a time, explain non-obvious concepts such as repo path/local-vs-existing, offer source discovery, and summarize source behavior before declaring setup complete.
+
+It should also be transparent about setup actions. A good helper says “I’m configuring manual/direct ingestion so you can later say ‘run Lettuce on this’” before it writes that source record, and “I’m writing repo-local agent instructions so future agents know how to use this Lettuce” before it creates the handoff/instruction files.
 
 If `lettuce setup --commit` fails or is unavailable, stop and report that as an onboarding bug/blocker before falling back. Only use the lower-level flow after explaining the blocker, because otherwise you are no longer testing the intended onboarding experience.
 
