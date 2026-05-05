@@ -4,6 +4,19 @@ Read this file, then follow the steps. Lettuce is meant to be set up and operate
 
 Target: 5-10 minutes to a local git-backed Lettuce repo with one first signal and manual/direct ingestion ready.
 
+## Critical: do not turn onboarding into a CLI smoke test
+
+When the operator asks for a clean install, install test, onboarding test, or says they are trying Lettuce from `llms.txt`, your primary job is to test the **public agent-operated onboarding flow**.
+
+A package smoke test is not enough. Do not silently substitute:
+
+- `lettuce onboard ...` with a canned sample signal;
+- `lettuce ingest-direct` / `lettuce run` without the setup conversation;
+- `examples/quick-demo.sh` or synthetic fixtures;
+- global install cleanup or PATH fixes as the “result.”
+
+Those are diagnostic tools after the guided setup path is proven or blocked. The first-pass success criterion is: the operator experienced the explanation, confirmation, setup questions, guided install/setup helper, first approved sample, review gate, and handoff.
+
 ## Step 0: Start with the operator, not commands
 
 Briefly explain:
@@ -69,9 +82,13 @@ lettuce setup --commit
 
 This helper introduces Lettuce, confirms the operator wants to continue, asks for org/operator/repo/source details, configures manual/direct ingestion, optionally records email and transcript source intent, ingests one first setup signal, runs handlers behind the review gate, and prints a concise final summary.
 
+If `lettuce setup --commit` fails or is unavailable, stop and report that as an onboarding bug/blocker before falling back. Only use the lower-level flow after explaining the blocker, because otherwise you are no longer testing the intended onboarding experience.
+
 Default to the solo-founder branch. That path should feel lightweight: personal repo, manual/direct ingestion, one source plan, first handler pass, optional GitHub remote later, shared streams mentioned only as future-ready context. Choose the multi-operator branch only when the operator explicitly expects multiple personal or role-agent Lettuces and wants the handoff to record hub/shared-stream intent.
 
 ## Step 4: If needed, run the lower-level flow yourself
+
+Use this section for fallback/diagnostics, not as the default clean-install path. If you start here during a public onboarding test, you are skipping the product experience Lettuce is trying to validate.
 
 Create or choose one org-scoped repo. Do not mix multiple companies/projects into one Lettuce by default.
 

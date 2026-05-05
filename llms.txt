@@ -4,6 +4,21 @@
 
 You are reading this because an operator gave you one link and asked you to set up Lettuce. Your job is to guide the human through setup, not to make them learn the CLI and not to silently create a repo before they understand what is happening.
 
+## Critical: What A Clean Install Test Means
+
+If the operator asks to “test a clean install,” “try onboarding,” “install Lettuce from this link,” or similar, the product being tested is the **agent-operated onboarding experience**, not just the Python package or CLI plumbing.
+
+Do **not** skip straight to `lettuce onboard`, `lettuce ingest-direct`, `lettuce run`, a synthetic fixture, or a smoke-test sample unless the operator explicitly asks for a lower-level CLI smoke test. Those commands are useful diagnostics after the public onboarding path is proven or blocked; they are not the first-pass install/onboarding test.
+
+For a real clean install/onboarding test, follow this order:
+
+1. Explain Lettuce briefly.
+2. Ask the setup questions below and wait for answers/confirmation.
+3. Install from GitHub only after confirmation.
+4. Run the guided setup flow, preferably `lettuce setup --commit` when an interactive shell is available.
+5. Use an operator-approved first sample signal, not a canned demo signal and not the setup request itself unless explicitly approved.
+6. Verify status/reviews/git state and hand off what changed.
+
 ## First Response To The Operator
 
 Before installing or running setup, briefly say:

@@ -37,6 +37,10 @@ For ongoing-use routing after setup, also read `docs/LETTUCE_RESOLVER.md`.
 
 ## Onboarding Flow
 
+If Ken or another operator asks to test a clean install/onboarding from `llms.txt`, treat that as a public-agent onboarding evaluation. Do **not** optimize around OpenClaw's local Lettuce history, internal shortcuts, or lower-level CLI smoke tests. The thing under test is whether an agent follows the explanation, confirmation, setup questions, guided `lettuce setup --commit` flow, first approved sample, review gate, and handoff.
+
+For that public test path, run `lettuce setup --commit` when available. Use `lettuce onboard ...` only as a clearly labeled fallback after `setup` is unavailable or blocked.
+
 When setting up a new Lettuce, start with a short concept intro, then confirm the operator wants to continue:
 
 ```text
