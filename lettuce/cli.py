@@ -755,6 +755,8 @@ def _run(argv: list[str] | None = None) -> int:
         body = _ask_multiline("Paste the first manual signal for this Lettuce. Suggested default: " + default_signal, default=default_signal)
 
         initialized = not (repo_path / "lettuce.yml").exists()
+        print("\nSetup action: creating or reusing the Lettuce repo.")
+        print("Why: this repo is the durable markdown+git work brain where streams, source records, reviews, logs, and agent instructions live.")
         files_written = init_repo(
             repo_path,
             org=org,
@@ -769,6 +771,12 @@ def _run(argv: list[str] | None = None) -> int:
         )
         configured_sources: list[str] = []
         setup_source_plan: list[dict[str, Any]] = []
+        print("\nSetup action: writing repo-local agent instructions.")
+        print("Why: future agents need a local handoff file that tells them which repo/org to use, how manual ingestion works, and where to inspect source/review policy.")
+        print("Result: LETTUCE_AGENT.md will be created or refreshed during repo setup.")
+
+        print("\nSetup action: configuring manual/direct ingestion.")
+        print("Why: this gives the operator an immediate trigger, `run Lettuce on this`, even before any external integrations are connected.")
         manual_source = configure_source(
             repo_path,
             "direct",
@@ -782,6 +790,8 @@ def _run(argv: list[str] | None = None) -> int:
         configured_sources.append(_source_summary("manual/direct", manual_source))
         setup_source_plan.append(read_source_record(repo_path, manual_source.source_id))
         if configure_email:
+            print("\nSetup action: recording the email source contract.")
+            print("Why: Lettuce does not own inbox access; the runtime does. This source record tells future agents what mailbox/label to sample, what privacy boundary applies, and that onboarding should start with small reviewed samples.")
             email_source = configure_source(
                 repo_path,
                 "email",
@@ -796,6 +806,8 @@ def _run(argv: list[str] | None = None) -> int:
             configured_sources.append(_source_summary("email", email_source))
             setup_source_plan.append(read_source_record(repo_path, email_source.source_id))
         if configure_transcript:
+            print("\nSetup action: recording the transcript source contract.")
+            print("Why: transcripts should usually ingest after meetings or from operator-approved exports, with consent/privacy boundaries recorded before any sampling.")
             transcript_source = configure_source(
                 repo_path,
                 transcript_type,
@@ -810,6 +822,8 @@ def _run(argv: list[str] | None = None) -> int:
             configured_sources.append(_source_summary("transcripts", transcript_source))
             setup_source_plan.append(read_source_record(repo_path, transcript_source.source_id))
         if configure_work:
+            print("\nSetup action: recording the work-system source contract.")
+            print("Why: tools like GitHub, Linear, docs, and Slack are runtime-owned sources. Lettuce records whether access is ready, what to sample, and what setup step remains instead of pretending an integration exists.")
             work_source = configure_source(
                 repo_path,
                 work_type,
@@ -824,6 +838,9 @@ def _run(argv: list[str] | None = None) -> int:
             configured_sources.append(_source_summary(work_type, work_source))
             setup_source_plan.append(read_source_record(repo_path, work_source.source_id))
 
+        print("\nSetup action: ingesting the first calibration signal.")
+        print("Why: the first signal proves the stream path works and gives handlers a small, operator-approved sample before any ongoing ingestion.")
+
         direct = ingest_direct_signal(
             repo_path,
             title=title,
@@ -835,6 +852,11 @@ def _run(argv: list[str] | None = None) -> int:
             commit=args.commit,
         )
         handler_command = _resolve_handler_command(args)
+        if args.no_run:
+            print("\nSetup action: skipping handlers because --no-run was set.")
+        else:
+            print("\nSetup action: running handlers behind the review gate.")
+            print("Why: onboarding should create pending review proposals before durable brain updates, so the operator can approve, edit, or decline the first outputs.")
         run_result = None if args.no_run else run_once(repo_path, stream="streams/inbox/direct", commit=args.commit, review=not args.no_review, progress=_print_progress, handler_command=handler_command)
         reviews = list_reviews(repo_path, status="pending")
 
@@ -863,6 +885,8 @@ def _run(argv: list[str] | None = None) -> int:
             commit=args.commit,
         )
         current = status(repo_path)
+        print("\nSetup action: writing onboarding handoff.")
+        print("Why: the handoff records source status, cadence/trigger hints, first-sample outcome, and next steps so future agents can resume without reconstructing this chat.")
         print(f"I set up Lettuce for {org} at {repo_path}.")
         print(
             f"Repo identity: type `{current.identity.repo_type}`, owner_kind `{current.identity.owner_kind}`, "

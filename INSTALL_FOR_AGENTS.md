@@ -41,6 +41,8 @@ Before asking the operator to enumerate sources cold, offer to scan or inspect t
 - smallest next setup action;
 - whether the source was actually configured or merely recorded for later.
 
+As you perform setup actions, narrate the material ones with a short “what and why.” This includes creating/reusing the repo, writing `LETTUCE_AGENT.md` or runtime skill instructions, configuring each source record, ingesting the first sample, running handlers/review gate, and writing the final handoff. Keep it concise, but do not make the operator infer what changed.
+
 ## Step 1: Read the primary docs
 
 - `llms.txt` is the one-link setup entrypoint and doc map.
@@ -91,6 +93,8 @@ lettuce setup --commit
 This helper introduces Lettuce, confirms the operator wants to continue, asks for org/operator/repo/source details, configures manual/direct ingestion, optionally records email and transcript source intent, ingests one first setup signal, runs handlers behind the review gate, and prints a concise final summary.
 
 The helper should feel like a guided first-run product flow, not a form. It should ask one question at a time, explain non-obvious concepts such as repo path/local-vs-existing, offer source discovery, and summarize source behavior before declaring setup complete.
+
+It should also be transparent about setup actions. A good helper says “I’m configuring manual/direct ingestion so you can later say ‘run Lettuce on this’” before it writes that source record, and “I’m writing repo-local agent instructions so future agents know how to use this Lettuce” before it creates the handoff/instruction files.
 
 If `lettuce setup --commit` fails or is unavailable, stop and report that as an onboarding bug/blocker before falling back. Only use the lower-level flow after explaining the blocker, because otherwise you are no longer testing the intended onboarding experience.
 

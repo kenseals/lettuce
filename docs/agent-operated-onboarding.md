@@ -20,6 +20,8 @@ The agent should not start by dumping commands or a wall of setup questions. It 
 
 Onboarding is a teaching moment. First-time operators do not yet know the Lettuce mental model, so questions about repo location, sources, cadence, sample signals, and review gates should include a short “why this matters” explanation before asking for an answer. Use visible progress labels such as `Question 1/6`.
 
+Onboarding is also a transparency moment. The agent should narrate material setup actions with a short what/why before or while doing them. It should not silently create skills, repo-local instructions, source records, review proposals, handoff files, or recurring-cadence expectations.
+
 Happy-path outcome:
 
 - the operator understands what Lettuce is and why it exists;
@@ -28,6 +30,8 @@ Happy-path outcome:
 - any already-available email or transcript source is recorded and sampled only within the agreed boundary;
 - durable source/skill instructions are committed so the agent can keep using Lettuce after the chat ends;
 - the operator receives a concise summary of what changed and how the agent will use Lettuce going forward.
+
+During that path, the operator should understand what the agent is doing now, why it matters, and what capability each action creates.
 
 Default onboarding branch: `solo_founder`. Use `multi_operator` only when the operator explicitly expects more than one personal or role-agent Lettuce and wants shared-stream coordination planned from the start.
 
@@ -188,6 +192,12 @@ For every source discussed, the handoff must answer:
 - What trigger/cadence applies, such as manual, daily email check, after meetings, or operator-selected only?
 - What is the next setup action if access is not ready?
 
+Before writing each source record, the agent should say what it is doing. Example:
+
+```text
+I’m recording GitHub as a work-system source now. This does not ingest any repo data yet. It tells future agents which repo/workspace to inspect, what access status we believe exists, what sample is allowed, and what setup step remains.
+```
+
 For each candidate source, classify:
 
 - `available_now`: agent already has access and can ingest with standing consent or explicit approval.
@@ -246,6 +256,13 @@ For manual/direct ingestion, make the behavior durable too. The operator's agent
 - what cadence is configured, or that the repo is manual/agent-triggered for now.
 
 Runtime-specific skills, prompts, and wrappers should point to `LETTUCE_AGENT.md` first, then inspect `sources/*.md` for the current source contract.
+
+When creating or updating `LETTUCE_AGENT.md` or runtime-specific skills/instructions, tell the operator:
+
+- that the file/instruction exists;
+- what future agents use it for;
+- whether it changes behavior automatically or only documents the expected behavior;
+- where it lives.
 
 ### 5. First Ingestion
 
