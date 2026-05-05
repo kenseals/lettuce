@@ -26,6 +26,8 @@ Do not bulk-ingest before a small reviewed sample proves the source is useful.
 
 Do not try to maintain a complete source-specific feature catalog during onboarding. The agent should use source recipes to ask the right questions, inspect current runtime access, choose a connection plan, and record the truth. Real source capability discovery belongs to the runtime/tooling at setup time.
 
+Before asking detailed source questions, show a source card that explains the source in operator language: useful signal, access methods, what connected means, first safe sample, recommended trigger, and future automation requirements.
+
 For each source, decide the intended connection mode:
 
 - `manual-only`: operator forwards, pastes, exports, or points at selected items.
@@ -34,6 +36,8 @@ For each source, decide the intended connection mode:
 - `webhook`: runtime receives authenticated events from the source and dedupes them before writing stream events.
 
 Default bias: manual or polling first, webhook only when event delivery, auth, dedupe, and scope control are clear.
+
+Also record routing status separately from access status. Example: an agent may have a mailbox and daily email cron (`access_status: available_now`) while Lettuce-specific email routing still needs validation (`routing_status: needs_validation`).
 
 Manual/direct ingestion should be available for every first setup even when no recurring source is ready. It is the default fallback path: the operator forwards or pastes a signal and says “run Lettuce on this.”
 

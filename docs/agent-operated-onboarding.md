@@ -184,6 +184,15 @@ Route each selected source through a concrete recipe instead of improvising from
 
 In the operator conversation, name the recipe you are using, then follow its questions, source record command shape, tiny sample path, verification checks, and handoff language. This keeps source setup consistent across agents and prevents vague “we’ll connect sources later” handoffs.
 
+Before source-specific questions, show a plain-English source card:
+
+- what signal this source can contribute;
+- how access might work;
+- what is actually connected now;
+- first safe sample;
+- recommended trigger for now;
+- future automation requirements.
+
 Recipes should guide the agent's setup reasoning, not try to encode every feature each external service exposes. For each source, the agent should decide and record the intended connection mode:
 
 - manual-only;
@@ -211,6 +220,7 @@ For every source discussed, the handoff must answer:
 - What privacy boundary applies?
 - What trigger/cadence applies, such as manual, daily email check, after meetings, or operator-selected only?
 - Is the intended connection mode manual, after-event, polling/cron, or webhook?
+- Is Lettuce-specific routing proven, needs validation, needs setup, deferred, or unknown?
 - What is the next setup action if access is not ready?
 - Which source recipe governs future handling?
 
