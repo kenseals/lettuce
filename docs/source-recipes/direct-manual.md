@@ -17,6 +17,17 @@ Do not build a duplicate chat bot, browser surface, or intake form inside Lettuc
 - Should onboarding and sensitive follow-ups use review mode before `brain/*` updates land?
 - What should always be skipped: personal, family, legal, medical, recruiting, or other out-of-scope content?
 
+## Connection Plan
+
+Manual/direct is the baseline connection plan. It requires no API, MCP, webhook, or cron.
+
+- Trigger: operator explicitly forwards, pastes, dictates, exports, or points at a signal.
+- Access method: current agent conversation, temporary file, or local shell-controlled input.
+- Scheduling: none unless a later runtime task chooses to periodically ask for/manual-review signal.
+- Fallback: if another source is not connected yet, use this recipe to ingest one selected item with provenance.
+
+Do not turn manual/direct into background polling. If the source becomes recurring, add a separate source record using the appropriate recipe.
+
 ## Classification
 
 - `manual-only`

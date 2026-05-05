@@ -527,8 +527,11 @@ else:
                     "y",
                     "walm-e-email",
                     "walm-e@example.com",
+                    "available_now",
                     "first-5-operator-approved",
                     "skip personal mail",
+                    "manual until useful; then daily runtime check",
+                    "sample operator-approved email threads before bulk ingest",
                     "n",
                     "n",
                     "Setup signal",
@@ -557,6 +560,9 @@ else:
             self.assertTrue((repo / "LETTUCE_AGENT.md").exists())
             self.assertTrue((repo / "sources" / "direct-manual-direct.md").exists())
             self.assertTrue((repo / "sources" / "email-walm-e-email.md").exists())
+            email_source = (repo / "sources" / "email-walm-e-email.md").read_text(encoding="utf-8")
+            self.assertIn("recipe: docs/source-recipes/email-recurring.md", email_source)
+            self.assertIn("trigger_policy: manual until useful; then daily runtime check", email_source)
             handoff = json.loads((repo / "onboarding" / "setup" / "handoff.json").read_text(encoding="utf-8"))
             self.assertEqual(handoff["onboarding_path"], "solo_founder")
             self.assertTrue(any((repo / "reviews" / "pending").glob("*.md")))

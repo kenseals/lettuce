@@ -24,6 +24,17 @@ For every source class:
 
 Do not bulk-ingest before a small reviewed sample proves the source is useful.
 
+Do not try to maintain a complete source-specific feature catalog during onboarding. The agent should use source recipes to ask the right questions, inspect current runtime access, choose a connection plan, and record the truth. Real source capability discovery belongs to the runtime/tooling at setup time.
+
+For each source, decide the intended connection mode:
+
+- `manual-only`: operator forwards, pastes, exports, or points at selected items.
+- `after-event`: runtime reacts when a transcript, notification, exported file, or forwarded item appears.
+- `polling/cron`: runtime checks a scoped query/project/mailbox/channel on a schedule.
+- `webhook`: runtime receives authenticated events from the source and dedupes them before writing stream events.
+
+Default bias: manual or polling first, webhook only when event delivery, auth, dedupe, and scope control are clear.
+
 Manual/direct ingestion should be available for every first setup even when no recurring source is ready. It is the default fallback path: the operator forwards or pastes a signal and says “run Lettuce on this.”
 
 For onboarding-path decisions:
@@ -47,6 +58,21 @@ Recipe library:
 
 - `docs/source-recipes/direct-manual.md`
 - `docs/source-recipes/email-recurring.md`
+- `docs/source-recipes/transcripts-after-meeting.md`
+- `docs/source-recipes/work-systems-github-linear.md`
+
+## Recipe Routing Table
+
+Use this table during onboarding. The agent should name the recipe it is using so the operator understands what is being configured.
+
+| Source class | Recipe | Default stream | First setup posture |
+| --- | --- | --- | --- |
+| Direct notes / pasted signal | `direct-manual.md` | `streams/inbox/direct` | Always configure; manual-only trigger. |
+| Email / mailbox / forwarded thread | `email-recurring.md` | `streams/inbox/email` | Sample-first; daily only after useful review output. |
+| Meeting transcripts / call summaries | `transcripts-after-meeting.md` | `streams/inbox/transcripts` | After-meeting or operator-selected; 1-3 sample calls first. |
+| GitHub / Linear / docs / Slack / Notion | `work-systems-github-linear.md` | `streams/inbox/work` | Scoped repo/project/channel only; record access honestly. |
+
+Recipe-driven onboarding rule: after a source is selected, do not move on until the operator knows whether the source was actually configured, what can be sampled now, what cadence/trigger applies, and what setup action remains.
 
 ## Email
 
@@ -185,6 +211,8 @@ Prefer:
 
 Examples: GitHub, Linear, Notion, Slack, Google Docs, support tools, CRM.
 
+For the full recipe, see `docs/source-recipes/work-systems-github-linear.md`.
+
 ### Discovery Questions
 
 - Which system already contains decisions, customer signal, or work state?
@@ -207,9 +235,9 @@ Start with a bounded sample:
 
 Default streams depend on source shape:
 
-- decisions/docs: `streams/inbox/direct` or `streams/inbox/raw`
-- issues/actions: `streams/inbox/raw`
-- customer/support: `streams/inbox/email` or a future support stream
+- GitHub/Linear/docs/Slack/Notion setup records: `streams/inbox/work`
+- decisions/docs bridged through chat when no work-system stream handlers exist yet: `streams/inbox/direct`
+- customer/support email-shaped signal: `streams/inbox/email` or a future support stream
 
 ## Source Record Shape
 
