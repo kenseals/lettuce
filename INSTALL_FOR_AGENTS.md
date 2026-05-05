@@ -36,6 +36,8 @@ If the operator is talking to you in Telegram, Slack, iMessage, Discord, or anot
 Before asking the operator to enumerate sources cold, offer to scan or inspect the sources your runtime can already access. Then walk the operator through source setup one source at a time. For each selected source, explain:
 
 - current access status: `available_now`, `needs_setup`, `defer`, or manual-only posture;
+- Lettuce routing status: `proven`, `needs_validation`, `needs_setup`, `defer`, or `unknown`;
+- intended connection mode: `manual-only`, `after-event`, `polling-cron`, `webhook`, or `unknown`;
 - how/when signal will ingest, such as manual trigger, daily email check, after meetings, or operator-selected samples;
 - privacy/sample boundary;
 - smallest next setup action;

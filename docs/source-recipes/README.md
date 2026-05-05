@@ -38,6 +38,30 @@ Recipes should guide source setup without trying to maintain an exhaustive catal
 
 When a source needs real API/MCP/webhook/cron work, the recipe should create a clear setup plan, not pretend the integration exists. Lettuce owns the durable contract and events; the runtime owns implementation and scheduling.
 
+## Source Cards Before Questions
+
+Before asking source-specific setup questions, show the operator a compact source card in plain language:
+
+1. **Useful signal**: what this source might contribute.
+2. **How access might work**: API, MCP, CLI auth, browser, export, forwarding, webhook, polling/cron, or manual selection.
+3. **What connected means**: the difference between infrastructure existing and Lettuce routing being proven.
+4. **First safe sample**: the smallest proof-of-value ingest.
+5. **Recommended trigger**: manual, after-event, polling/cron, webhook, or unknown.
+6. **Future automation**: auth, scope, dedupe, schedule/webhook receiver, privacy, and failure visibility.
+
+This prevents operators from having to decode terms like "manual GitHub" or "after-meeting transcripts" before they have a mental model.
+
+## Recommended Source Record Metadata
+
+In addition to `access_status`, source records should preserve:
+
+- `connection_mode`: `manual-only`, `after-event`, `polling-cron`, `webhook`, or `unknown`.
+- `routing_status`: `proven`, `needs_validation`, `needs_setup`, `defer`, or `unknown`.
+- `trigger_policy`: operator-readable cadence/trigger explanation.
+- source-specific scope fields such as `workspace`, `address`, `signal_type`, `query`, or `label`.
+
+Why both `access_status` and `routing_status`? A runtime may have access to a mailbox, repo, or account, while Lettuce-specific relevance/routing is still unproven. The record should make that distinction visible.
+
 ## Classification Rule
 
 `manual-only` is an agent-readable recipe posture, not a CLI `access_status` enum. When a source is manual-only:

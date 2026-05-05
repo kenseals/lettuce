@@ -74,6 +74,30 @@ def _ask_access_status(prompt: str, *, default: str = "needs_setup") -> str:
         print("Please answer one of: available_now, needs_setup, defer, unknown.")
 
 
+def _ask_connection_mode(prompt: str, *, default: str = "manual-only") -> str:
+    valid = {"manual-only", "after-event", "polling-cron", "webhook", "unknown"}
+    while True:
+        value = _ask(prompt, default=default).strip().lower()
+        if value in valid:
+            return value
+        print("Please answer one of: manual-only, after-event, polling-cron, webhook, unknown.")
+
+
+def _ask_routing_status(prompt: str, *, default: str = "needs_validation") -> str:
+    valid = {"proven", "needs_validation", "needs_setup", "defer", "unknown"}
+    while True:
+        value = _ask(prompt, default=default).strip().lower()
+        if value in valid:
+            return value
+        print("Please answer one of: proven, needs_validation, needs_setup, defer, unknown.")
+
+
+def _source_card(title: str, lines: list[tuple[str, str]]) -> None:
+    print(f"\nSource card: {title}")
+    for label, value in lines:
+        print(f"- {label}: {value}")
+
+
 def _ask_multiline(prompt: str, *, default: str) -> str:
     print(prompt)
     print("End with a single '.' on its own line. Leave blank, then '.', to use the suggested setup signal.")
@@ -721,12 +745,25 @@ def _run(argv: list[str] | None = None) -> int:
             "Email can become a recurring source, but first setup should only record access/status and a small sample policy. Do not bulk ingest the inbox during onboarding.",
         )
         print("Using recipe: docs/source-recipes/email-recurring.md")
+        _source_card(
+            "Email",
+            [
+                ("Useful signal", "customer threads, decisions, support/vendor updates, newsletters or reference material that clearly belong to this work context"),
+                ("How access might work", "existing mailbox/cron, OAuth/API/IMAP, browser session, forwarding, export, or operator-forwarded samples"),
+                ("What connected means", "mailbox access alone is not enough; Lettuce routing is proven only after a scoped sample is ingested and reviewed"),
+                ("First safe sample", "1-3 operator-approved messages or one thread, never a full inbox pull"),
+                ("Recommended trigger", "manual/forwarded sample first; daily polling only after routing proves useful"),
+                ("Future automation", "scope query/label, privacy rules, dedupe by message/thread id, and runtime-owned schedule/webhook/forwarding"),
+            ],
+        )
         configure_email = _ask_yes_no("Do you already have an email source to record for this Lettuce?", default=False)
-        email_name = email_address = email_policy = email_privacy = email_status = email_next_action = email_trigger = ""
+        email_name = email_address = email_policy = email_privacy = email_status = email_next_action = email_trigger = email_connection_mode = email_routing_status = ""
         if configure_email:
             email_name = _ask("Email source name", default="operator-selected-email")
             email_address = _ask("Mailbox/account/label", default="operator-selected")
             email_status = _ask_access_status("Email access status: available_now, needs_setup, defer, or unknown", default="needs_setup")
+            email_routing_status = _ask_routing_status("Email Lettuce routing status: proven, needs_validation, needs_setup, defer, or unknown", default="needs_validation")
+            email_connection_mode = _ask_connection_mode("Email connection mode: manual-only, after-event, polling-cron, webhook, or unknown", default="manual-only")
             email_policy = _ask("Email sample policy", default="first-5-operator-approved")
             email_privacy = _ask("Email privacy notes", default="skip personal/legal/medical/unrelated mail")
             email_trigger = _ask("Email trigger/cadence", default="manual until first sample is approved; then runtime-owned daily check if useful")
@@ -739,8 +776,19 @@ def _run(argv: list[str] | None = None) -> int:
             "Transcripts are usually best triggered after meetings or from an operator-approved export. Record the source and privacy boundary now; sample only a few relevant calls first.",
         )
         print("Using recipe: docs/source-recipes/transcripts-after-meeting.md")
+        _source_card(
+            "Transcripts",
+            [
+                ("Useful signal", "customer calls, product discovery, sales/support calls, internal decisions, and meeting follow-ups"),
+                ("How access might work", "Fathom/Granola/Zoom/Otter/Meet connector, MCP/API, browser session, transcript emails, local exports, or pasted files"),
+                ("What connected means", "having an account is not the same as runtime access; mark needs_setup until the agent can read/export a sample"),
+                ("First safe sample", "1-3 operator-approved org-scoped transcripts with consent/provenance preserved"),
+                ("Recommended trigger", "after-meeting when available; daily polling or operator export as the simpler fallback"),
+                ("Future automation", "calendar/tool access, event or polling trigger, source ids, dedupe, consent boundaries, and recovery from missed meetings"),
+            ],
+        )
         configure_transcript = _ask_yes_no("Do you already have a call transcript source to record?", default=False)
-        transcript_type = transcript_name = transcript_workspace = transcript_policy = transcript_privacy = transcript_status = transcript_next_action = transcript_trigger = ""
+        transcript_type = transcript_name = transcript_workspace = transcript_policy = transcript_privacy = transcript_status = transcript_next_action = transcript_trigger = transcript_connection_mode = transcript_routing_status = ""
         if configure_transcript:
             transcript_type = _ask("Transcript source type: fathom, granola, zoom, or transcript", default="transcript").lower()
             if transcript_type not in {"fathom", "granola", "zoom", "transcript"}:
@@ -748,6 +796,8 @@ def _run(argv: list[str] | None = None) -> int:
             transcript_name = _ask("Transcript source name", default=f"{transcript_type}-selected-transcripts")
             transcript_workspace = _ask("Workspace/account/export label", default="operator-selected")
             transcript_status = _ask_access_status("Transcript access status: available_now, needs_setup, defer, or unknown", default="needs_setup")
+            transcript_routing_status = _ask_routing_status("Transcript Lettuce routing status: proven, needs_validation, needs_setup, defer, or unknown", default="needs_setup")
+            transcript_connection_mode = _ask_connection_mode("Transcript connection mode: manual-only, after-event, polling-cron, webhook, or unknown", default="after-event")
             transcript_policy = _ask("Transcript sample policy", default="first-3-operator-approved")
             transcript_privacy = _ask("Transcript privacy notes", default="only org-scoped calls with consent/permission")
             transcript_trigger = _ask("Transcript trigger/cadence", default="after-meeting or operator-selected export")
@@ -760,15 +810,29 @@ def _run(argv: list[str] | None = None) -> int:
             "If GitHub, Linear, docs, or Slack matter, record the intent/status now so future agents know whether to sample, connect, or defer. Then use one small sample signal to calibrate the first handler run. If you do not know what sample to use, accept the suggested one.",
         )
         print("Using recipe: docs/source-recipes/work-systems-github-linear.md")
+        _source_card(
+            "Work systems",
+            [
+                ("Useful signal", "selected issues/PRs, new or changed issues, PR review outcomes, comments that imply decisions, releases, docs, or project blockers"),
+                ("How access might work", "existing API/MCP/tool connector, authenticated CLI, browser session, public URL, export, or operator-provided links"),
+                ("What connected means", "repo/tool access plus a scoped signal type; do not ingest the whole workspace just because access exists"),
+                ("First safe sample", "3-5 selected issues/PRs/docs or one explicit URL set with ids/URLs preserved"),
+                ("Recommended trigger", "operator-selected samples first; daily polling for scoped changes if useful; webhook only with auth/dedupe/scope"),
+                ("Future automation", "source query, event ids, dedupe keys, privacy boundaries, schedule/webhook receiver, and failure visibility"),
+            ],
+        )
         configure_work = _ask_yes_no("Record a GitHub/Linear/docs/Slack-style work-system source?", default=False)
-        work_type = work_name = work_label = work_policy = work_privacy = work_status = work_next_action = work_trigger = ""
+        work_type = work_name = work_label = work_policy = work_privacy = work_status = work_next_action = work_trigger = work_connection_mode = work_routing_status = work_signal_type = ""
         if configure_work:
             work_type = _ask("Work-system source type: github, linear, notion, slack, or docs", default="github").lower()
             if work_type not in {"github", "linear", "notion", "slack", "docs"}:
                 raise ValueError("work-system source type must be github, linear, notion, slack, or docs")
             work_name = _ask("Work-system source name", default=f"{work_type}-selected-work")
             work_label = _ask("Repo/workspace/project label", default="operator-selected")
+            work_signal_type = _ask("What signal should this source look for?", default="operator-selected issues/PRs/docs first")
             work_status = _ask_access_status("Work-system access status: available_now, needs_setup, defer, or unknown", default="needs_setup")
+            work_routing_status = _ask_routing_status("Work-system Lettuce routing status: proven, needs_validation, needs_setup, defer, or unknown", default="needs_validation")
+            work_connection_mode = _ask_connection_mode("Work-system connection mode: manual-only, after-event, polling-cron, webhook, or unknown", default="manual-only")
             work_policy = _ask("Work-system sample policy", default="operator-approved small sample before bulk ingest")
             work_privacy = _ask("Work-system privacy notes", default="only org-scoped project signal; skip secrets and unrelated repos")
             work_trigger = _ask("Work-system trigger/cadence", default="manual/operator-selected until first sample is useful")
@@ -823,7 +887,13 @@ def _run(argv: list[str] | None = None) -> int:
                 repo_path,
                 "email",
                 name=email_name,
-                metadata={"address": email_address, "recipe": "docs/source-recipes/email-recurring.md", "trigger_policy": email_trigger},
+                metadata={
+                    "address": email_address,
+                    "recipe": "docs/source-recipes/email-recurring.md",
+                    "connection_mode": email_connection_mode,
+                    "routing_status": email_routing_status,
+                    "trigger_policy": email_trigger,
+                },
                 access_status=email_status,
                 sample_policy=email_policy,
                 privacy_notes=email_privacy,
@@ -840,7 +910,13 @@ def _run(argv: list[str] | None = None) -> int:
                 repo_path,
                 transcript_type,
                 name=transcript_name,
-                metadata={"workspace": transcript_workspace, "recipe": "docs/source-recipes/transcripts-after-meeting.md", "trigger_policy": transcript_trigger},
+                metadata={
+                    "workspace": transcript_workspace,
+                    "recipe": "docs/source-recipes/transcripts-after-meeting.md",
+                    "connection_mode": transcript_connection_mode,
+                    "routing_status": transcript_routing_status,
+                    "trigger_policy": transcript_trigger,
+                },
                 access_status=transcript_status,
                 sample_policy=transcript_policy,
                 privacy_notes=transcript_privacy,
@@ -857,7 +933,14 @@ def _run(argv: list[str] | None = None) -> int:
                 repo_path,
                 work_type,
                 name=work_name,
-                metadata={"workspace": work_label, "recipe": "docs/source-recipes/work-systems-github-linear.md", "trigger_policy": work_trigger},
+                metadata={
+                    "workspace": work_label,
+                    "signal_type": work_signal_type,
+                    "recipe": "docs/source-recipes/work-systems-github-linear.md",
+                    "connection_mode": work_connection_mode,
+                    "routing_status": work_routing_status,
+                    "trigger_policy": work_trigger,
+                },
                 access_status=work_status,
                 sample_policy=work_policy,
                 privacy_notes=work_privacy,

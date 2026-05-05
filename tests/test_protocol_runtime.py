@@ -528,6 +528,8 @@ else:
                     "walm-e-email",
                     "walm-e@example.com",
                     "available_now",
+                    "needs_validation",
+                    "polling-cron",
                     "first-5-operator-approved",
                     "skip personal mail",
                     "manual until useful; then daily runtime check",
@@ -562,6 +564,8 @@ else:
             self.assertTrue((repo / "sources" / "email-walm-e-email.md").exists())
             email_source = (repo / "sources" / "email-walm-e-email.md").read_text(encoding="utf-8")
             self.assertIn("recipe: docs/source-recipes/email-recurring.md", email_source)
+            self.assertIn("connection_mode: polling-cron", email_source)
+            self.assertIn("routing_status: needs_validation", email_source)
             self.assertIn("trigger_policy: manual until useful; then daily runtime check", email_source)
             handoff = json.loads((repo / "onboarding" / "setup" / "handoff.json").read_text(encoding="utf-8"))
             self.assertEqual(handoff["onboarding_path"], "solo_founder")

@@ -2,9 +2,13 @@
 
 Lettuce exists because agents are becoming the way operators do work, but most agents still have no durable, portable, org-scoped place to keep company context.
 
+The next version of high-leverage work is not just one assistant answering questions. It is operators and teams managing small fleets of agents across coding, research, support, GTM, and operations. Those fleets need orchestration, task graphs, guardrails, and coordination, but they also need something more basic: a scoped, inspectable, versioned place where company context can compound without bleeding across roles or tools.
+
 An operator can have one agent and many hats: a day job, a side project, a client, a nonprofit board, a personal life. Those contexts should not bleed together.
 
 Lettuce gives the agent a separate work brain per organization.
+
+It is also becoming the agent's **context and connector control plane** for that organization. Not just memory, and not just integrations: Lettuce records what systems feed context in, which handlers interpret that signal, what company context has been accepted, and eventually which destinations can be safely updated.
 
 ## The promise
 
@@ -19,6 +23,25 @@ For each `(operator, org)` pair, Lettuce provides:
 - subscription records so separate Lettuces can later exchange scoped streams.
 
 The agent runtime, OpenClaw in v0, owns conversation, tools, source access, auth, browser sessions, and scheduling. Lettuce owns the durable protocol the agent uses once it has signal.
+
+## Connectors, sources, and destinations
+
+Use this product language carefully:
+
+- **Connector**: an external system relationship the agent runtime can use for this org.
+- **Source**: an inbound connector that brings signal into Lettuce, such as email, transcripts, GitHub issues, Linear, Slack, docs, files, or direct/manual operator input.
+- **Destination** or **surface**: an outbound connector where accepted context or approved actions may go later, such as Linear issues, GitHub comments, docs, CRM, support tools, Slack, or roadmap/task systems.
+- **Bidirectional connector**: a system like GitHub, Linear, Slack, or docs that can both emit useful signal and receive approved updates.
+
+For v0, keep the repo protocol concrete: `sources/*` are inbound source records, `handlers/*` interpret streams, `brain/*` stores accepted context, and review records gate uncertain or sensitive updates. Do not prematurely rename the protocol around a broad connector abstraction.
+
+But the broader product direction is important: Lettuce should help the operator and agent see, in one place, which connectors exist, what readiness state they are in, what handlers run over their signal, what context has been accepted, and what outward surfaces are safe to update.
+
+Example:
+
+- GitHub as a **source**: issues, PRs, comments, releases, and review outcomes can become signal.
+- GitHub as a **destination**: approved context may create/comment/update an issue or PR note.
+- Lettuce's job is not to own GitHub auth or webhook plumbing. The runtime owns that. Lettuce owns the durable contract, provenance, review/freshness state, and the rules that prevent the agent from treating access as permission to ingest or write everything.
 
 ## Why not just agent memory?
 
