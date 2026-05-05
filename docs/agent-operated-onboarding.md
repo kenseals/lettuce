@@ -173,6 +173,17 @@ Use this order:
 4. Work systems such as GitHub, Linear, Notion, Slack, Docs, CRM, support tools.
 5. Manual file drops or pasted links.
 
+Route each selected source through a concrete recipe instead of improvising from a generic checklist:
+
+| Source | Recipe |
+| --- | --- |
+| Direct/manual operator signal | `docs/source-recipes/direct-manual.md` |
+| Email/mailbox/forwarded threads | `docs/source-recipes/email-recurring.md` |
+| Meeting transcripts/call summaries | `docs/source-recipes/transcripts-after-meeting.md` |
+| GitHub/Linear/docs/Slack/Notion | `docs/source-recipes/work-systems-github-linear.md` |
+
+In the operator conversation, name the recipe you are using, then follow its questions, source record command shape, tiny sample path, verification checks, and handoff language. This keeps source setup consistent across agents and prevents vague “we’ll connect sources later” handoffs.
+
 The first setup should almost always configure **manual/direct ingestion** even if no other source is available. This gives the operator an immediate way to say “run Lettuce on this” and get a review packet without OAuth, connectors, or polling.
 
 For many users, also try to configure one recurring source if available without heavy setup:
@@ -191,6 +202,7 @@ For every source discussed, the handoff must answer:
 - What privacy boundary applies?
 - What trigger/cadence applies, such as manual, daily email check, after meetings, or operator-selected only?
 - What is the next setup action if access is not ready?
+- Which source recipe governs future handling?
 
 Before writing each source record, the agent should say what it is doing. Example:
 

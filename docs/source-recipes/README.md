@@ -33,6 +33,24 @@ Every recipe should answer the same questions in the same order:
 
 - `direct-manual.md`: baseline recipe every first setup should support.
 - `email-recurring.md`: recurring-ish email recipe that still starts sample-first and runtime-owned.
+- `transcripts-after-meeting.md`: transcript setup for Fathom/Granola/Zoom/Otter/exports with after-meeting or operator-selected triggers.
+- `work-systems-github-linear.md`: GitHub, Linear, docs, Notion, and Slack work-system setup with scoped samples and honest access status.
+
+## Onboarding Use
+
+During first setup, the agent should not ask a generic source question and then improvise. Use recipes as the source setup engine:
+
+1. Identify candidate source classes with the operator.
+2. Load the relevant recipe before asking source-specific questions.
+3. Explain what the source can contribute and what the runtime, not Lettuce, must own.
+4. Ask the recipe's operator questions one at a time.
+5. Classify the source honestly.
+6. Write a source record using the recipe's command shape.
+7. If possible, run the recipe's first tiny sample path.
+8. Run the recipe's verification checks.
+9. Hand off the result using the recipe's handoff language.
+
+If the runtime cannot actually inspect a source yet, do not describe it as connected. Record `needs_setup`, `defer`, or manual-only posture and tell the operator the smallest next action.
 
 ## Freshness Mode Hints
 

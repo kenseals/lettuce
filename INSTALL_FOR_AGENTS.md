@@ -43,13 +43,15 @@ Before asking the operator to enumerate sources cold, offer to scan or inspect t
 
 As you perform setup actions, narrate the material ones with a short “what and why.” This includes creating/reusing the repo, writing `LETTUCE_AGENT.md` or runtime skill instructions, configuring each source record, ingesting the first sample, running handlers/review gate, and writing the final handoff. Keep it concise, but do not make the operator infer what changed.
 
+Use `docs/source-discovery-recipes.md` to route each selected source to a concrete recipe under `docs/source-recipes/`. Name the recipe you are using in the operator conversation, then follow its operator questions, source record command, first tiny sample path, verification checks, and handoff language.
+
 ## Step 1: Read the primary docs
 
 - `llms.txt` is the one-link setup entrypoint and doc map.
 - `AGENTS.md` is the public operating protocol for non-Claude agents.
 - `docs/agent-operated-onboarding.md` is the detailed setup contract.
 - `docs/source-discovery-recipes.md` covers source intent and safe sampling.
-- `docs/source-recipes/` contains concrete agent-readable recipes for direct/manual and recurring-ish sources.
+- `docs/source-recipes/` contains concrete agent-readable recipes for direct/manual, email, transcripts, and work systems such as GitHub/Linear/docs/Slack.
 - `docs/trust-boundary.md` formalizes trust modes, operation classes, and path mutation rules.
 - `docs/LETTUCE_VERIFY.md` is the post-setup verification runbook.
 - `docs/LETTUCE_RESOLVER.md` is the ongoing-use resolver after setup.
@@ -63,6 +65,8 @@ If you fetched this file by URL, companion files live at:
 - `https://raw.githubusercontent.com/kenseals/lettuce/main/docs/source-recipes/README.md`
 - `https://raw.githubusercontent.com/kenseals/lettuce/main/docs/source-recipes/direct-manual.md`
 - `https://raw.githubusercontent.com/kenseals/lettuce/main/docs/source-recipes/email-recurring.md`
+- `https://raw.githubusercontent.com/kenseals/lettuce/main/docs/source-recipes/transcripts-after-meeting.md`
+- `https://raw.githubusercontent.com/kenseals/lettuce/main/docs/source-recipes/work-systems-github-linear.md`
 - `https://raw.githubusercontent.com/kenseals/lettuce/main/docs/trust-boundary.md`
 - `https://raw.githubusercontent.com/kenseals/lettuce/main/docs/LETTUCE_VERIFY.md`
 - `https://raw.githubusercontent.com/kenseals/lettuce/main/docs/LETTUCE_RESOLVER.md`

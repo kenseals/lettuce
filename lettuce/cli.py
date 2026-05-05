@@ -65,6 +65,15 @@ def _ask_yes_no(prompt: str, *, default: bool = False) -> bool:
         print("Please answer y or n.")
 
 
+def _ask_access_status(prompt: str, *, default: str = "needs_setup") -> str:
+    valid = {"available_now", "needs_setup", "defer", "unknown"}
+    while True:
+        value = _ask(prompt, default=default).strip().lower()
+        if value in valid:
+            return value
+        print("Please answer one of: available_now, needs_setup, defer, unknown.")
+
+
 def _ask_multiline(prompt: str, *, default: str) -> str:
     print(prompt)
     print("End with a single '.' on its own line. Leave blank, then '.', to use the suggested setup signal.")
@@ -696,6 +705,11 @@ def _run(argv: list[str] | None = None) -> int:
             "Sources are where company signal will come from. I can record likely sources now even if some still need setup. During real agent onboarding, the agent should also scan its available runtime tools before asking you to connect anything new.",
         )
         print("Common source categories: direct notes, email, meeting transcripts, GitHub, Linear, Notion/docs, Slack/Discord, support/CRM, and manual file drops.")
+        print("Recipe routing:")
+        print("- direct/manual → docs/source-recipes/direct-manual.md")
+        print("- email/mailbox → docs/source-recipes/email-recurring.md")
+        print("- transcripts/calls → docs/source-recipes/transcripts-after-meeting.md")
+        print("- GitHub/Linear/docs/Slack → docs/source-recipes/work-systems-github-linear.md")
         offer_scan = _ask_yes_no("Should the agent scan/check available runtime sources before asking for new setup?", default=True)
         if offer_scan:
             print("Source scan noted: this CLI cannot inspect runtime accounts directly, so the agent should do that outside Lettuce and record the findings here.")
@@ -706,13 +720,17 @@ def _run(argv: list[str] | None = None) -> int:
             "Email source",
             "Email can become a recurring source, but first setup should only record access/status and a small sample policy. Do not bulk ingest the inbox during onboarding.",
         )
+        print("Using recipe: docs/source-recipes/email-recurring.md")
         configure_email = _ask_yes_no("Do you already have an email source to record for this Lettuce?", default=False)
-        email_name = email_address = email_policy = email_privacy = ""
+        email_name = email_address = email_policy = email_privacy = email_status = email_next_action = email_trigger = ""
         if configure_email:
             email_name = _ask("Email source name", default="operator-selected-email")
             email_address = _ask("Mailbox/account/label", default="operator-selected")
+            email_status = _ask_access_status("Email access status: available_now, needs_setup, defer, or unknown", default="needs_setup")
             email_policy = _ask("Email sample policy", default="first-5-operator-approved")
             email_privacy = _ask("Email privacy notes", default="skip personal/legal/medical/unrelated mail")
+            email_trigger = _ask("Email trigger/cadence", default="manual until first sample is approved; then runtime-owned daily check if useful")
+            email_next_action = _ask("Email next setup/action", default="sample operator-approved email threads before bulk ingest")
 
         _question(
             8,
@@ -720,16 +738,20 @@ def _run(argv: list[str] | None = None) -> int:
             "Transcript source",
             "Transcripts are usually best triggered after meetings or from an operator-approved export. Record the source and privacy boundary now; sample only a few relevant calls first.",
         )
+        print("Using recipe: docs/source-recipes/transcripts-after-meeting.md")
         configure_transcript = _ask_yes_no("Do you already have a call transcript source to record?", default=False)
-        transcript_type = transcript_name = transcript_workspace = transcript_policy = transcript_privacy = ""
+        transcript_type = transcript_name = transcript_workspace = transcript_policy = transcript_privacy = transcript_status = transcript_next_action = transcript_trigger = ""
         if configure_transcript:
             transcript_type = _ask("Transcript source type: fathom, granola, zoom, or transcript", default="transcript").lower()
             if transcript_type not in {"fathom", "granola", "zoom", "transcript"}:
                 raise ValueError("transcript source type must be fathom, granola, zoom, or transcript")
             transcript_name = _ask("Transcript source name", default=f"{transcript_type}-selected-transcripts")
             transcript_workspace = _ask("Workspace/account/export label", default="operator-selected")
+            transcript_status = _ask_access_status("Transcript access status: available_now, needs_setup, defer, or unknown", default="needs_setup")
             transcript_policy = _ask("Transcript sample policy", default="first-3-operator-approved")
             transcript_privacy = _ask("Transcript privacy notes", default="only org-scoped calls with consent/permission")
+            transcript_trigger = _ask("Transcript trigger/cadence", default="after-meeting or operator-selected export")
+            transcript_next_action = _ask("Transcript next setup/action", default="export/share one transcript or connect the existing transcript tool in the runtime")
 
         _question(
             9,
@@ -737,17 +759,19 @@ def _run(argv: list[str] | None = None) -> int:
             "Work-system source and first sample",
             "If GitHub, Linear, docs, or Slack matter, record the intent/status now so future agents know whether to sample, connect, or defer. Then use one small sample signal to calibrate the first handler run. If you do not know what sample to use, accept the suggested one.",
         )
+        print("Using recipe: docs/source-recipes/work-systems-github-linear.md")
         configure_work = _ask_yes_no("Record a GitHub/Linear/docs/Slack-style work-system source?", default=False)
-        work_type = work_name = work_label = work_policy = work_privacy = work_status = work_next_action = ""
+        work_type = work_name = work_label = work_policy = work_privacy = work_status = work_next_action = work_trigger = ""
         if configure_work:
             work_type = _ask("Work-system source type: github, linear, notion, slack, or docs", default="github").lower()
             if work_type not in {"github", "linear", "notion", "slack", "docs"}:
                 raise ValueError("work-system source type must be github, linear, notion, slack, or docs")
             work_name = _ask("Work-system source name", default=f"{work_type}-selected-work")
             work_label = _ask("Repo/workspace/project label", default="operator-selected")
-            work_status = _ask("Work-system access status: available_now, needs_setup, defer, or unknown", default="needs_setup")
+            work_status = _ask_access_status("Work-system access status: available_now, needs_setup, defer, or unknown", default="needs_setup")
             work_policy = _ask("Work-system sample policy", default="operator-approved small sample before bulk ingest")
             work_privacy = _ask("Work-system privacy notes", default="only org-scoped project signal; skip secrets and unrelated repos")
+            work_trigger = _ask("Work-system trigger/cadence", default="manual/operator-selected until first sample is useful")
             work_next_action = _ask("Work-system next setup/action", default="agent should inspect available runtime access, then sample selected issues/PRs only")
 
         default_signal = f"Operator set up Lettuce for {org}. Manual/direct ingestion should be available, source boundaries should be explicit, and durable updates should go through review before brain writes."
@@ -777,10 +801,12 @@ def _run(argv: list[str] | None = None) -> int:
 
         print("\nSetup action: configuring manual/direct ingestion.")
         print("Why: this gives the operator an immediate trigger, `run Lettuce on this`, even before any external integrations are connected.")
+        print("Recipe: docs/source-recipes/direct-manual.md")
         manual_source = configure_source(
             repo_path,
             "direct",
             name="manual-direct",
+            metadata={"recipe": "docs/source-recipes/direct-manual.md", "trigger_policy": "manual: operator says 'run Lettuce on this'"},
             access_status="available_now",
             sample_policy="operator-forwarded-or-pasted-signals; review before brain writes",
             privacy_notes="skip personal-life context and unrelated org signal; preserve provenance and consent",
@@ -792,15 +818,16 @@ def _run(argv: list[str] | None = None) -> int:
         if configure_email:
             print("\nSetup action: recording the email source contract.")
             print("Why: Lettuce does not own inbox access; the runtime does. This source record tells future agents what mailbox/label to sample, what privacy boundary applies, and that onboarding should start with small reviewed samples.")
+            print("Recipe: docs/source-recipes/email-recurring.md")
             email_source = configure_source(
                 repo_path,
                 "email",
                 name=email_name,
-                metadata={"address": email_address},
-                access_status="available_now",
+                metadata={"address": email_address, "recipe": "docs/source-recipes/email-recurring.md", "trigger_policy": email_trigger},
+                access_status=email_status,
                 sample_policy=email_policy,
                 privacy_notes=email_privacy,
-                setup_next_action="sample operator-approved email threads before bulk ingest",
+                setup_next_action=email_next_action,
                 commit=args.commit,
             )
             configured_sources.append(_source_summary("email", email_source))
@@ -808,15 +835,16 @@ def _run(argv: list[str] | None = None) -> int:
         if configure_transcript:
             print("\nSetup action: recording the transcript source contract.")
             print("Why: transcripts should usually ingest after meetings or from operator-approved exports, with consent/privacy boundaries recorded before any sampling.")
+            print("Recipe: docs/source-recipes/transcripts-after-meeting.md")
             transcript_source = configure_source(
                 repo_path,
                 transcript_type,
                 name=transcript_name,
-                metadata={"workspace": transcript_workspace},
-                access_status="available_now",
+                metadata={"workspace": transcript_workspace, "recipe": "docs/source-recipes/transcripts-after-meeting.md", "trigger_policy": transcript_trigger},
+                access_status=transcript_status,
                 sample_policy=transcript_policy,
                 privacy_notes=transcript_privacy,
-                setup_next_action="sample operator-approved transcripts before bulk ingest",
+                setup_next_action=transcript_next_action,
                 commit=args.commit,
             )
             configured_sources.append(_source_summary("transcripts", transcript_source))
@@ -824,11 +852,12 @@ def _run(argv: list[str] | None = None) -> int:
         if configure_work:
             print("\nSetup action: recording the work-system source contract.")
             print("Why: tools like GitHub, Linear, docs, and Slack are runtime-owned sources. Lettuce records whether access is ready, what to sample, and what setup step remains instead of pretending an integration exists.")
+            print("Recipe: docs/source-recipes/work-systems-github-linear.md")
             work_source = configure_source(
                 repo_path,
                 work_type,
                 name=work_name,
-                metadata={"workspace": work_label},
+                metadata={"workspace": work_label, "recipe": "docs/source-recipes/work-systems-github-linear.md", "trigger_policy": work_trigger},
                 access_status=work_status,
                 sample_policy=work_policy,
                 privacy_notes=work_privacy,
