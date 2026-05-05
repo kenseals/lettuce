@@ -581,6 +581,13 @@ else:
             self.assertEqual([item["name"] for item in readiness["ready_to_validate"]], ["walm-e-email"])
             self.assertEqual([item["name"] for item in readiness["manual_only"]], ["manual-direct"])
             self.assertIn("sample operator-approved email threads before bulk ingest", status_json["sources"]["next_proof_steps"])
+            self.assertEqual(status_json["handler_overview"]["count"], 6)
+            self.assertEqual(status_json["handler_overview"]["by_state"]["ok"], 3)
+            self.assertEqual(status_json["handler_overview"]["by_state"]["skipped"], 0)
+            self.assertEqual(status_json["handler_overview"]["by_state"]["never_run"], 3)
+            default_handler = next(item for item in status_json["handler_overview"]["records"] if item["id"] == "default-lens")
+            self.assertEqual(default_handler["state"], "ok")
+            self.assertIn("streams/inbox/direct", default_handler["subscribes"])
             human_status = subprocess.run(
                 ["python3", "-m", "lettuce.cli", "status", str(repo), "--human"],
                 check=True,
@@ -589,6 +596,7 @@ else:
             )
             self.assertIn("Ready to validate: walm-e-email (email)", human_status.stdout)
             self.assertIn("Manual-only: manual-direct (direct)", human_status.stdout)
+            self.assertIn("default-lens [ok]: streams/inbox/direct -> brain/general", human_status.stdout)
             self.assertEqual(git_status.strip(), "")
 
     def test_setup_cli_can_record_multi_operator_branch_without_blocking_first_setup(self) -> None:
