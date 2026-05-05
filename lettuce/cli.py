@@ -67,7 +67,7 @@ def _ask_yes_no(prompt: str, *, default: bool = False) -> bool:
 
 def _ask_multiline(prompt: str, *, default: str) -> str:
     print(prompt)
-    print("End with a single '.' on its own line. Leave blank, then '.', to use the default setup signal.")
+    print("End with a single '.' on its own line. Leave blank, then '.', to use the suggested setup signal.")
     lines: list[str] = []
     while True:
         line = input()
@@ -76,6 +76,11 @@ def _ask_multiline(prompt: str, *, default: str) -> str:
         lines.append(line)
     body = "\n".join(lines).strip()
     return body or default
+
+
+def _question(number: int, total: int, title: str, context: str) -> None:
+    print(f"\nQuestion {number}/{total}: {title}")
+    print(context)
 
 
 def _default_repo_path(
@@ -347,7 +352,7 @@ def _run(argv: list[str] | None = None) -> int:
     add_handler_parser.add_argument("--commit", action="store_true", help="Commit the handler to git")
 
     add_source_parser = subparsers.add_parser("add-source", help="Import or configure a signal source")
-    add_source_parser.add_argument("source_type", choices=["file", "stdin", "direct", "telegram", "email", "fathom", "granola", "transcript", "zoom"], help="Source type to import or configure")
+    add_source_parser.add_argument("source_type", choices=["file", "stdin", "direct", "telegram", "email", "fathom", "granola", "transcript", "zoom", "github", "linear", "notion", "slack", "docs"], help="Source type to import or configure")
     add_source_parser.add_argument("path", nargs="?", default=".", help="Lettuce repo path")
     add_source_parser.add_argument("--input", dest="input_path", help="Input file path for file sources")
     add_source_parser.add_argument("--stream", help="Destination stream. Defaults by source type")
@@ -618,21 +623,49 @@ def _run(argv: list[str] | None = None) -> int:
     if args.command == "setup":
         print("Lettuce is a work-context layer for your agent.")
         print("It keeps company/org signal in a git-backed repo, separate from personal memory, then uses lenses and review gates to turn messy inputs like emails, calls, chats, and docs into durable company context your agent can use later.\n")
-        print("I’ll ask a few setup questions, create or connect the repo, configure the first signal sources, and leave you with a summary of what I set up and how I’ll use it going forward.\n")
+        print("I’ll walk through setup one question at a time, explain why each answer matters, create or connect the repo, configure the first signal sources, and leave you with a summary of what I set up and how I’ll use it going forward.\n")
         if not _ask_yes_no("Want to continue?", default=True):
             print("Stopped. No Lettuce repo was created or changed.")
             return 0
 
+        total_questions = 9
+        _question(
+            1,
+            total_questions,
+            "Work context",
+            "Lettuce keeps one company/project/client context separate from personal memory and other work. You can create more Lettuces later, so choose the one context this repo should represent.",
+        )
         org = _ask("What company, client, or project is this Lettuce for?")
         if not org:
             raise ValueError("org/project is required")
+
+        _question(
+            2,
+            total_questions,
+            "Operator identity",
+            "This is the human or role-agent whose perspective owns the repo. It helps future agents preserve provenance and know who approved setup/review decisions.",
+        )
         operator = _ask("Operator name/handle")
         if not operator:
             raise ValueError("operator is required")
+
+        _question(
+            3,
+            total_questions,
+            "Collaboration shape",
+            "Most first setups should stay simple: one personal Lettuce for one operator. Choose multi-operator only if you already expect multiple people/role-agents and shared streams.",
+        )
         if args.onboarding_path:
             onboarding_path = _normalize_onboarding_path(args.onboarding_path)
         else:
             onboarding_path = "multi_operator" if _ask_yes_no("Is this for a multi-operator org that expects shared-stream coordination later?", default=False) else "solo_founder"
+
+        _question(
+            4,
+            total_questions,
+            "Repo location",
+            "The repo is Lettuce's local markdown+git work brain. Starting local is easiest for a first test; an existing path or later private GitHub remote is useful when you want sync, backup, or another agent/machine to access it.",
+        )
         repo_input = _ask(
             "Repo path",
             default=_default_repo_path(
@@ -645,9 +678,34 @@ def _run(argv: list[str] | None = None) -> int:
             ),
         )
         repo_path = Path(repo_input).expanduser().resolve()
+
+        _question(
+            5,
+            total_questions,
+            "Consent basis",
+            "Lettuce records why the agent is allowed to ingest the first signal. For direct setup in this chat, operator-direct-request is usually right.",
+        )
         consent = _ask("Consent basis for the first manual signal", default="operator-direct-request")
 
         print("\nManual/direct ingestion will be configured by default. Going forward, the operator can say: run Lettuce on this")
+
+        _question(
+            6,
+            total_questions,
+            "Source discovery",
+            "Sources are where company signal will come from. I can record likely sources now even if some still need setup. During real agent onboarding, the agent should also scan its available runtime tools before asking you to connect anything new.",
+        )
+        print("Common source categories: direct notes, email, meeting transcripts, GitHub, Linear, Notion/docs, Slack/Discord, support/CRM, and manual file drops.")
+        offer_scan = _ask_yes_no("Should the agent scan/check available runtime sources before asking for new setup?", default=True)
+        if offer_scan:
+            print("Source scan noted: this CLI cannot inspect runtime accounts directly, so the agent should do that outside Lettuce and record the findings here.")
+
+        _question(
+            7,
+            total_questions,
+            "Email source",
+            "Email can become a recurring source, but first setup should only record access/status and a small sample policy. Do not bulk ingest the inbox during onboarding.",
+        )
         configure_email = _ask_yes_no("Do you already have an email source to record for this Lettuce?", default=False)
         email_name = email_address = email_policy = email_privacy = ""
         if configure_email:
@@ -656,6 +714,12 @@ def _run(argv: list[str] | None = None) -> int:
             email_policy = _ask("Email sample policy", default="first-5-operator-approved")
             email_privacy = _ask("Email privacy notes", default="skip personal/legal/medical/unrelated mail")
 
+        _question(
+            8,
+            total_questions,
+            "Transcript source",
+            "Transcripts are usually best triggered after meetings or from an operator-approved export. Record the source and privacy boundary now; sample only a few relevant calls first.",
+        )
         configure_transcript = _ask_yes_no("Do you already have a call transcript source to record?", default=False)
         transcript_type = transcript_name = transcript_workspace = transcript_policy = transcript_privacy = ""
         if configure_transcript:
@@ -667,9 +731,28 @@ def _run(argv: list[str] | None = None) -> int:
             transcript_policy = _ask("Transcript sample policy", default="first-3-operator-approved")
             transcript_privacy = _ask("Transcript privacy notes", default="only org-scoped calls with consent/permission")
 
+        _question(
+            9,
+            total_questions,
+            "Work-system source and first sample",
+            "If GitHub, Linear, docs, or Slack matter, record the intent/status now so future agents know whether to sample, connect, or defer. Then use one small sample signal to calibrate the first handler run. If you do not know what sample to use, accept the suggested one.",
+        )
+        configure_work = _ask_yes_no("Record a GitHub/Linear/docs/Slack-style work-system source?", default=False)
+        work_type = work_name = work_label = work_policy = work_privacy = work_status = work_next_action = ""
+        if configure_work:
+            work_type = _ask("Work-system source type: github, linear, notion, slack, or docs", default="github").lower()
+            if work_type not in {"github", "linear", "notion", "slack", "docs"}:
+                raise ValueError("work-system source type must be github, linear, notion, slack, or docs")
+            work_name = _ask("Work-system source name", default=f"{work_type}-selected-work")
+            work_label = _ask("Repo/workspace/project label", default="operator-selected")
+            work_status = _ask("Work-system access status: available_now, needs_setup, defer, or unknown", default="needs_setup")
+            work_policy = _ask("Work-system sample policy", default="operator-approved small sample before bulk ingest")
+            work_privacy = _ask("Work-system privacy notes", default="only org-scoped project signal; skip secrets and unrelated repos")
+            work_next_action = _ask("Work-system next setup/action", default="agent should inspect available runtime access, then sample selected issues/PRs only")
+
         default_signal = f"Operator set up Lettuce for {org}. Manual/direct ingestion should be available, source boundaries should be explicit, and durable updates should go through review before brain writes."
         title = _ask("First signal title", default="Lettuce setup signal")
-        body = _ask_multiline("Paste the first manual signal for this Lettuce.", default=default_signal)
+        body = _ask_multiline("Paste the first manual signal for this Lettuce. Suggested default: " + default_signal, default=default_signal)
 
         initialized = not (repo_path / "lettuce.yml").exists()
         files_written = init_repo(
@@ -726,6 +809,20 @@ def _run(argv: list[str] | None = None) -> int:
             )
             configured_sources.append(_source_summary("transcripts", transcript_source))
             setup_source_plan.append(read_source_record(repo_path, transcript_source.source_id))
+        if configure_work:
+            work_source = configure_source(
+                repo_path,
+                work_type,
+                name=work_name,
+                metadata={"workspace": work_label},
+                access_status=work_status,
+                sample_policy=work_policy,
+                privacy_notes=work_privacy,
+                setup_next_action=work_next_action,
+                commit=args.commit,
+            )
+            configured_sources.append(_source_summary(work_type, work_source))
+            setup_source_plan.append(read_source_record(repo_path, work_source.source_id))
 
         direct = ingest_direct_signal(
             repo_path,
@@ -788,6 +885,8 @@ def _run(argv: list[str] | None = None) -> int:
             print("- email not configured yet; forward or select a few org-scoped emails when ready")
         if not configure_transcript:
             print("- transcripts not configured yet; export or select 1-3 org-scoped calls when ready")
+        if not configure_work:
+            print("- work systems not configured yet; inspect GitHub/Linear/docs/Slack access and record a small sample path when ready")
         print(f"First signal event: {direct.event_path}")
         if run_result is None:
             print("Handlers were not run because --no-run was set.")

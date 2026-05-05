@@ -16,7 +16,9 @@ The agent then walks the operator through a short setup conversation, creates or
 
 The operator should not need to understand the CLI first. The CLI is the agent's reliable helper for file/git/schema/checkpoint work.
 
-The agent should not start by dumping commands. It should first explain Lettuce in operator language, ask a small number of setup questions, confirm the operator wants to continue, then do the setup work.
+The agent should not start by dumping commands or a wall of setup questions. It should first explain Lettuce in operator language, confirm the operator wants to continue, then ask one setup question at a time with enough context for the operator to understand the choice.
+
+Onboarding is a teaching moment. First-time operators do not yet know the Lettuce mental model, so questions about repo location, sources, cadence, sample signals, and review gates should include a short “why this matters” explanation before asking for an answer. Use visible progress labels such as `Question 1/6`.
 
 Happy-path outcome:
 
@@ -53,7 +55,7 @@ Want to continue?
 
 If the operator says no, stop. If they say yes, continue.
 
-Do not ask every possible setup question up front. Ask the minimum needed to establish the repo and first sources, then inspect what the agent can already access.
+Do not ask every possible setup question up front. Ask the minimum needed to establish the repo and first sources, then inspect what the agent can already access. Prefer a conversational sequence over a questionnaire dump.
 
 ### 1. Anchor the Organization
 
@@ -88,6 +90,14 @@ Ask whether the operator wants to:
 - create a new private repo manually and provide the URL/path
 - let the agent create the repo if it has permission
 - start locally first and push later
+
+Explain this choice before asking. Operator-facing framing:
+
+```text
+Question 2/6: Where should this Lettuce live?
+
+The repo is Lettuce's local markdown+git work brain. Starting local is easiest for a first test. An existing repo/path or later private GitHub remote is useful when you want backup, sync, or another agent/machine to access the same context.
+```
 
 Agent action for normal first setup:
 
@@ -135,12 +145,20 @@ lettuce status <repo-path>
 
 ### 3. Source Discovery
 
-Ask what company signal matters for this Lettuce, then inspect what the agent already has access to.
+Ask what company signal matters for this Lettuce, then inspect what the agent already has access to. Do not force the operator to enumerate every source cold.
 
 Operator-facing phrasing:
 
 ```text
 What signal sources should this Lettuce pay attention to first? Common ones are email, meeting transcripts, customer/support threads, Slack/Discord, GitHub/Linear, docs, and direct messages you forward to me. We can start with manual forwarding if you do not want to connect anything yet.
+```
+
+Better first-run flow:
+
+```text
+Question 4/6: Which sources should I look for first?
+
+Sources are where company signal comes from. I can start by checking what I already have access to, then we can mark each source as available now, needs setup, or later. Common sources are direct notes, email, transcripts, GitHub/Linear, docs, Slack/Discord, and manual file drops.
 ```
 
 Use this order:
@@ -160,6 +178,15 @@ For many users, also try to configure one recurring source if available without 
 - work systems: GitHub/Linear/Notion/Slack only when the agent already has scoped access.
 
 Do not bulk-ingest during onboarding. A first source is “set up” when source intent is recorded, privacy/sample policy is clear, and a tiny sample path exists.
+
+For every source discussed, the handoff must answer:
+
+- Did we actually configure it, or just record intent?
+- Can the agent access it now?
+- What sample is allowed before bulk ingestion?
+- What privacy boundary applies?
+- What trigger/cadence applies, such as manual, daily email check, after meetings, or operator-selected only?
+- What is the next setup action if access is not ready?
 
 For each candidate source, classify:
 

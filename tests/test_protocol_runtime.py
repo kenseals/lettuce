@@ -524,10 +524,12 @@ else:
                     str(repo),
                     "operator-direct-request",
                     "y",
+                    "y",
                     "walm-e-email",
                     "walm-e@example.com",
                     "first-5-operator-approved",
                     "skip personal mail",
+                    "n",
                     "n",
                     "Setup signal",
                     "WALM-E needs Lettuce onboarding to configure manual ingestion and email source intent.",
@@ -571,6 +573,8 @@ else:
                     "y",
                     str(repo),
                     "operator-direct-request",
+                    "y",
+                    "n",
                     "n",
                     "n",
                     "Setup signal",
@@ -1148,6 +1152,45 @@ print(json.dumps({
             self.assertEqual(output["stream"], "streams/inbox/direct")
             self.assertEqual(output["status"], "configured")
             self.assertIn("bot: @lettuce_ken_bot", text)
+
+    def test_add_source_cli_configures_github_source(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "lettuce-acme-ken"
+            init_repo(repo, org="acme", operator="ken", initialize_git=False)
+            completed = subprocess.run(
+                [
+                    "python3",
+                    "-m",
+                    "lettuce.cli",
+                    "add-source",
+                    "github",
+                    str(repo),
+                    "--name",
+                    "product-repo",
+                    "--workspace",
+                    "acme/product",
+                    "--access-status",
+                    "needs_setup",
+                    "--sample-policy",
+                    "operator-approved issues and PRs only",
+                    "--privacy-notes",
+                    "skip secrets and unrelated repos",
+                    "--setup-next-action",
+                    "agent should inspect GitHub auth before sampling",
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            output = json.loads(completed.stdout)
+            text = Path(output["config_path"]).read_text(encoding="utf-8")
+
+            self.assertEqual(output["source_type"], "github")
+            self.assertEqual(output["stream"], "streams/inbox/work")
+            self.assertEqual(output["access_status"], "needs_setup")
+            self.assertIn("workspace: acme/product", text)
+            self.assertIn("sample_policy: operator-approved issues and PRs only", text)
 
     def test_source_recipe_smoke_direct_and_email_sample_first(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

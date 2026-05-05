@@ -904,6 +904,7 @@ def init_repo(
         "streams/inbox/raw/.gitkeep": "",
         "streams/inbox/email/.gitkeep": "",
         "streams/inbox/transcripts/.gitkeep": "",
+        "streams/inbox/work/.gitkeep": "",
         "streams/outbox/linear/.gitkeep": "",
     }
     if repo_type == "company_hub":
@@ -1223,9 +1224,14 @@ def _configure_source(
         "granola": "streams/inbox/transcripts",
         "transcript": "streams/inbox/transcripts",
         "zoom": "streams/inbox/transcripts",
+        "github": "streams/inbox/work",
+        "linear": "streams/inbox/work",
+        "notion": "streams/inbox/work",
+        "slack": "streams/inbox/work",
+        "docs": "streams/inbox/work",
     }
     if resolved_source_type not in default_streams:
-        raise ValueError("source_type must be one of: direct, telegram, email, fathom, granola, transcript, zoom")
+        raise ValueError("source_type must be one of: direct, telegram, email, fathom, granola, transcript, zoom, github, linear, notion, slack, docs")
     resolved_access_status = access_status.strip().lower()
     valid_access_statuses = {"available_now", "needs_setup", "defer", "unknown"}
     if resolved_access_status not in valid_access_statuses:
