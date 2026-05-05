@@ -24,6 +24,20 @@ Ask one at a time, with context:
 4. What should trigger ingestion? Usually after meetings, operator-selected exports, or manual request.
 5. What first tiny sample is safe? Usually 1-3 recent operator-approved calls.
 
+## Connection Plan
+
+Use this shared decision order rather than assuming a transcript integration exists:
+
+1. Check whether the runtime already has a transcript connector, MCP/API access, authenticated CLI, browser session, transcript-summary emails, local exports, or operator-pasted files.
+2. If access exists, sample 1-3 scoped transcripts with consent/provenance preserved.
+3. If access does not exist, record `needs_setup` and the smallest setup step: export/share one transcript, connect the existing transcript tool, or use transcript-summary emails as a bridge.
+4. Prefer after-meeting triggers when the runtime can observe transcript notifications, calendar events, exported files, or tool updates.
+5. Prefer polling/cron when transcript availability is batch-like and a periodic check is simpler than event wiring.
+6. Use webhook only when the runtime can reliably receive authenticated transcript events and dedupe by meeting/source id.
+7. Keep manual-only when calls are sensitive, consent varies, or transcripts must be operator-selected.
+
+The recipe should guide the agent's setup reasoning, not maintain provider-specific feature catalogs for every transcript tool.
+
 ## Classification
 
 - `available_now`: runtime can inspect/export a tiny approved sample now.

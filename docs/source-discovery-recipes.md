@@ -24,6 +24,17 @@ For every source class:
 
 Do not bulk-ingest before a small reviewed sample proves the source is useful.
 
+Do not try to maintain a complete source-specific feature catalog during onboarding. The agent should use source recipes to ask the right questions, inspect current runtime access, choose a connection plan, and record the truth. Real source capability discovery belongs to the runtime/tooling at setup time.
+
+For each source, decide the intended connection mode:
+
+- `manual-only`: operator forwards, pastes, exports, or points at selected items.
+- `after-event`: runtime reacts when a transcript, notification, exported file, or forwarded item appears.
+- `polling/cron`: runtime checks a scoped query/project/mailbox/channel on a schedule.
+- `webhook`: runtime receives authenticated events from the source and dedupes them before writing stream events.
+
+Default bias: manual or polling first, webhook only when event delivery, auth, dedupe, and scope control are clear.
+
 Manual/direct ingestion should be available for every first setup even when no recurring source is ready. It is the default fallback path: the operator forwards or pastes a signal and says “run Lettuce on this.”
 
 For onboarding-path decisions:

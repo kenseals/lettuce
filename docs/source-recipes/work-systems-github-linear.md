@@ -27,6 +27,20 @@ Ask one at a time, with context:
 6. What should always be skipped? Examples: secrets, private unrelated repos, personal content, noisy activity logs.
 7. What trigger/cadence makes sense? Examples: manual, daily issue check, after PR review, before planning, operator-selected only.
 
+## Connection Plan
+
+Use this shared decision order rather than assuming a work-system integration exists:
+
+1. Check existing runtime access first: MCP/tool connector, authenticated CLI, API token, browser session, local export, or operator-provided URLs.
+2. Scope tightly before sampling: one repo, team, project, channel, database, folder, query, or URL set.
+3. If access exists, sample 3-5 selected items with stable ids/URLs and the query/filter preserved.
+4. If access does not exist, record `needs_setup` and the smallest setup step: authenticate the runtime, connect MCP/API, open browser access, or provide selected URLs/exports.
+5. Prefer polling/cron for issue/project/channel state unless the source has high-value event notifications and the runtime already has webhook infrastructure.
+6. Use webhook only when the runtime can authenticate events, verify signatures when relevant, dedupe by source id, and constrain scope.
+7. Use manual-only when the operator wants selected links/exports rather than ongoing access.
+
+The recipe should not try to enumerate every object the work system supports. It should help the agent ask what kind of signal matters, inspect current access, choose webhook vs polling vs manual, and record the real setup state.
+
 ## Classification
 
 - `available_now`: runtime can inspect a tiny scoped sample now.

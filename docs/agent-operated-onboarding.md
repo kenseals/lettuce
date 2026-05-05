@@ -184,6 +184,15 @@ Route each selected source through a concrete recipe instead of improvising from
 
 In the operator conversation, name the recipe you are using, then follow its questions, source record command shape, tiny sample path, verification checks, and handoff language. This keeps source setup consistent across agents and prevents vague “we’ll connect sources later” handoffs.
 
+Recipes should guide the agent's setup reasoning, not try to encode every feature each external service exposes. For each source, the agent should decide and record the intended connection mode:
+
+- manual-only;
+- after-event trigger;
+- polling/cron;
+- webhook.
+
+The default bias is manual or polling first. Webhooks are appropriate only when the runtime can receive authenticated scoped events, verify/dedupe them, and recover from delivery failures.
+
 The first setup should almost always configure **manual/direct ingestion** even if no other source is available. This gives the operator an immediate way to say “run Lettuce on this” and get a review packet without OAuth, connectors, or polling.
 
 For many users, also try to configure one recurring source if available without heavy setup:
@@ -201,6 +210,7 @@ For every source discussed, the handoff must answer:
 - What sample is allowed before bulk ingestion?
 - What privacy boundary applies?
 - What trigger/cadence applies, such as manual, daily email check, after meetings, or operator-selected only?
+- Is the intended connection mode manual, after-event, polling/cron, or webhook?
 - What is the next setup action if access is not ready?
 - Which source recipe governs future handling?
 

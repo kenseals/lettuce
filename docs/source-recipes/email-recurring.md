@@ -21,6 +21,19 @@ Do not build new mailbox infrastructure inside Lettuce. If access does not alrea
 - Should the first sample be operator-forwarded mail, a mailbox query, or a small label/folder slice?
 - If this becomes recurring later, what owns the trigger: manual checks, a daily runtime task, or operator request?
 
+## Connection Plan
+
+Use this shared decision order rather than assuming a mailbox integration exists:
+
+1. Check whether the runtime already has safe mailbox access, an authenticated connector, IMAP/API/OAuth, browser access, forwarded messages, or exported files.
+2. If access exists, start with a tiny operator-approved sample from one mailbox/query/label/thread.
+3. If access does not exist, record `needs_setup` and the smallest setup step: forward one thread, export one message, connect OAuth/IMAP/API, or open operator-present browser access.
+4. Prefer polling/cron for recurring mailbox checks unless the runtime already has a reliable webhook/forwarding path.
+5. Use webhook/forwarding only when the runtime can authenticate, dedupe, preserve message/thread ids, and avoid unscoped mailbox capture.
+6. Keep manual-only as the fallback for sensitive mail or when the operator wants explicit selection.
+
+The recipe should not claim to know every mailbox provider feature. It should make the agent check what the current runtime can actually access and record the resulting contract.
+
 ## Classification
 
 - `available_now`: the runtime can already search or read a small sample now.
