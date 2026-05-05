@@ -570,6 +570,25 @@ else:
             handoff = json.loads((repo / "onboarding" / "setup" / "handoff.json").read_text(encoding="utf-8"))
             self.assertEqual(handoff["onboarding_path"], "solo_founder")
             self.assertTrue(any((repo / "reviews" / "pending").glob("*.md")))
+            status_output = subprocess.run(
+                ["python3", "-m", "lettuce.cli", "status", str(repo)],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            status_json = json.loads(status_output.stdout)
+            readiness = status_json["sources"]["readiness"]
+            self.assertEqual([item["name"] for item in readiness["ready_to_validate"]], ["walm-e-email"])
+            self.assertEqual([item["name"] for item in readiness["manual_only"]], ["manual-direct"])
+            self.assertIn("sample operator-approved email threads before bulk ingest", status_json["sources"]["next_proof_steps"])
+            human_status = subprocess.run(
+                ["python3", "-m", "lettuce.cli", "status", str(repo), "--human"],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            self.assertIn("Ready to validate: walm-e-email (email)", human_status.stdout)
+            self.assertIn("Manual-only: manual-direct (direct)", human_status.stdout)
             self.assertEqual(git_status.strip(), "")
 
     def test_setup_cli_can_record_multi_operator_branch_without_blocking_first_setup(self) -> None:
