@@ -52,8 +52,13 @@ def _print_human_status(result: Any) -> None:
         for step in next_steps:
             print(f"- {step}")
     print("\nHandlers")
-    print(f"- Count: {result.handlers}")
-    print(f"- Checkpoints: {result.checkpoints or {}}")
+    overview = result.handler_overview or {}
+    print(f"- Count: {overview.get('count', result.handlers)}")
+    print(f"- By state: {overview.get('by_state') or {}}")
+    for handler in overview.get("records") or []:
+        subscribes = ", ".join(handler.get("subscribes") or []) or "none"
+        publishes = ", ".join(handler.get("publishes") or []) or "none"
+        print(f"- {handler.get('id')} [{handler.get('state')}]: {subscribes} -> {publishes}")
     print(f"\nNext: {result.freshness.get('next_step')}")
 
 
@@ -1262,6 +1267,7 @@ def _run(argv: list[str] | None = None) -> int:
                 "onboarding": result.onboarding,
                 "last_log": result.last_log,
                 "freshness": result.freshness,
+                "handler_overview": result.handler_overview,
             }
         )
         return 0

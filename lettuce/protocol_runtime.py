@@ -108,6 +108,7 @@ class RuntimeStatus:
     onboarding: dict[str, Any] = field(default_factory=dict)
     last_log: dict[str, Any] | None = None
     freshness: dict[str, Any] = field(default_factory=dict)
+    handler_overview: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -1466,6 +1467,53 @@ def _source_status_summary(records: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _handler_status_summary(handlers: list[HandlerDefinition], logs: list[dict[str, Any]], checkpoints: dict[str, list[str]]) -> dict[str, Any]:
+    latest_by_handler: dict[str, dict[str, Any]] = {}
+    runs_by_handler: dict[str, int] = {}
+    for entry in logs:
+        handler_id = str(entry.get("handler_id") or "")
+        if not handler_id:
+            continue
+        runs_by_handler[handler_id] = runs_by_handler.get(handler_id, 0) + 1
+        latest_by_handler[handler_id] = entry
+    records: list[dict[str, Any]] = []
+    by_state: dict[str, int] = {"never_run": 0, "ok": 0, "skipped": 0, "error": 0}
+    for handler in handlers:
+        latest = latest_by_handler.get(handler.id)
+        if latest is None:
+            state = "never_run"
+        elif latest.get("success") is False:
+            state = "error"
+        elif latest.get("skipped") is True:
+            state = "skipped"
+        else:
+            state = "ok"
+        by_state[state] = by_state.get(state, 0) + 1
+        checkpoint_events = sum(len(events) for key, events in checkpoints.items() if key.startswith(f"{handler.id}:"))
+        records.append(
+            {
+                "id": handler.id,
+                "name": handler.name,
+                "type": handler.type,
+                "state": state,
+                "subscribes": [ref.stream for ref in handler.subscribes],
+                "publishes": [ref.stream for ref in handler.publishes],
+                "model": handler.model,
+                "last_run_at": str((latest or {}).get("timestamp") or ""),
+                "last_event_id": str((latest or {}).get("event_id") or ""),
+                "last_duration_ms": int((latest or {}).get("duration_ms") or 0),
+                "last_errors": [str(error) for error in (latest or {}).get("errors", [])],
+                "runs": runs_by_handler.get(handler.id, 0),
+                "checkpoint_events": checkpoint_events,
+            }
+        )
+    return {
+        "count": len(handlers),
+        "by_state": by_state,
+        "records": records,
+    }
+
+
 def _onboarding_handoff_path(repo: Path) -> Path:
     return repo / "onboarding" / "setup" / "handoff.json"
 
@@ -2446,4 +2494,5 @@ def status(repo_path: str | Path) -> RuntimeStatus:
         onboarding=onboarding_handoff,
         last_log=recent_logs[-1] if recent_logs else None,
         freshness=_freshness_summary(repo, checkpoints=checkpoint_data, last_log=recent_logs[-1] if recent_logs else None),
+        handler_overview=_handler_status_summary(handlers, all_logs, checkpoint_data),
     )
