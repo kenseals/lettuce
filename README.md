@@ -12,6 +12,21 @@ source signal -> stream event -> handler/lens -> optional review -> brain update
 
 A customer email, call note, Telegram message, support transcript, or local file becomes a markdown event with provenance. Markdown handlers decide what matters. The result is a durable context update your agent can use later, inspect, review, revise, and share deliberately.
 
+
+## Status: early public v0
+
+Lettuce is ready for builders to inspect, clone, and dogfood as a local-first protocol/CLI for agent-owned company context. It is not a finished collaboration platform or hosted company brain.
+
+Use it today if you are comfortable with markdown, git, local CLI tools, and agent-operated workflows. Treat it as a concrete protocol loop for turning selected work signal into reviewed context, not as a turnkey enterprise knowledge system.
+
+The first real dogfood use is Ken + Soren using Lettuce to make agent work more durable and reviewable. That dogfood has already shaped the v0: streams, handlers/lenses, review gates, provenance, checkpoints, logs, and git history are the core product, not a dashboard veneer.
+
+Current public posture:
+
+- **Good for:** local-first dogfooding, founder/operator experiments, agent workflow research, markdown+git context protocols, and small reviewable company/project brains.
+- **Not yet:** hosted multi-tenant SaaS, polished team UI, remote shared-stream sync, enterprise permissions, or automatic ingestion from every tool.
+- **Safety model:** selected signal in, provenance preserved, optional review before brain updates, git history for audit/revert, and operator-owned repos rather than an all-seeing central system.
+
 ## Why this exists
 
 Agents are becoming good enough to help run real work, but their context is usually fragile:
@@ -26,7 +41,7 @@ Lettuce takes a narrower path: keep company context local-first, repo-owned, exp
 
 ## What you can do today
 
-Current status: **first v0 protocol loop**.
+Current status: **early public v0 protocol loop**.
 
 The installable `lettuce` CLI can:
 
@@ -39,7 +54,7 @@ The installable `lettuce` CLI can:
 
 The operator's agent is still the runtime. Lettuce does **not** own chat surfaces, inboxes, OAuth grants, browser sessions, service integrations, or scheduling. The agent runtime owns access to those systems, then writes selected signal into Lettuce with provenance.
 
-Not shipped yet: real remote shared-stream pulling, checkpointed git mirroring, or a built-in `pull-subscriptions` command.
+Not shipped yet: real remote shared-stream pulling, checkpointed git mirroring, a built-in `pull-subscriptions` command, hosted dashboards, team permissions, or turnkey integrations.
 
 ## Give this to your agent
 
