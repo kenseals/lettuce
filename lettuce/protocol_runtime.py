@@ -136,6 +136,15 @@ class EmailIngestResult:
 
 
 @dataclass(frozen=True)
+class ThreadBundleIngestResult:
+    event_path: str
+    title: str
+    source: str
+    consent_basis: str
+    message_count: int
+
+
+@dataclass(frozen=True)
 class SourceConfigResult:
     source_type: str
     source_id: str
@@ -1168,6 +1177,127 @@ def ingest_direct_signal(
     )
 
 
+def _message_text(message: dict[str, Any]) -> str:
+    for key in ("body", "text", "content", "message"):
+        value = message.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return ""
+
+
+def _render_thread_bundle_body(title: str, messages: list[dict[str, Any]]) -> str:
+    lines = [f"# {title}", "", "## Conversation"]
+    for index, message in enumerate(messages, start=1):
+        text = _message_text(message)
+        if not text:
+            continue
+        sender = str(message.get("sender") or message.get("from") or "unknown").strip()
+        timestamp = str(message.get("timestamp") or message.get("observed_at") or "").strip()
+        message_id = str(message.get("message_id") or message.get("id") or "").strip()
+        correction_of = str(message.get("correction_of") or "").strip()
+        header = [f"{index}."]
+        if timestamp:
+            header.append(f"[{timestamp}]")
+        header.append(sender)
+        if message_id:
+            header.append(f"(message_id: {message_id})")
+        if correction_of:
+            header.append(f"(correction_of: {correction_of})")
+        lines.extend(["", " ".join(header), text])
+    return "\n".join(lines).strip() + "\n"
+
+
+def ingest_thread_bundle(
+    repo_path: str | Path,
+    *,
+    messages: list[dict[str, Any]],
+    surface: str,
+    consent_basis: str,
+    title: str | None = None,
+    source: str | None = None,
+    stream: str = "streams/inbox/direct",
+    observed_at: str | None = None,
+    sender: str | None = None,
+    thread_id: str | None = None,
+    chat_id: str | None = None,
+    topic: str | None = None,
+    source_record: str | None = None,
+    standing_rule: str | None = None,
+    metadata: dict[str, Any] | None = None,
+    commit: bool = False,
+) -> ThreadBundleIngestResult:
+    resolved_surface = surface.strip()
+    resolved_consent = consent_basis.strip()
+    clean_messages = [message for message in messages if isinstance(message, dict) and _message_text(message)]
+    if not resolved_surface:
+        raise ValueError("thread ingest requires surface")
+    if not resolved_consent:
+        raise ValueError("thread ingest requires consent_basis")
+    if not clean_messages:
+        raise ValueError("thread ingest requires at least one message with text")
+    resolved_source = source or f"openclaw.{_slugify(resolved_surface)}"
+    resolved_title = title or _infer_title_from_text(_message_text(clean_messages[0]), "direct thread signal")
+    message_ids = [
+        str(message.get("message_id") or message.get("id") or "").strip()
+        for message in clean_messages
+        if str(message.get("message_id") or message.get("id") or "").strip()
+    ]
+    correction_ids = [
+        str(message.get("message_id") or message.get("id") or "").strip()
+        for message in clean_messages
+        if str(message.get("message_id") or message.get("id") or "").strip()
+        and (
+            message.get("correction_of")
+            or _message_text(message).lower().startswith(("correction:", "actually", "update:"))
+        )
+    ]
+    event_metadata: dict[str, Any] = {
+        "source_type": "direct_thread_bundle",
+        "surface": resolved_surface,
+        "provenance": "agent-observed",
+        "consent_basis": resolved_consent,
+        "ingestion_boundary": "operator-provided-thread",
+        "external_action": False,
+        "bundle_message_count": len(clean_messages),
+    }
+    optional_metadata = {
+        "observed_at": observed_at,
+        "sender": sender,
+        "thread_id": thread_id,
+        "chat_id": chat_id,
+        "topic": topic,
+        "source_record": source_record,
+        "standing_rule": standing_rule,
+    }
+    for key, value in optional_metadata.items():
+        if value:
+            event_metadata[key] = value
+    if message_ids:
+        event_metadata["message_ids"] = message_ids
+    if correction_ids:
+        event_metadata["correction_message_ids"] = correction_ids
+    for key, value in (metadata or {}).items():
+        clean_key = str(key).strip()
+        if clean_key and clean_key not in event_metadata:
+            event_metadata[clean_key] = value
+    event_path = add_stream_event(
+        repo_path,
+        stream=stream,
+        title=resolved_title,
+        body=_render_thread_bundle_body(resolved_title, clean_messages),
+        source=resolved_source,
+        metadata=event_metadata,
+        commit=commit,
+    )
+    return ThreadBundleIngestResult(
+        event_path=str(event_path),
+        title=resolved_title,
+        source=resolved_source,
+        consent_basis=resolved_consent,
+        message_count=len(clean_messages),
+    )
+
+
 
 def configure_source(
     repo_path: str | Path,
@@ -1181,6 +1311,10 @@ def configure_source(
     sample_policy: str | None = None,
     privacy_notes: str | None = None,
     setup_next_action: str | None = None,
+    capture_policy: str | None = None,
+    standing_rule: str | None = None,
+    route_policy: str | None = None,
+    local_auto_apply: bool = False,
     commit: bool = False,
 ) -> SourceConfigResult:
     return _configure_source(
@@ -1194,6 +1328,10 @@ def configure_source(
         sample_policy=sample_policy,
         privacy_notes=privacy_notes,
         setup_next_action=setup_next_action,
+        capture_policy=capture_policy,
+        standing_rule=standing_rule,
+        route_policy=route_policy,
+        local_auto_apply=local_auto_apply,
         commit=commit,
         allow_existing=False,
     )
@@ -1211,6 +1349,10 @@ def _configure_source(
     sample_policy: str | None = None,
     privacy_notes: str | None = None,
     setup_next_action: str | None = None,
+    capture_policy: str | None = None,
+    standing_rule: str | None = None,
+    route_policy: str | None = None,
+    local_auto_apply: bool = False,
     commit: bool = False,
     allow_existing: bool = False,
 ) -> SourceConfigResult:
@@ -1256,10 +1398,15 @@ def _configure_source(
         "sample_policy": sample_policy,
         "privacy_notes": privacy_notes,
         "setup_next_action": setup_next_action,
+        "capture_policy": capture_policy,
+        "standing_rule": standing_rule,
+        "route_policy": route_policy,
     }
     for key, value in optional_fields.items():
         if value:
             frontmatter[key] = value
+    if local_auto_apply:
+        frontmatter["local_auto_apply"] = True
     for key, value in (metadata or {}).items():
         clean_key = str(key).strip()
         if clean_key and clean_key not in frontmatter:
@@ -1269,9 +1416,11 @@ def _configure_source(
         f"This source records `{resolved_source_type}` signal intent for `{resolved_stream}`.\n\n"
         "Access and setup are agent-owned. The record exists so an operator or agent can inspect what is available, what still needs setup, what sample policy applies, and what should be skipped before any bulk ingestion.\n\n"
         "## Agent Instructions\n\n"
+        "- Treat this record as a source/surface mapping. When current conversation provenance matches it, proactively route material org signal into the configured stream.\n"
         "- If `access_status` is `available_now`, ingest only a small reviewed sample first.\n"
         "- If `access_status` is `needs_setup`, guide the operator through the smallest setup step listed in `setup_next_action`.\n"
         "- If `access_status` is `defer`, do not ingest until the operator reopens this source.\n"
+        "- If `local_auto_apply` is `true`, low-risk local org-brain updates covered by `standing_rule` may be applied without a heavy review gate; preserve provenance and keep git commits reversible.\n"
         "- Preserve source ids, timestamps, URLs, and privacy/redaction notes on every event derived from this source.\n"
     )
     path = repo / "sources" / f"{source_id}.md"
@@ -1320,6 +1469,10 @@ def ensure_source_config(
     sample_policy: str | None = None,
     privacy_notes: str | None = None,
     setup_next_action: str | None = None,
+    capture_policy: str | None = None,
+    standing_rule: str | None = None,
+    route_policy: str | None = None,
+    local_auto_apply: bool = False,
     commit: bool = False,
 ) -> SourceConfigResult:
     return _configure_source(
@@ -1333,6 +1486,10 @@ def ensure_source_config(
         sample_policy=sample_policy,
         privacy_notes=privacy_notes,
         setup_next_action=setup_next_action,
+        capture_policy=capture_policy,
+        standing_rule=standing_rule,
+        route_policy=route_policy,
+        local_auto_apply=local_auto_apply,
         commit=commit,
         allow_existing=True,
     )
@@ -1378,7 +1535,12 @@ def read_source_record(repo_path: str | Path, source_ref: str) -> dict[str, Any]
         "sample_policy",
         "privacy_notes",
         "setup_next_action",
+        "capture_policy",
+        "standing_rule",
+        "route_policy",
+        "local_auto_apply",
     }
+    local_auto_apply = frontmatter.get("local_auto_apply")
     return {
         "id": str(frontmatter.get("id") or path.stem),
         "type": str(frontmatter.get("type") or ""),
@@ -1391,6 +1553,10 @@ def read_source_record(repo_path: str | Path, source_ref: str) -> dict[str, Any]
         "sample_policy": str(frontmatter.get("sample_policy") or ""),
         "privacy_notes": str(frontmatter.get("privacy_notes") or ""),
         "setup_next_action": str(frontmatter.get("setup_next_action") or ""),
+        "capture_policy": str(frontmatter.get("capture_policy") or ""),
+        "standing_rule": str(frontmatter.get("standing_rule") or ""),
+        "route_policy": str(frontmatter.get("route_policy") or ""),
+        "local_auto_apply": bool(local_auto_apply is True or str(local_auto_apply or "").lower() == "true"),
         "details": {
             key: value
             for key, value in frontmatter.items()
@@ -1412,6 +1578,116 @@ def read_source_records(repo_path: str | Path) -> list[dict[str, Any]]:
             continue
         records.append(read_source_record(repo, path.name))
     return records
+
+
+def _source_record_matches(record: dict[str, Any], filters: dict[str, str]) -> bool:
+    details = record.get("details") if isinstance(record.get("details"), dict) else {}
+    merged = {**details, **{key: record.get(key) for key in record}}
+    for key, value in filters.items():
+        if value and str(merged.get(key) or "") != value:
+            return False
+    return True
+
+
+def _event_matches(event: StreamEvent, filters: dict[str, str]) -> bool:
+    for key, value in filters.items():
+        if value and str(event.frontmatter.get(key) or "") != value:
+            return False
+    return True
+
+
+def route_audit(
+    repo_path: str | Path,
+    *,
+    surface: str | None = None,
+    source: str | None = None,
+    chat_id: str | None = None,
+    thread_id: str | None = None,
+    topic: str | None = None,
+    limit: int = 10,
+) -> dict[str, Any]:
+    repo = Path(repo_path).expanduser().resolve()
+    _require_lettuce_repo(repo)
+    filters = {
+        key: value
+        for key, value in {
+            "source": source,
+            "surface": surface,
+            "chat_id": chat_id,
+            "thread_id": thread_id,
+            "topic": topic,
+        }.items()
+        if value
+    }
+    source_records = [
+        record
+        for record in read_source_records(repo)
+        if _source_record_matches(record, filters)
+    ]
+    event_filters = {key: value for key, value in filters.items() if key != "source"}
+    events: list[StreamEvent] = []
+    for stream in ["streams/inbox/direct", "streams/inbox/email", "streams/inbox/transcripts", "streams/inbox/work", "streams/inbox/raw"]:
+        for event in read_stream_events(repo, stream):
+            if source and str(event.frontmatter.get("source") or "") != source:
+                continue
+            if _event_matches(event, event_filters):
+                events.append(event)
+    events = sorted(events, key=lambda event: event.timestamp or event.id)[-max(1, limit):]
+    event_ids = {event.id for event in events}
+    reviews = [review for review in list_reviews(repo, status="all") if review.source_event in event_ids]
+    if source_records and events:
+        recommendation = "mapping exists and matching events have been captured"
+    elif source_records:
+        recommendation = "mapping exists; material matching signal should be captured with provenance"
+    elif events:
+        recommendation = "events exist but no durable source/surface mapping was found"
+    else:
+        recommendation = "no matching source mapping or event found"
+    return {
+        "repo": str(repo),
+        "filters": filters,
+        "matching_source_records": [
+            {
+                "id": str(record.get("id") or ""),
+                "type": str(record.get("type") or ""),
+                "name": str(record.get("name") or ""),
+                "stream": str(record.get("stream") or ""),
+                "access_status": str(record.get("access_status") or ""),
+                "capture_policy": str(record.get("capture_policy") or ""),
+                "standing_rule": str(record.get("standing_rule") or ""),
+                "route_policy": str(record.get("route_policy") or ""),
+                "local_auto_apply": bool(record.get("local_auto_apply")),
+                "path": str(record.get("path") or ""),
+            }
+            for record in source_records
+        ],
+        "recent_events": [
+            {
+                "id": event.id,
+                "stream": event.stream,
+                "path": event.path,
+                "source": str(event.frontmatter.get("source") or ""),
+                "surface": str(event.frontmatter.get("surface") or ""),
+                "chat_id": str(event.frontmatter.get("chat_id") or ""),
+                "thread_id": str(event.frontmatter.get("thread_id") or ""),
+                "topic": str(event.frontmatter.get("topic") or ""),
+                "consent_basis": str(event.frontmatter.get("consent_basis") or ""),
+            }
+            for event in events
+        ],
+        "reviews": [
+            {
+                "id": review.id,
+                "status": review.status,
+                "path": review.path,
+                "target_stream": review.target_stream,
+                "source_event": review.source_event,
+                "title": review.title,
+            }
+            for review in reviews
+        ],
+        "recommendation": recommendation,
+    }
 
 
 def _source_status_summary(records: list[dict[str, Any]]) -> dict[str, Any]:

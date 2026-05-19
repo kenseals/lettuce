@@ -9,6 +9,8 @@ Lettuce is an agent-operated markdown+git protocol. OpenClaw is the runtime in v
 
 Do not build duplicate chat surfaces for direct input. If the operator is talking to OpenClaw through Telegram, iMessage, Discord, CLI, or another surface, OpenClaw already owns that surface. Write selected direct input into Lettuce with provenance.
 
+If a Lettuce repo has a source record whose `surface`, `chat_id`, `thread_id`, or `topic` matches the current OpenClaw conversation, do not wait for the operator to say “use Lettuce.” Treat the record as a standing route contract. Capture material org-scoped signal proactively according to `capture_policy`, `standing_rule`, `route_policy`, and `local_auto_apply`.
+
 ## When To Use
 
 Use this skill when the operator asks to:
@@ -140,6 +142,38 @@ lettuce logs <repo-path> --limit 5
 
 Preserve provenance when available: source, surface, message id, thread/chat/topic id, sender, observed timestamp, and consent/standing-rule basis.
 
+For a corrected or multi-message conversation, ingest one coherent thread bundle instead of separate fragments:
+
+```bash
+lettuce ingest-thread <repo-path> \
+  --title "<thread title>" \
+  --messages-file <messages.json> \
+  --source "<agent.surface>" \
+  --surface "<surface>" \
+  --chat-id "<chat-id>" \
+  --thread-id "<thread-id>" \
+  --topic "<topic>" \
+  --source-record "<source-record-id>" \
+  --standing-rule "<standing-rule>" \
+  --consent "standing-source-policy" \
+  --commit
+```
+
+`--messages-file` accepts a JSON array of message objects, or an object with `messages`. Preserve message-level ids, timestamps, senders, and `correction_of` fields when available.
+
+When the operator asks “are you saving this?”, audit the route before answering:
+
+```bash
+lettuce route-audit <repo-path> \
+  --source "<agent.surface>" \
+  --surface "<surface>" \
+  --chat-id "<chat-id>" \
+  --thread-id "<thread-id>" \
+  --topic "<topic>"
+```
+
+The audit reports matching source records, recent captured events, and review records tied to those events.
+
 For operator-forwarded or selected emails, use `ingest-email` instead of flattening the event into direct chat input:
 
 ```bash
@@ -171,6 +205,7 @@ When a source will recur, record durable source intent:
 ```bash
 lettuce add-source email <repo-path> --name <name> --address <mailbox-or-account> --access-status available_now --sample-policy first-5-operator-approved --commit
 lettuce add-source granola <repo-path> --name <name> --workspace <workspace> --access-status needs_setup --setup-next-action "connect existing export or MCP before polling" --commit
+lettuce add-source telegram <repo-path> --name tum-roster --source openclaw.telegram --surface telegram --chat-id "<chat-id>" --thread-id "<thread-id>" --topic Roster --access-status available_now --capture-policy "capture material TUM/Roster product and operator-process signal" --standing-rule "operator approved recurring capture for this topic" --route-policy "run route-audit when asked whether this is being saved" --local-auto-apply --commit
 ```
 
 Use source records as agent-readable setup/status contracts: what access exists, what small sample is allowed, what privacy boundary applies, and what setup action remains. Transcript-oriented records include `fathom`, `granola`, `zoom`, and generic `transcript`.

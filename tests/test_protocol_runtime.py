@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 from lettuce.cli import _default_repo_path
 from lettuce.openclaw_provider import build_prompt, extract_json_object, run_openclaw
-from lettuce.protocol_runtime import add_handler, add_stream_event, approve_review, configure_source, configure_subscription, decline_review, ensure_source_config, import_source_event, ingest_email_signal, init_repo, list_reviews, read_exported_streams, read_logs, read_repo_identity, read_source_record, read_stream_events, run_once, status
+from lettuce.protocol_runtime import add_handler, add_stream_event, approve_review, configure_source, configure_subscription, decline_review, ensure_source_config, import_source_event, ingest_email_signal, ingest_thread_bundle, init_repo, list_reviews, read_exported_streams, read_logs, read_repo_identity, read_source_record, read_stream_events, route_audit, run_once, status
 
 
 class ProtocolRuntimeTests(unittest.TestCase):
@@ -326,6 +326,72 @@ exports:
 
             with self.assertRaises(ValueError):
                 ingest_email_signal(repo, subject=" ", body="body", consent_basis="operator-forwarded-email")
+
+    def test_ingest_thread_cli_writes_coherent_bundle_with_corrections(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "lettuce-tum-soren"
+            init_repo(repo, org="tum", operator="soren", initialize_git=False)
+            messages_file = Path(tmp) / "telegram-thread.json"
+            messages_file.write_text(
+                json.dumps(
+                    {
+                        "messages": [
+                            {"message_id": "991", "timestamp": "2026-05-19T14:01:00Z", "sender": "ken", "text": "Roster Telegram dogfood should save material TUM signals."},
+                            {"message_id": "992", "timestamp": "2026-05-19T14:02:00Z", "sender": "ken", "text": "Actually, bundle corrections into one coherent signal.", "correction_of": "991"},
+                            {"message_id": "993", "timestamp": "2026-05-19T14:03:00Z", "sender": "soren", "text": "Are you saving this?"},
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            completed = subprocess.run(
+                [
+                    "python3",
+                    "-m",
+                    "lettuce.cli",
+                    "ingest-thread",
+                    str(repo),
+                    "--title",
+                    "TUM Roster Telegram dogfood",
+                    "--messages-file",
+                    str(messages_file),
+                    "--source",
+                    "openclaw.telegram",
+                    "--surface",
+                    "telegram",
+                    "--chat-id",
+                    "-1003778487782",
+                    "--thread-id",
+                    "1",
+                    "--topic",
+                    "Roster",
+                    "--source-record",
+                    "telegram-tum-roster",
+                    "--standing-rule",
+                    "capture material TUM/Roster product signals from this topic",
+                    "--consent",
+                    "standing-source-policy",
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            output = json.loads(completed.stdout)
+            text = Path(output["event_path"]).read_text(encoding="utf-8")
+
+            self.assertEqual(output["message_count"], 3)
+            self.assertIn("source_type: direct_thread_bundle", text)
+            self.assertIn("surface: telegram", text)
+            self.assertIn("chat_id: -1003778487782", text)
+            self.assertIn("thread_id: 1", text)
+            self.assertIn("topic: Roster", text)
+            self.assertIn("bundle_message_count: 3", text)
+            self.assertIn("message_ids: [991, 992, 993]", text)
+            self.assertIn("correction_message_ids: [992]", text)
+            self.assertIn("Actually, bundle corrections", text)
+            self.assertIn("Are you saving this?", text)
 
     def test_onboard_cli_initializes_ingests_and_runs_first_signal(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1098,6 +1164,66 @@ print(json.dumps({
             self.assertIn("access_status: unknown", text)
             self.assertIn("access_owner: operator-agent", text)
 
+    def test_add_source_cli_records_agent_owned_surface_mapping(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "lettuce-tum-soren"
+            init_repo(repo, org="tum", operator="soren", initialize_git=False)
+
+            completed = subprocess.run(
+                [
+                    "python3",
+                    "-m",
+                    "lettuce.cli",
+                    "add-source",
+                    "telegram",
+                    str(repo),
+                    "--name",
+                    "tum-roster",
+                    "--source",
+                    "openclaw.telegram",
+                    "--bot",
+                    "@lettuce_ken_bot",
+                    "--surface",
+                    "telegram",
+                    "--chat-id",
+                    "-1003778487782",
+                    "--thread-id",
+                    "1",
+                    "--topic",
+                    "Roster",
+                    "--access-status",
+                    "available_now",
+                    "--capture-policy",
+                    "capture material TUM/Roster product and operator-process signal",
+                    "--standing-rule",
+                    "operator approved recurring capture for this Telegram topic",
+                    "--route-policy",
+                    "run route-audit when asked whether the agent is saving this",
+                    "--local-auto-apply",
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            output = json.loads(completed.stdout)
+            text = Path(output["config_path"]).read_text(encoding="utf-8")
+            record = read_source_record(repo, "telegram-tum-roster")
+
+            self.assertEqual(output["source_type"], "telegram")
+            self.assertEqual(output["stream"], "streams/inbox/direct")
+            self.assertIn("source: openclaw.telegram", text)
+            self.assertIn("surface: telegram", text)
+            self.assertIn("chat_id: -1003778487782", text)
+            self.assertIn("thread_id: 1", text)
+            self.assertIn("topic: Roster", text)
+            self.assertIn("capture_policy: capture material TUM/Roster product and operator-process signal", text)
+            self.assertIn("standing_rule: operator approved recurring capture for this Telegram topic", text)
+            self.assertIn("route_policy: run route-audit when asked whether the agent is saving this", text)
+            self.assertIn("local_auto_apply: true", text)
+            self.assertTrue(record["local_auto_apply"])
+            self.assertEqual(record["capture_policy"], "capture material TUM/Roster product and operator-process signal")
+
     def test_configure_source_updates_repo_local_agent_instructions(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp) / "lettuce-acme-ken"
@@ -1118,6 +1244,45 @@ print(json.dumps({
             self.assertIn("`needs_setup`", agent_text)
             self.assertIn("connect forwarding before sampling", agent_text)
             self.assertIn("Configured cadence hints: `support-forward`: weekday-mornings", agent_text)
+
+    def test_route_audit_reports_matching_surface_policy_events_and_reviews(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "lettuce-tum-soren"
+            init_repo(repo, org="tum", operator="soren", initialize_git=False)
+            configure_source(
+                repo,
+                "telegram",
+                name="tum-roster",
+                metadata={"source": "openclaw.telegram", "surface": "telegram", "chat_id": "-1003778487782", "thread_id": "1", "topic": "Roster"},
+                access_status="available_now",
+                capture_policy="capture material TUM/Roster product and operator-process signal",
+                standing_rule="operator approved recurring capture for this Telegram topic",
+                route_policy="run route-audit when asked whether the agent is saving this",
+                local_auto_apply=True,
+            )
+            event_path = add_stream_event(
+                repo,
+                title="TUM route audit",
+                body="Are you saving this? Yes: audit the route before answering.",
+                source="openclaw.telegram",
+                metadata={
+                    "source_type": "direct_thread_bundle",
+                    "surface": "telegram",
+                    "chat_id": "-1003778487782",
+                    "thread_id": "1",
+                    "topic": "Roster",
+                    "consent_basis": "standing-source-policy",
+                },
+            )
+            run_once(repo, stream="streams/inbox/direct", review=True, commit=False)
+
+            audit = route_audit(repo, source="openclaw.telegram", surface="telegram", chat_id="-1003778487782", thread_id="1", topic="Roster")
+
+            self.assertEqual(audit["matching_source_records"][0]["name"], "tum-roster")
+            self.assertTrue(audit["matching_source_records"][0]["local_auto_apply"])
+            self.assertEqual(audit["recent_events"][0]["path"], str(event_path))
+            self.assertTrue(audit["reviews"])
+            self.assertEqual(audit["recommendation"], "mapping exists and matching events have been captured")
 
     def test_add_source_cli_configures_transcript_source_with_setup_state(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
