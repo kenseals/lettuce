@@ -114,18 +114,18 @@ lettuce add-source file ./lettuce-acme-ken \
 
 ### 5. Run handlers and inspect output
 
-For real dogfood inside OpenClaw, use model-backed judgment:
+For real dogfood inside OpenClaw, use agent-operated judgment, then persist review/apply state:
 
 ```bash
-lettuce run ./lettuce-acme-ken --openclaw-provider --commit
+lettuce run ./lettuce-acme-ken --review --commit
 ```
 
-For offline install/plumbing tests, omit `--openclaw-provider`.
+Treat `--openclaw-provider` as an optional subprocess-adapter experiment, not the normal OpenClaw path.
 
 The agent should summarize:
 
 - source ingested;
-- handlers that fired or skipped;
+- lenses applied and why;
 - brain updates written;
 - evidence and uncertainty;
 - what did not update.

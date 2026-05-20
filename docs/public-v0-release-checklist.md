@@ -17,7 +17,7 @@ Optional review mode exists for calibration, sensitive updates, or explicit appr
 - Source setup/status records for email, transcripts, direct surfaces, and future services.
 - Checkpointed local directory source import for repeatable sample-first source ingestion.
 - Subscription records plus local export-policy and local-stream policy validation for shared streams.
-- Optional OpenClaw model-backed handler provider.
+- Optional subprocess-backed handler provider for compatibility/smoke experiments.
 - Optional review mode: `--review`, `reviews`, `review-approve`, `review-decline`.
 - Synthetic public-safe signal corpus for repeatable QA.
 - Fresh install smoke with installed `lettuce` console script.
@@ -65,7 +65,7 @@ The GitHub repo is public. There is no GitHub release yet. The main remaining pu
 
 ### Nice but not blocking
 
-- Parallelize model-backed handler execution or choose a faster default model for OpenClaw-backed runs.
+- Improve optional subprocess-backed handler execution for non-OpenClaw runtimes.
 - Add a tiny screencast/Loom or GIF.
 - Add GitHub topics and tighten repo description.
 - Add a one-command demo script for the clean public quickstart.

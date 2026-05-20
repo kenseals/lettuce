@@ -151,7 +151,7 @@ Working now:
 - direct/file/email-shaped event ingestion helpers;
 - source intent records;
 - markdown handlers;
-- deterministic and OpenClaw-backed handler execution;
+- deterministic handler execution plus optional subprocess-backed provider execution;
 - direct brain updates with provenance;
 - optional review/approve/decline lifecycle;
 - markdown brain updates;

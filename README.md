@@ -47,12 +47,12 @@ The installable `lettuce` CLI can:
 
 - scaffold a markdown+git Lettuce repo;
 - ingest direct, email-shaped, file, directory, and stdin signals as stream events;
-- run markdown handlers through a local adapter or optional OpenClaw model provider;
+- run markdown handlers through a local deterministic adapter for protocol smoke tests;
 - write proposed or accepted brain updates;
 - record provenance, checkpoints, logs, reviews, and setup handoffs;
 - keep first setup lightweight for a solo founder while recording optional multi-operator/shared-stream intent.
 
-The operator's agent is still the runtime. Lettuce does **not** own chat surfaces, inboxes, OAuth grants, browser sessions, service integrations, or scheduling. The agent runtime owns access to those systems, then writes selected signal into Lettuce with provenance.
+The operator's agent is the runtime. Lettuce does **not** own chat surfaces, inboxes, OAuth grants, browser sessions, service integrations, model judgment, or scheduling. The agent runtime owns access and judgment, then writes selected signal and reviewed updates into Lettuce with provenance.
 
 Not shipped yet: real remote shared-stream pulling, checkpointed git mirroring, a built-in `pull-subscriptions` command, hosted dashboards, team permissions, or turnkey integrations.
 
@@ -90,12 +90,12 @@ Run one demo signal through the loop:
 
 ```bash
 printf 'Customer says agent context is stale.\n' > /tmp/lettuce-first-signal.md
-lettuce onboard ./lettuce-demo --org demo --operator you --title "Demo signal" --body-file /tmp/lettuce-first-signal.md --source openclaw.telegram --surface telegram --consent operator-direct-request --openclaw-provider --commit
+lettuce onboard ./lettuce-demo --org demo --operator you --title "Demo signal" --body-file /tmp/lettuce-first-signal.md --source openclaw.telegram --surface telegram --consent operator-direct-request --review --commit
 lettuce status ./lettuce-demo
 lettuce logs ./lettuce-demo --limit 5
 ```
 
-That scaffolds an org-scoped Lettuce repo, writes the first event to `streams/inbox/direct`, runs handlers, records `onboarding/setup/handoff.json`, writes handler outputs to local `brain/*` streams, records checkpoints/logs under `.lettuce/`, and commits changes to git when `--commit` is set.
+That scaffolds an org-scoped Lettuce repo, writes the first event to `streams/inbox/direct`, records `onboarding/setup/handoff.json`, writes review artifacts/state, records checkpoints/logs under `.lettuce/`, and commits changes to git when `--commit` is set.
 
 Add `--review` when you want calibration or human approval before brain updates land. First agent-operated onboarding should usually use review mode.
 
@@ -189,7 +189,7 @@ lettuce ingest-direct ./lettuce-demo \
   --surface telegram \
   --consent operator-direct-request \
   --commit
-lettuce run ./lettuce-demo --openclaw-provider --commit
+lettuce run ./lettuce-demo --review --commit
 ```
 
 For operator-selected or forwarded emails, keep the event email-shaped:
@@ -274,11 +274,22 @@ Lettuce v0 does not run its own daemon. The external runtime or cron decides whe
 
 Role-agent repos are first-class Lettuce repos, not hidden company-hub special cases. Use names such as `lettuce-acme-support-agent`, keep them `private` by default, and set `permission_basis` to the bounded GitHub identity that owns the repo access: `github-app`, `machine-user`, or `github-user`. A role agent should inherit only that identity's permitted scope, not become an all-seeing org brain.
 
-## Handler execution
+## Agent-Operated Runtime Contract
 
-Handler execution is pluggable through `LETTUCE_HANDLER_COMMAND`. If it is unset, the local protocol loop invokes the bundled default provider adapter with the same stdin/stdout JSON contract, so file, stream, checkpoint, review, and git behavior can be tested without blocking on provider credentials.
+The primary Lettuce path is agent-operated:
 
-To run handlers through the local OpenClaw model stack:
+1. The operator's agent receives the signal through its existing runtime: chat, email, browser, transcript, file, or work-system tools.
+2. The agent reads the relevant Lettuce source records and lenses.
+3. The agent uses its own model judgment to decide what matters, what changed, what not to do, and which review/update route applies.
+4. Lettuce CLI helpers do deterministic work: ingest events, preserve provenance, list/audit routes, create/review/apply markdown artifacts, update checkpoints, and keep git history inspectable.
+
+In other words: Lettuce is not a second agent runtime. It is the repo-backed protocol/state layer the runtime operates against.
+
+## Handler Execution
+
+Handler execution is pluggable through `LETTUCE_HANDLER_COMMAND`, but this is a compatibility and smoke-test seam, not the preferred OpenClaw path. If it is unset, the local protocol loop invokes the bundled deterministic adapter with the same stdin/stdout JSON contract, so file, stream, checkpoint, review, and git behavior can be tested without blocking on model credentials.
+
+An older experimental adapter can call a local OpenClaw model command:
 
 ```bash
 LETTUCE_HANDLER_COMMAND="python3 -m lettuce.openclaw_provider" \
@@ -286,7 +297,7 @@ LETTUCE_OPENCLAW_MODEL="anthropic/claude-haiku-4-5" \
 lettuce run ./lettuce-demo --commit
 ```
 
-The OpenClaw provider is intentionally a thin optional command adapter. It reads the standard handler invocation JSON from stdin, calls `openclaw capability model run --gateway`, extracts the model's JSON handler output, and writes that JSON to stdout for the runtime to validate and publish. During `lettuce run`, handler start/finish progress is printed to stderr while the machine-readable run result stays on stdout; each handler command is capped by `LETTUCE_HANDLER_TIMEOUT_SECONDS`, and the OpenClaw adapter also honors `LETTUCE_OPENCLAW_TIMEOUT_SECONDS` for its nested model call.
+That adapter is intentionally optional and should not be confused with the product architecture. In OpenClaw, the agent should normally run the lens judgment directly and use Lettuce helpers for durable protocol/state operations. The command adapter remains useful for CLI-only experiments, compatibility testing, or runtimes that intentionally expose model calls through a subprocess interface.
 
 ## What Lettuce is not
 
@@ -294,6 +305,7 @@ The OpenClaw provider is intentionally a thin optional command adapter. It reads
 - not a vector memory store
 - not a company brain by itself
 - not a dashboard-first product
+- not a replacement agent/runtime
 - not a first-party chat adapter, inbox provider, OAuth broker, or scheduler
 - not an all-seeing centralized company dump
 
