@@ -43,12 +43,11 @@ lettuce onboard ./lettuce-demo \
   --source openclaw.telegram \
   --surface telegram \
   --consent operator-direct-request \
-  --openclaw-provider \
   --review \
   --commit
 ```
 
-`--body "..."` is fine for a one-line smoke test. For real operator messages, use `--body-file` or stdin so pasted formatting survives. Use `--openclaw-provider` for actual OpenClaw dogfood; omit it only when you want an offline deterministic plumbing test.
+`--body "..."` is fine for a one-line smoke test. For real operator messages, use `--body-file` or stdin so pasted formatting survives. In OpenClaw, the agent should apply the lens judgment directly and use Lettuce for durable capture/review/apply state.
 
 Or scaffold without ingesting:
 
@@ -159,14 +158,16 @@ lettuce logs ./lettuce-demo --limit 5
 
 Without provider configuration, Lettuce uses the bundled deterministic provider adapter so the file, stream, checkpoint, log, review, and git loop can be tested without model credentials. `lettuce run` prints handler start/finish progress to stderr and keeps machine-readable run JSON on stdout.
 
-To use the OpenClaw model-backed provider seam:
+For OpenClaw, the preferred path is agent-operated: the agent reads the event and lens files, uses its own model judgment, then uses Lettuce helpers to persist the event, proposed review, accepted brain entry, logs, and git history.
+
+The older OpenClaw model-backed provider seam is optional compatibility plumbing for CLI-only experiments:
 
 ```bash
 LETTUCE_OPENCLAW_MODEL="anthropic/claude-haiku-4-5" \
 lettuce run ./lettuce-demo --openclaw-provider --review --commit
 ```
 
-Use `--handler-command "<command>"` only when testing a custom provider adapter. Use `LETTUCE_HANDLER_TIMEOUT_SECONDS` to cap each handler command invocation. The OpenClaw adapter also honors `LETTUCE_OPENCLAW_TIMEOUT_SECONDS` for the nested model command.
+Use `--openclaw-provider` or `--handler-command "<command>"` only when testing a subprocess provider adapter. Use `LETTUCE_HANDLER_TIMEOUT_SECONDS` to cap each handler command invocation. The OpenClaw adapter also honors `LETTUCE_OPENCLAW_TIMEOUT_SECONDS` for the nested model command.
 
 ## Verify
 

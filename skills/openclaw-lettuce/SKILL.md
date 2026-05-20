@@ -5,7 +5,9 @@ description: Use when an operator asks an OpenClaw agent to set up, run, dogfood
 
 # OpenClaw Lettuce
 
-Lettuce is an agent-operated markdown+git protocol. OpenClaw is the runtime in v0: it owns conversation surfaces, tool access, identity, auth, and setup guidance. Lettuce owns durable state: repo, streams, handlers, brain entries, subscriptions, checkpoints, logs, and review/apply conventions.
+Lettuce is an agent-operated markdown+git protocol. OpenClaw is the runtime in v0: it owns conversation surfaces, tool access, identity, auth, setup guidance, and model judgment. Lettuce owns durable state: repo, streams, handlers/lens definitions, brain entries, subscriptions, checkpoints, logs, and review/apply conventions.
+
+Do not treat Lettuce as a second agent runtime. In OpenClaw, you are the runtime: read the signal, apply the Lettuce lenses with your own judgment, then use Lettuce helpers for deterministic state operations such as ingest, route audit, review/apply, status, logs, and git-backed provenance.
 
 Do not build duplicate chat surfaces for direct input. If the operator is talking to OpenClaw through Telegram, iMessage, Discord, CLI, or another surface, OpenClaw already owns that surface. Write selected direct input into Lettuce with provenance.
 
@@ -64,7 +66,7 @@ Manual/direct ingestion should be configured in every normal onboarding. It is t
 
 For email/transcripts/work systems, inspect existing OpenClaw access first. If a source is already available, record source intent and sample small. If not, record the setup next action or ask the operator to forward/export one item first.
 
-Then run the helper:
+Then ingest the first signal and run a model-led lens pass yourself. Use the CLI for deterministic persistence, not for outsourcing judgment back to OpenClaw:
 
 ```bash
 lettuce onboard <repo-path> \
@@ -76,22 +78,21 @@ lettuce onboard <repo-path> \
   --surface "telegram" \
   --sender "<operator>" \
   --consent "operator-direct-request" \
-  --openclaw-provider \
   --review \
   --commit
 ```
 
 Use the actual source/surface available in the inbound context. Examples: `openclaw.telegram`, `openclaw.imessage`, `discord`, `cli`, `browser-chat`.
 
-Use `--openclaw-provider` when OpenClaw's local model command is available; it avoids the deterministic fallback that only proves plumbing. Omit it only for offline smoke tests.
+Do not use `--openclaw-provider` as the normal OpenClaw path. That adapter is an optional CLI compatibility shim for environments that deliberately expose a model call as a subprocess. The normal OpenClaw path is agent-operated: you perform the lens judgment and use Lettuce to capture, review, and apply the durable result.
 
 After running, summarize the JSON result in operator language:
 
 - repo initialized or reused
 - event path and source provenance
-- handlers that ran
-- pending review proposals written
-- skipped handlers/errors/noisy output
+- lenses applied and why
+- pending review proposals written or direct local updates made
+- skipped/errors/noisy output, if any
 - current checkpoints/log count
 
 Ask one review question:
@@ -183,7 +184,7 @@ Run handlers with:
 lettuce run <repo-path> --review --commit
 ```
 
-The command prints handler progress to stderr and returns machine-readable JSON on stdout. In OpenClaw, prefer `lettuce run --openclaw-provider --review <repo-path> --commit` for real judgment. Review proposals can be listed with `lettuce reviews <repo-path>` and then approved or declined with the review lifecycle commands. If model-backed handlers are slow, use `LETTUCE_HANDLER_TIMEOUT_SECONDS` to cap each handler command.
+The command prints handler progress to stderr and returns machine-readable JSON on stdout. In OpenClaw, prefer agent-operated judgment: read the event and lenses yourself, then use the review lifecycle commands to persist proposed or accepted updates. Use `lettuce run --openclaw-provider` only as an optional subprocess-adapter experiment. Review proposals can be listed with `lettuce reviews <repo-path>` and then approved or declined with the review lifecycle commands. If subprocess-backed handlers are slow, use `LETTUCE_HANDLER_TIMEOUT_SECONDS` to cap each handler command.
 
 ## Safety Rules
 

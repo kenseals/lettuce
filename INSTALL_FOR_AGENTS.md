@@ -132,7 +132,7 @@ lettuce onboard <repo-path> \
   --commit
 ```
 
-Use `--openclaw-provider` only when running inside OpenClaw and model-backed handler judgment is available. Otherwise the deterministic fallback is acceptable for setup smoke tests.
+In OpenClaw, do not outsource judgment back through `--openclaw-provider` by default. Apply the lenses yourself, then use Lettuce helpers for deterministic capture, review/apply, status, and provenance. The deterministic fallback is acceptable for setup smoke tests.
 
 Configure manual/direct ingestion in every normal setup so the operator can later say “run Lettuce on this”:
 

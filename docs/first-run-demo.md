@@ -82,9 +82,9 @@ bash examples/quick-demo.sh /tmp/lettuce-demo
 
 That script runs the same basic loop with the deterministic local provider so install, onboarding, brain updates, status, logs, and git cleanliness can be checked quickly.
 
-## Optional: OpenClaw-backed handler judgment
+## Optional: Subprocess-backed handler judgment
 
-When running inside OpenClaw, add `--openclaw-provider` to `onboard` or `run`:
+The normal OpenClaw path is agent-operated judgment. Use `--openclaw-provider` only when deliberately testing the older subprocess adapter:
 
 ```bash
 lettuce onboard ./lettuce-demo \
@@ -95,8 +95,7 @@ lettuce onboard ./lettuce-demo \
   --source openclaw.telegram \
   --surface telegram \
   --consent operator-direct-request \
-  --openclaw-provider \
   --commit
 ```
 
-In the public-v0 gate, the OpenClaw-backed path should create useful brain updates for stale-context customer pain and skip irrelevant noise.
+In the public-v0 gate, the agent-operated path should create useful brain updates for stale-context customer pain and skip irrelevant noise.

@@ -119,12 +119,11 @@ lettuce onboard <repo-path> \
   --cadence-hint "manual-for-now" \
   --cadence-trigger "when-asked" \
   --handoff-summary "Direct chat is available now; email is the next ready recurring source; transcripts still need setup." \
-  --openclaw-provider \
   --review \
   --commit
 ```
 
-For one-sentence smoke tests, `--body "<first direct signal body>"` is fine. For real operator messages, pasted transcripts, or multi-paragraph signal, prefer `--body-file` so the agent preserves the exact text and avoids shell quoting mistakes. If neither body option is provided, `lettuce onboard` reads stdin. Use `--openclaw-provider` for real OpenClaw dogfood so handlers make judgment calls instead of using the deterministic fallback adapter. Use `--review` for onboarding so first-pass handler output becomes explicit pending review proposals before any durable brain write.
+For one-sentence smoke tests, `--body "<first direct signal body>"` is fine. For real operator messages, pasted transcripts, or multi-paragraph signal, prefer `--body-file` so the agent preserves the exact text and avoids shell quoting mistakes. If neither body option is provided, `lettuce onboard` reads stdin. In OpenClaw, the agent should apply the lenses directly and use `--review` so first-pass output becomes explicit pending review proposals before any durable brain write.
 
 `lettuce onboard` now also writes `onboarding/setup/handoff.json`. That handoff is the repo-owned machine-readable record of:
 
@@ -329,7 +328,7 @@ For OpenClaw, the skill should wrap the CLI rather than expose it as operator wo
 2. Ask only for missing org, operator, repo path/start-local preference, first manual signal if needed, and consent basis.
 3. Ask which signal sources should be configured first; inspect existing OpenClaw access before asking the operator to connect anything.
 4. Write the first signal to a temporary UTF-8 markdown file when it is longer than a sentence.
-5. Run `lettuce onboard` with `--body-file`, provenance fields, `--openclaw-provider`, `--review`, and `--commit`.
+5. Run `lettuce onboard` with `--body-file`, provenance fields, `--review`, and `--commit`; apply the lens judgment yourself rather than routing judgment through a subprocess provider.
 6. Configure manual/direct ingestion as the baseline source and record source intent for any available email/transcript/work source.
 7. Parse stdout JSON and translate it into a short operator summary.
 8. Keep stderr progress available for debugging, but do not paste raw logs unless needed.
