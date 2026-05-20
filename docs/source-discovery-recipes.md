@@ -41,6 +41,21 @@ Also record routing status separately from access status. Example: an agent may 
 
 Manual/direct ingestion should be available for every first setup even when no recurring source is ready. It is the default fallback path: the operator forwards or pastes a signal and says “run Lettuce on this.”
 
+Mapped agent-owned chat surfaces are more proactive than manual fallback. If the runtime is already receiving a conversation from Telegram, Slack, Discord, iMessage, browser chat, or CLI, and a source record maps that `surface` plus optional `chat_id`, `thread_id`, or `topic`, the agent should route material org signal under the recorded `capture_policy` and `standing_rule` without waiting for the operator to name Lettuce. Lettuce still does not own the chat connection; it records the durable route contract and captured events.
+
+For mapped chat surfaces, source records may include:
+
+- `surface`: runtime surface such as `telegram` or `slack`.
+- `chat_id`: channel, chat, or room id.
+- `thread_id`: thread, topic, or forum id.
+- `topic`: human-readable thread/topic label.
+- `capture_policy`: which material signal belongs in Lettuce.
+- `standing_rule`: consent or standing instruction that authorizes recurring capture.
+- `route_policy`: how to answer/audit routing questions such as “are you saving this?”
+- `local_auto_apply`: whether low-risk local updates covered by the standing rule can skip a heavy review gate.
+
+Use `lettuce route-audit` when an operator asks whether a surface is being saved. The audit should inspect matching source records, recent matching stream events, and review proposals tied to those events.
+
 For onboarding-path decisions:
 
 - `solo_founder` stays minimal. Record the personal repo, direct/manual source, one next source plan, and the first reviewed sample. Shared streams are future-ready context, not required setup work.

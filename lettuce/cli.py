@@ -7,7 +7,7 @@ import sys
 from typing import Any
 
 from .handlers import discover_handlers
-from .protocol_runtime import add_handler, add_stream_event, approve_review, configure_source, configure_subscription, decline_review, ensure_source_config, import_source_event, ingest_direct_signal, ingest_email_signal, init_repo, list_reviews, read_logs, read_source_record, record_onboarding_handoff, run_once, status
+from .protocol_runtime import add_handler, add_stream_event, approve_review, configure_source, configure_subscription, decline_review, ensure_source_config, import_source_event, ingest_direct_signal, ingest_email_signal, ingest_thread_bundle, init_repo, list_reviews, read_logs, read_source_record, record_onboarding_handoff, route_audit, run_once, status
 
 
 def _print_json(value: object) -> None:
@@ -78,6 +78,18 @@ def _read_body(body: str | None, body_file: str | None) -> str:
     if body is not None:
         return body
     return sys.stdin.read()
+
+
+def _read_messages(path: str) -> list[dict[str, Any]]:
+    value = json.loads(Path(path).expanduser().read_text(encoding="utf-8"))
+    if isinstance(value, dict):
+        value = value.get("messages")
+    if not isinstance(value, list):
+        raise ValueError("--messages-file must contain a JSON array or an object with a messages array")
+    messages = [item for item in value if isinstance(item, dict)]
+    if len(messages) != len(value):
+        raise ValueError("--messages-file messages must be JSON objects")
+    return messages
 
 
 def _ask(prompt: str, *, default: str | None = None) -> str:
@@ -338,6 +350,22 @@ def _run(argv: list[str] | None = None) -> int:
     ingest_direct_parser.add_argument("--consent", required=True, help="Consent or standing-rule basis for ingesting this signal")
     ingest_direct_parser.add_argument("--commit", action="store_true", help="Commit the stream event to git")
 
+    ingest_thread_parser = subparsers.add_parser("ingest-thread", help="Ingest a multi-message direct conversation as one coherent signal")
+    ingest_thread_parser.add_argument("path", nargs="?", default=".", help="Lettuce repo path")
+    ingest_thread_parser.add_argument("--title", help="Event title. Defaults to the first message text")
+    ingest_thread_parser.add_argument("--messages-file", required=True, help="UTF-8 JSON array of message objects, or {messages: [...]}")
+    ingest_thread_parser.add_argument("--source", default="agent.direct", help="Source label, e.g. openclaw.telegram or cli")
+    ingest_thread_parser.add_argument("--surface", required=True, help="Agent communication surface, e.g. telegram, imessage, discord, cli")
+    ingest_thread_parser.add_argument("--chat-id", help="Source chat/channel id when available")
+    ingest_thread_parser.add_argument("--thread-id", help="Source thread id when available")
+    ingest_thread_parser.add_argument("--topic", help="Source topic/forum label when available")
+    ingest_thread_parser.add_argument("--observed-at", help="Original observation timestamp when available")
+    ingest_thread_parser.add_argument("--sender", help="Source sender/operator label when available")
+    ingest_thread_parser.add_argument("--source-record", help="Matching source record id/path when known")
+    ingest_thread_parser.add_argument("--standing-rule", help="Standing rule or consent rule that authorized capture")
+    ingest_thread_parser.add_argument("--consent", required=True, help="Consent or standing-rule basis for ingesting this thread")
+    ingest_thread_parser.add_argument("--commit", action="store_true", help="Commit the stream event to git")
+
     ingest_email_parser = subparsers.add_parser("ingest-email", help="Ingest an operator-selected or forwarded email signal")
     ingest_email_parser.add_argument("path", nargs="?", default=".", help="Lettuce repo path")
     ingest_email_parser.add_argument("--subject", required=True, help="Original email subject")
@@ -429,6 +457,10 @@ def _run(argv: list[str] | None = None) -> int:
     add_source_parser.add_argument("--body-file", help="Read stdin-source body text from a UTF-8 file")
     add_source_parser.add_argument("--name", help="Configured source display name")
     add_source_parser.add_argument("--bot", help="Telegram bot handle or identifier to record")
+    add_source_parser.add_argument("--surface", help="Agent surface this source record maps, e.g. telegram")
+    add_source_parser.add_argument("--chat-id", help="Chat/channel id this source record maps")
+    add_source_parser.add_argument("--thread-id", help="Thread id this source record maps")
+    add_source_parser.add_argument("--topic", help="Topic/forum label this source record maps")
     add_source_parser.add_argument("--address", help="Email mailbox, forwarding address, or account label to record")
     add_source_parser.add_argument("--workspace", help="Transcript/workspace/account identifier to record")
     add_source_parser.add_argument("--poll", help="Polling cadence hint for pull-based sources")
@@ -442,6 +474,10 @@ def _run(argv: list[str] | None = None) -> int:
     add_source_parser.add_argument("--label", help="Email label/folder or source grouping to record")
     add_source_parser.add_argument("--source-url", help="Source URL or app URL to record")
     add_source_parser.add_argument("--redaction-notes", help="Redaction notes to preserve during ingest")
+    add_source_parser.add_argument("--capture-policy", help="What material signal from this source should be captured")
+    add_source_parser.add_argument("--standing-rule", help="Standing rule or consent basis for recurring capture")
+    add_source_parser.add_argument("--route-policy", help="How matching signal should be routed or audited")
+    add_source_parser.add_argument("--local-auto-apply", action="store_true", help="Standing rule permits low-risk local org-brain updates without a heavy review gate")
     add_source_parser.add_argument("--commit", action="store_true", help="Commit the imported event or source configuration to git")
 
     subscribe_parser = subparsers.add_parser("subscribe", help="Record a remote/shared stream subscription")
@@ -493,6 +529,15 @@ def _run(argv: list[str] | None = None) -> int:
     logs_parser = subparsers.add_parser("logs", help="Show recent runtime logs")
     logs_parser.add_argument("path", nargs="?", default=".", help="Lettuce repo path")
     logs_parser.add_argument("--limit", type=int, default=20, help="Number of log entries to show")
+
+    audit_parser = subparsers.add_parser("route-audit", help="Audit whether a source/surface is mapped and whether matching signal was captured")
+    audit_parser.add_argument("path", nargs="?", default=".", help="Lettuce repo path")
+    audit_parser.add_argument("--surface", help="Agent surface, e.g. telegram")
+    audit_parser.add_argument("--source", help="Source label, e.g. openclaw.telegram")
+    audit_parser.add_argument("--chat-id", help="Chat/channel id")
+    audit_parser.add_argument("--thread-id", help="Thread id")
+    audit_parser.add_argument("--topic", help="Topic/forum label")
+    audit_parser.add_argument("--limit", type=int, default=10, help="Recent matching events to include")
 
     args = parser.parse_args(argv)
 
@@ -557,6 +602,34 @@ def _run(argv: list[str] | None = None) -> int:
             commit=args.commit,
         )
         _print_json({"event_path": result.event_path, "title": result.title, "source": result.source, "consent_basis": result.consent_basis})
+        return 0
+
+    if args.command == "ingest-thread":
+        result = ingest_thread_bundle(
+            args.path,
+            title=args.title,
+            messages=_read_messages(args.messages_file),
+            source=args.source,
+            surface=args.surface,
+            consent_basis=args.consent,
+            observed_at=args.observed_at,
+            sender=args.sender,
+            thread_id=args.thread_id,
+            chat_id=args.chat_id,
+            topic=args.topic,
+            source_record=args.source_record,
+            standing_rule=args.standing_rule,
+            commit=args.commit,
+        )
+        _print_json(
+            {
+                "event_path": result.event_path,
+                "title": result.title,
+                "source": result.source,
+                "consent_basis": result.consent_basis,
+                "message_count": result.message_count,
+            }
+        )
         return 0
 
     if args.command == "ingest-email":
@@ -1128,6 +1201,11 @@ def _run(argv: list[str] | None = None) -> int:
             key: value
             for key, value in {
                 "bot": args.bot,
+                "source": args.source,
+                "surface": args.surface,
+                "chat_id": args.chat_id,
+                "thread_id": args.thread_id,
+                "topic": args.topic,
                 "address": args.address,
                 "workspace": args.workspace,
                 "poll": args.poll,
@@ -1150,6 +1228,10 @@ def _run(argv: list[str] | None = None) -> int:
             sample_policy=args.sample_policy,
             privacy_notes=args.privacy_notes,
             setup_next_action=args.setup_next_action,
+            capture_policy=args.capture_policy,
+            standing_rule=args.standing_rule,
+            route_policy=args.route_policy,
+            local_auto_apply=args.local_auto_apply,
             commit=args.commit,
         )
         _print_json(
@@ -1274,6 +1356,20 @@ def _run(argv: list[str] | None = None) -> int:
 
     if args.command == "logs":
         _print_json({"logs": read_logs(args.path, limit=args.limit)})
+        return 0
+
+    if args.command == "route-audit":
+        _print_json(
+            route_audit(
+                args.path,
+                surface=args.surface,
+                source=args.source,
+                chat_id=args.chat_id,
+                thread_id=args.thread_id,
+                topic=args.topic,
+                limit=args.limit,
+            )
+        )
         return 0
 
     return 1

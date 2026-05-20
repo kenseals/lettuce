@@ -1,0 +1,23 @@
+{
+  "messages": [
+    {
+      "message_id": "991",
+      "timestamp": "2026-05-19T14:01:00Z",
+      "sender": "ken",
+      "text": "Roster Telegram dogfood should save material TUM signals."
+    },
+    {
+      "message_id": "992",
+      "timestamp": "2026-05-19T14:02:00Z",
+      "sender": "ken",
+      "text": "Actually, bundle corrections into one coherent signal.",
+      "correction_of": "991"
+    },
+    {
+      "message_id": "993",
+      "timestamp": "2026-05-19T14:03:00Z",
+      "sender": "soren",
+      "text": "Are you saving this?"
+    }
+  ]
+}
